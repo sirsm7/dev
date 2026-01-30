@@ -1,24 +1,28 @@
 /**
- * SMPID AUTH BRIDGE
+ * SMPID AUTH BRIDGE (FIXED v2)
  * Fungsi: Memastikan modul dalam sub-folder hanya boleh diakses
  * jika pengguna telah log masuk melalui SMPID utama.
  */
 
 (function() {
-    // Semak kunci sesi dari sessionStorage (yang dikongsi dalam origin yang sama)
-    const isAuth = sessionStorage.getItem('smpid_auth');
+    // 1. Ambil data sesi
     const userKod = sessionStorage.getItem('smpid_user_kod');
-
-    // Jika tiada rekod auth, tendang keluar
-    if (isAuth !== 'true' || !userKod) {
-        console.warn("⛔ Akses Tanpa Izin ke Modul. Mengalih ke Login...");
+    
+    // 2. Semakan Keselamatan
+    // Kita hanya perlu pastikan 'userKod' wujud dan tidak kosong.
+    // Kita TIDAK BOLEH bergantung pada 'smpid_auth' == 'true' kerana 
+    // dalam sistem SMPID, 'smpid_auth'='false' bermaksud User Sekolah yang sah.
+    
+    if (!userKod || userKod === 'null' || userKod === 'undefined') {
+        console.warn("⛔ Akses Tanpa Izin ke Modul. Tiada Kod Sekolah dikesan.");
         
         // Peringatan mesra sebelum redirect
-        alert("Sesi tamat atau tidak sah. Sila log masuk semula melalui portal utama.");
+        alert("Sila log masuk melalui Portal SMPID dahulu.");
         
         // Redirect ke root (naik 2 level dari /modules/nama_modul/)
         window.location.href = '../../index.html';
     } else {
-        console.log("✅ Akses Modul Dibenarkan: " + userKod);
+        // Akses Dibenarkan
+        console.log("✅ Akses Modul Dibenarkan untuk: " + userKod);
     }
 })();

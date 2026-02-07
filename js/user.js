@@ -1,18 +1,21 @@
 /**
- * USER PORTAL CONTROLLER
- * Menguruskan papan pemuka sekolah.
+ * SMPID USER PORTAL MODULE (js/user.js)
+ * Versi: 7.1 (Fix: Logout Confirmation Restored)
+ * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
  */
 
+// Import keluarSistem dari helpers supaya pengesahan berfungsi
+import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
 import { SchoolService } from './services/school.service.js';
 import { AuthService } from './services/auth.service.js';
-import { DcsService } from './services/dcs.service.js'; // Updated Import
+import { DcsService } from './services/dcs.service.js';
 import { SupportService } from './services/support.service.js';
 import { AchievementService } from './services/achievement.service.js';
-import { toggleLoading, checkEmailDomain, autoFormatPhone } from './core/helpers.js';
 import { APP_CONFIG } from './config/app.config.js';
 
+// Global Variables
 let analisaChart = null;
-let userPencapaianList = [];
+let userPencapaianList = []; 
 
 document.addEventListener('DOMContentLoaded', () => {
     initUserPortal();
@@ -27,51 +30,73 @@ function initUserPortal() {
         return; 
     }
     
-    // UI Header Setup
     const displayKod = document.getElementById('displayKodSekolah');
     const btnLogout = document.getElementById('btnLogoutMenu');
 
     if (isAdmin) {
-        if(displayKod) {
-            displayKod.innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
-            displayKod.classList.replace('text-dark', 'text-primary');
-            displayKod.classList.add('border', 'border-primary');
-        }
+        displayKod.innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
+        displayKod.classList.replace('text-dark', 'text-primary');
+        displayKod.classList.add('border', 'border-primary');
+        
         if(btnLogout) {
             btnLogout.innerHTML = `<i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard Admin`;
             btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
             btnLogout.classList.replace('text-danger', 'text-primary');
         }
-        document.getElementById('btnResetData')?.classList.remove('hidden');
+        
+        const btnReset = document.getElementById('btnResetData');
+        if (btnReset) btnReset.classList.remove('hidden');
+
     } else {
-        if(displayKod) displayKod.innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
+        displayKod.innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
     }
     
     loadProfil(kod);
 }
 
-// --- GLOBAL EXPORTS (PENTING) ---
+// ==========================================
+// 2. NAVIGASI (SPA FEEL)
+// ==========================================
 
 window.showSection = function(section) {
-    const sections = ['menu', 'profil', 'aduan', 'analisa', 'pencapaian'];
+    const menuSection = document.getElementById('section-menu');
+    const profilSection = document.getElementById('section-profil');
+    const aduanSection = document.getElementById('section-aduan');
+    const analisaSection = document.getElementById('section-analisa');
+    const pencapaianSection = document.getElementById('section-pencapaian');
     const welcomeText = document.getElementById('welcomeText');
 
-    sections.forEach(s => {
-        const el = document.getElementById(`section-${s}`);
-        if(el) el.classList.add('hidden');
-    });
+    menuSection.classList.add('hidden');
+    profilSection.classList.add('hidden');
+    aduanSection.classList.add('hidden');
+    if(analisaSection) analisaSection.classList.add('hidden');
+    if(pencapaianSection) pencapaianSection.classList.add('hidden');
 
-    const activeEl = document.getElementById(`section-${section}`);
-    if(activeEl) activeEl.classList.remove('hidden');
-
-    if (section === 'menu') welcomeText.innerText = "Menu Utama";
-    else if (section === 'profil') welcomeText.innerText = "Kemaskini Maklumat";
-    else if (section === 'aduan') { welcomeText.innerText = "Helpdesk & Aduan"; window.loadTiketUser(); }
-    else if (section === 'analisa') { welcomeText.innerText = "Analisa Digital"; loadAnalisaSekolah(); }
-    else if (section === 'pencapaian') { welcomeText.innerText = "Rekod Pencapaian"; window.loadPencapaianSekolah(); }
+    if (section === 'menu') {
+        menuSection.classList.remove('hidden');
+        welcomeText.innerText = "Menu Utama";
+    } else if (section === 'profil') {
+        profilSection.classList.remove('hidden');
+        welcomeText.innerText = "Kemaskini Maklumat";
+    } else if (section === 'aduan') {
+        aduanSection.classList.remove('hidden');
+        welcomeText.innerText = "Helpdesk & Aduan";
+        window.loadTiketUser(); 
+    } else if (section === 'analisa') {
+        analisaSection.classList.remove('hidden');
+        welcomeText.innerText = "Analisa Digital";
+        loadAnalisaSekolah();
+    } else if (section === 'pencapaian') {
+        pencapaianSection.classList.remove('hidden');
+        welcomeText.innerText = "Rekod Pencapaian";
+        window.loadPencapaianSekolah();
+    }
 };
 
-// --- PROFIL ---
+// ==========================================
+// 3. PENGURUSAN PROFIL
+// ==========================================
+
 async function loadProfil(kod) {
     try {
         const data = await SchoolService.getByCode(kod);
@@ -128,7 +153,10 @@ window.salinData = function() {
     }
 };
 
-// --- ANALISA (GUNA DcsService) ---
+// ==========================================
+// 4. ANALISA DIGITAL
+// ==========================================
+
 async function loadAnalisaSekolah() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tableBody = document.getElementById('tableAnalisaBody');
@@ -172,7 +200,6 @@ function renderDcsChart(data) {
     if (!ctx) return;
     if (analisaChart) analisaChart.destroy();
     
-    // ... Chart config (sama seperti sebelum ini) ...
     const labels = ['2023', '2024', '2025'];
     const dataDcs = [data.dcs_2023, data.dcs_2024, data.dcs_2025];
     const dataAktif = [data.peratus_aktif_2023, data.peratus_aktif_2024, data.peratus_aktif_2025];
@@ -193,7 +220,10 @@ function renderDcsChart(data) {
     });
 }
 
-// --- PENCAPAIAN ---
+// ==========================================
+// 5. REKOD PENCAPAIAN (Dengan Fix Jawatan)
+// ==========================================
+
 window.loadPencapaianSekolah = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tbody = document.getElementById('tbodyRekodPencapaian');
@@ -284,10 +314,7 @@ window.simpanPencapaian = async function() {
 
 window.openEditPencapaianUser = function(id) {
     const item = userPencapaianList.find(i => String(i.id) === String(id));
-    if (!item) {
-        console.error("Item not found for ID:", id);
-        return;
-    }
+    if (!item) return;
 
     document.getElementById('editUserId').value = item.id;
     document.getElementById('editUserJenis').value = item.jenis_rekod;
@@ -297,16 +324,16 @@ window.openEditPencapaianUser = function(id) {
     document.getElementById('editUserLink').value = item.pautan_bukti;
     document.getElementById('editUserTahun').value = item.tahun;
 
-    const divPenyedia = document.getElementById('editUserDivPenyedia');
-    const rowPeringkat = document.getElementById('editUserRowPeringkat');
     const divJawatan = document.getElementById('editUserDivJawatan');
-
     if (item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
         document.getElementById('editUserJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
     } else {
         divJawatan.classList.add('hidden');
     }
+
+    const divPenyedia = document.getElementById('editUserDivPenyedia');
+    const rowPeringkat = document.getElementById('editUserRowPeringkat');
 
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
@@ -416,6 +443,10 @@ window.toggleJenisPencapaian = function() {
     }
 };
 
+// ==========================================
+// 6. HELPDESK & SYSTEM
+// ==========================================
+
 window.hantarTiket = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const peranan = document.getElementById('tiketPeranan').value;
@@ -450,11 +481,6 @@ window.loadTiketUser = async function() {
     } catch (e) { container.innerHTML = `<div class="text-danger small">Gagal memuatkan tiket.</div>`; }
 };
 
-window.keluarSistem = function() {
-    sessionStorage.clear();
-    window.location.replace('index.html');
-};
-
 window.ubahKataLaluan = async function() {
     const userId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID);
     if (!userId) return;
@@ -471,7 +497,43 @@ window.ubahKataLaluan = async function() {
         try {
             await AuthService.changePassword(userId, oldPass, newPass);
             toggleLoading(false);
-            Swal.fire('Berjaya', 'Sila log masuk semula.', 'success').then(() => window.keluarSistem());
+            Swal.fire('Berjaya', 'Sila log masuk semula.', 'success').then(() => keluarSistem());
         } catch (err) { toggleLoading(false); Swal.fire('Gagal', err.message, 'error'); }
+    }
+};
+
+window.resetDataSekolah = async function() {
+    const kod = document.getElementById('hiddenKodSekolah').value;
+    const { value: password } = await Swal.fire({
+        title: 'Akses Admin Diperlukan',
+        text: 'Masukkan kata laluan khas untuk reset data sekolah ini:',
+        input: 'password',
+        showCancelButton: true,
+        confirmButtonText: 'Sahkan'
+    });
+
+    if (password === 'pkgag') { // Master Key
+         Swal.fire({
+            title: 'Pasti Reset Data?',
+            text: "Semua data GPICT/Admin akan dipadam (NULL). Kod sekolah kekal.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Reset!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                toggleLoading(true);
+                try {
+                    await SchoolService.resetData(kod);
+                    toggleLoading(false);
+                    Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => loadProfil(kod));
+                } catch (err) {
+                    toggleLoading(false); 
+                    Swal.fire('Ralat', 'Gagal reset data.', 'error');
+                }
+            }
+        });
+    } else if (password) {
+        Swal.fire('Akses Ditolak', 'Kata laluan salah.', 'error');
     }
 };

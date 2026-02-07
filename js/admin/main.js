@@ -1,13 +1,12 @@
 /**
  * ADMIN MODULE: MAIN CONTROLLER (DEV)
- * Menguruskan logik permulaan admin, keselamatan, dan peranan.
+ * Fungsi: Menguruskan logik permulaan admin, keselamatan, dan peranan.
  */
 
 import { AuthService } from '../services/auth.service.js';
 import { APP_CONFIG } from '../config/app.config.js';
-
-// Pastikan semua module lain dimuatkan melalui index atau import ini jika menggunakan bundler.
-// Dalam konteks ini, kita bergantung kepada skrip yang dimuatkan di admin.html
+// Tidak perlu import keluarSistem secara manual kerana helpers.js telah di-load di admin.html
+// dan ia mendedahkan window.keluarSistem yang betul (dengan Swal).
 
 document.addEventListener('DOMContentLoaded', () => {
     initAdminPanel();
@@ -39,7 +38,6 @@ function setupUnitView(displayRole) {
     if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
     
     // Sembunyikan Tab & Fungsi yang tidak relevan (Strict Mode)
-    // Gunakan class 'hidden' untuk konsistensi dengan CSS core
     const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
     tabsToHide.forEach(id => {
         const el = document.getElementById(id);
@@ -71,8 +69,6 @@ function setupAdminView(displayRole) {
 function setupTabListeners() {
     // Listener untuk load data hanya bila tab dibuka (Lazy Load)
     
-    // Tab Dashboard (Default Loaded)
-    
     // Tab Analisa
     const analisaTab = document.getElementById('analisa-tab');
     if (analisaTab) analisaTab.addEventListener('shown.bs.tab', () => { if(window.loadDcsAdmin) window.loadDcsAdmin(); });
@@ -98,8 +94,5 @@ function setupTabListeners() {
     if (usersTab) usersTab.addEventListener('shown.bs.tab', () => { if(window.loadAdminList) window.loadAdminList(); });
 }
 
-// Global Logout (Diperlukan oleh HTML onclick)
-window.keluarSistem = function() {
-    sessionStorage.clear();
-    window.location.replace('index.html');
-};
+// NOTA PENTING: Fungsi keluarSistem() manual telah DIBUANG dari fail ini.
+// Sekarang ia akan menggunakan fungsi global dari helpers.js yang mempunyai SweetAlert.

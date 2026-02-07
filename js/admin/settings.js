@@ -1,14 +1,10 @@
 /**
  * ADMIN MODULE: SETTINGS (DEV)
  * Menguruskan pengguna admin dan reset password sekolah.
- * * FIXES:
- * - Memastikan fungsi 'resetPasswordSekolah' diexport ke window 
- * supaya boleh dipanggil dari butang grid Dashboard.
  */
 
 import { AuthService } from '../services/auth.service.js';
 import { toggleLoading, keluarSistem } from '../core/helpers.js';
-import { getDatabaseClient } from '../core/db.js';
 
 // --- USER MANAGEMENT ---
 window.loadAdminList = async function() {
@@ -102,7 +98,6 @@ window.padamAdmin = async function(id, email) {
 };
 
 // --- SEKOLAH PASSWORD MANAGEMENT ---
-// Fungsi ini penting untuk butang "Reset" pada kad sekolah di Dashboard
 window.resetPasswordSekolah = async function(kod) {
     Swal.fire({ 
         title: 'Reset Password?', 
@@ -128,7 +123,8 @@ window.resetPasswordSekolah = async function(kod) {
 
 // --- UNIT PPD SELF-SERVICE ---
 window.ubahKataLaluanSendiri = async function() {
-    const userId = sessionStorage.getItem('smpid_user_id'); // Pastikan ID disimpan masa login
+    // FIX: Gunakan kunci sesi yang betul dari config atau string langsung jika perlu
+    const userId = sessionStorage.getItem('smpid_user_id'); 
     
     if (!userId) {
         Swal.fire('Ralat Sesi', 'Sila log keluar dan log masuk semula.', 'error');
@@ -158,7 +154,8 @@ window.ubahKataLaluanSendiri = async function() {
         try {
             await AuthService.changePassword(userId, oldPass, newPass);
             toggleLoading(false);
-            Swal.fire('Berjaya', 'Kata laluan ditukar. Sila log masuk semula.', 'success').then(() => window.keluarSistem());
+            // Panggil keluarSistem yang diimport
+            Swal.fire('Berjaya', 'Kata laluan ditukar. Sila log masuk semula.', 'success').then(() => keluarSistem());
         } catch (err) {
             toggleLoading(false);
             Swal.fire('Gagal', err.message, 'error');

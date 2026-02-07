@@ -81,9 +81,29 @@ export function generateWhatsAppLink(nama, noTel, isRaw = false) {
     return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
 }
 
+/**
+ * Fungsi Log Keluar Global
+ */
+export function keluarSistem() {
+    Swal.fire({
+        title: 'Log Keluar?', 
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#d33', 
+        confirmButtonText: 'Ya, Keluar',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            sessionStorage.clear();
+            window.location.replace('index.html');
+        }
+    });
+}
+
 // Expose ke global window untuk keserasian HTML `onclick="..."` legacy
 window.toggleLoading = toggleLoading;
 window.autoFormatPhone = autoFormatPhone;
 window.cleanPhone = cleanPhone;
 window.generateWhatsAppLink = generateWhatsAppLink;
 window.formatSentenceCase = formatSentenceCase;
+window.keluarSistem = keluarSistem;

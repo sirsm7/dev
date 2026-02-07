@@ -3,7 +3,7 @@
  * Menguruskan laporan DCS dan DELIMa.
  */
 
-import { AnalyticsService } from '../services/analytics.service.js';
+import { DcsService } from '../services/dcs.service.js'; // Updated Import
 import { toggleLoading } from '../core/helpers.js';
 
 let dcsDataList = [];
@@ -11,7 +11,7 @@ let charts = { donut: null, bar: null };
 
 window.loadDcsAdmin = async function() {
     try {
-        dcsDataList = await AnalyticsService.getAll();
+        dcsDataList = await DcsService.getAll();
         populateDcsYears();
         window.updateDashboardAnalisa();
     } catch (err) { 
@@ -57,8 +57,6 @@ window.updateDashboardAnalisa = function() {
     window.filterAnalisaTable(currYear, prevYear);
 };
 
-// ... Chart Functions & Table Rendering (Simplified Logic) ...
-
 function getKategoriDcs(score) {
     if (!score) return { label: 'Tiada', color: '#6c757d', class: 'bg-secondary' };
     if (score < 2) return { label: 'Beginner', color: '#dc3545', class: 'bg-danger' };
@@ -78,7 +76,6 @@ function processDcsPanel(field) {
     lbl.innerText = cat.label;
     lbl.className = `badge rounded-pill mt-2 px-3 py-2 ${cat.class}`;
 
-    // Chart
     const schools = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
     let cats = { 'Beginner':0, 'Novice':0, 'Intermediate':0, 'Advance':0, 'Innovator':0 };
     schools.forEach(d => { if(d[field]) cats[getKategoriDcs(d[field]).label]++; });
@@ -94,7 +91,6 @@ function processDcsPanel(field) {
         options: { plugins: { legend: { position: 'right' } }, maintainAspectRatio: false }
     });
 
-    // Top 5
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
     document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td>${d.nama_sekolah}</td><td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td></tr>`).join('')}</tbody>`;
 }
@@ -164,7 +160,7 @@ window.simpanDcs = async function() {
 
     toggleLoading(true);
     try {
-        await AnalyticsService.update(kod, payload);
+        await DcsService.update(kod, payload);
         toggleLoading(false);
         bootstrap.Modal.getInstance(document.getElementById('modalEditDcs')).hide();
         Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => window.loadDcsAdmin());

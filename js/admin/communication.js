@@ -1,7 +1,7 @@
-import { SchoolService } from '../services/school.service.js';
 import { SupportService } from '../services/support.service.js';
-import { toggleLoading, formatSentenceCase } from '../core/helpers.js';
+import { toggleLoading } from '../core/helpers.js';
 
+// --- EMAIL BLASTER ---
 window.generateList = function() {
     const includeGpict = document.getElementById('checkGpict').checked;
     const includeAdmin = document.getElementById('checkAdmin').checked;
@@ -36,13 +36,18 @@ window.generateList = function() {
 };
 
 window.copyEmails = function() {
-    navigator.clipboard.writeText(document.getElementById("emailOutput").value).then(() => Swal.fire('Disalin', '', 'success'));
+    const el = document.getElementById("emailOutput");
+    if(el.value) {
+        el.select();
+        navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success'));
+    }
 };
 
 window.copyTemplate = function() {
     navigator.clipboard.writeText(document.getElementById("msgBody").value).then(() => Swal.fire('Disalin', '', 'success'));
 };
 
+// --- HELPDESK ---
 window.loadTiketAdmin = async function() {
     const wrapper = document.getElementById('adminTiketWrapper');
     if(!wrapper) return;
@@ -55,54 +60,94 @@ window.loadTiketAdmin = async function() {
         wrapper.innerHTML = "";
         
         if (data.length === 0) {
-            wrapper.innerHTML = `<div class="alert alert-light text-center">Tiada tiket.</div>`;
+            wrapper.innerHTML = `<div class="alert alert-light text-center">Tiada tiket dalam kategori ini.</div>`;
             return;
         }
 
         data.forEach(t => {
-            const actionArea = t.status !== 'SELESAI' ? 
-                `<div class="mt-3 border-top pt-2"><textarea id="reply-${t.id}" class="form-control mb-2" placeholder="Balasan..."></textarea><button onclick="submitBalasanAdmin(${t.id})" class="btn btn-primary btn-sm">Balas & Tutup</button><button onclick="padamTiket(${t.id})" class="btn btn-outline-danger btn-sm ms-2">Padam</button></div>` :
-                `<div class="mt-2 text-success small"><strong>Respon:</strong> ${t.balasan_admin} <button onclick="padamTiket(${t.id})" class="btn btn-link text-danger p-0 ms-2">Padam</button></div>`;
+            const dateStr = new Date(t.created_at).toLocaleString('ms-MY');
+            let actionArea = "";
+
+            if (t.status !== 'SELESAI') {
+                actionArea = `
+                <div class="mt-3 border-top pt-2 bg-light p-2 rounded">
+                    <label class="small fw-bold">Balasan Admin:</label>
+                    <textarea id="reply-${t.id}" class="form-control mb-2 form-control-sm" rows="2" placeholder="Tulis balasan..."></textarea>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button onclick="padamTiket(${t.id})" class="btn btn-outline-danger btn-sm">Padam</button>
+                        <button onclick="submitBalasanAdmin(${t.id})" class="btn btn-primary btn-sm">Hantar & Tutup</button>
+                    </div>
+                </div>`;
+            } else {
+                actionArea = `
+                <div class="mt-2 text-success small border-top pt-2">
+                    <i class="fas fa-check-circle"></i> <strong>Respon:</strong> ${t.balasan_admin} 
+                    <button onclick="padamTiket(${t.id})" class="btn btn-link text-danger p-0 ms-2 text-decoration-none" title="Padam Tiket"><i class="fas fa-trash"></i></button>
+                </div>`;
+            }
 
             wrapper.innerHTML += `
-            <div class="card mb-3 shadow-sm ${t.status === 'SELESAI' ? 'bg-light' : 'border-danger'}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h6 class="fw-bold">${t.tajuk} <span class="badge bg-dark">${t.kod_sekolah}</span></h6>
-                        <small>${new Date(t.created_at).toLocaleDateString()}</small>
+            <div class="card mb-3 shadow-sm ${t.status === 'SELESAI' ? 'bg-light opacity-75' : 'border-danger'}">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span class="badge bg-dark me-1">${t.kod_sekolah}</span>
+                            <span class="badge bg-secondary">${t.peranan_pengirim}</span>
+                        </div>
+                        <small class="text-muted fw-bold">${dateStr}</small>
                     </div>
-                    <p class="small mb-0">${t.butiran_masalah}</p>
+                    <h6 class="fw-bold mb-1">${t.tajuk}</h6>
+                    <p class="small text-secondary mb-0 bg-white p-2 rounded border">${t.butiran_masalah}</p>
                     ${actionArea}
                 </div>
             </div>`;
         });
-    } catch (e) { wrapper.innerHTML = 'Ralat memuatkan tiket.'; }
+    } catch (e) { 
+        console.error(e);
+        wrapper.innerHTML = `<div class="text-danger text-center">Ralat memuatkan tiket.</div>`; 
+    }
 };
 
 window.submitBalasanAdmin = async function(id) {
     const reply = document.getElementById(`reply-${id}`).value;
     if(!reply) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
     
-    // Untuk notifikasi, kita perlu fetch data tiket asal, tapi untuk jimatkan masa, kita anggap DB trigger handle atau Deno API handle.
-    // Di sini kita update direct.
     toggleLoading(true);
-    // Kita guna client DB terus atau service update (perlu tambah method update di service jika belum ada, atau guna direct db sementara)
-    // Seeloknya tambah di SupportService.updateTicket. Tapi demi ringkas, kita anggap SupportService boleh di-extend atau guna direct db import (tapi kita dah janji guna service).
-    // WORKAROUND: Import db from core.
-    
-    // ... Implementasi ringkas ...
-    // Anggap SupportService ada method update
-    // await SupportService.update(id, { status: 'SELESAI', balasan_admin: reply });
-    
-    toggleLoading(false);
-    Swal.fire('Selesai', '', 'success').then(() => window.loadTiketAdmin());
+    try {
+        await SupportService.update(id, { 
+            status: 'SELESAI', 
+            balasan_admin: reply,
+            tarikh_balas: new Date().toISOString()
+        });
+        
+        toggleLoading(false);
+        Swal.fire('Selesai', 'Tiket ditutup dan notifikasi dihantar.', 'success').then(() => window.loadTiketAdmin());
+    } catch (e) {
+        toggleLoading(false);
+        Swal.fire('Ralat', 'Gagal mengemaskini tiket.', 'error');
+    }
 };
 
 window.padamTiket = async function(id) {
-    Swal.fire({ title: 'Padam?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then(async (r) => {
+    Swal.fire({ 
+        title: 'Padam Tiket?', 
+        text: "Tindakan ini tidak boleh dikembalikan.",
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal'
+    }).then(async (r) => {
         if(r.isConfirmed) {
-            // await SupportService.delete(id);
-            Swal.fire('Dipadam', '', 'success').then(() => window.loadTiketAdmin());
+            toggleLoading(true);
+            try {
+                await SupportService.delete(id);
+                toggleLoading(false);
+                Swal.fire('Dipadam', '', 'success').then(() => window.loadTiketAdmin());
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal memadam.', 'error');
+            }
         }
     });
 };

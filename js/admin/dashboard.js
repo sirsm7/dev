@@ -1,11 +1,13 @@
 /**
- * ADMIN MODULE: DASHBOARD
+ * ADMIN MODULE: DASHBOARD (DEV)
  * Menguruskan senarai sekolah, filter, dan status data.
+ * * FIXES:
+ * - Menambah fungsi 'eksportDataTapis' dan 'janaSenaraiTelegram' yang tertinggal.
+ * - Memastikan fungsi 'resetPasswordSekolah' boleh dipanggil dari grid (melalui settings.js).
  */
 
 import { SchoolService } from '../services/school.service.js';
 import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
-import { APP_CONFIG } from '../config/app.config.js';
 
 let dashboardData = [];
 let currentFilteredList = [];
@@ -16,14 +18,10 @@ let reminderQueue = [];
 let qIndex = 0;
 
 // --- INITIALIZATION ---
-// Fungsi ini dipanggil dari main.js atau onclick
 window.fetchDashboardData = async function() {
     toggleLoading(true);
     try {
-        // Guna Service
         const data = await SchoolService.getAll();
-        
-        // Simpan global untuk akses modul lain
         window.globalDashboardData = data; 
         
         // Filter out PPD (M030) untuk visual dashboard
@@ -88,7 +86,7 @@ function updateBadgeCounts() {
     const map = { 'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza' };
     if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
     
-    // Kiraan dinamik berdasarkan carian semasa
+    // Kiraan dinamik context
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
@@ -127,10 +125,16 @@ function renderGrid(data) {
             const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
             const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
 
-            const renderActions = (linkRaw) => {
-                return linkRaw ? `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary"><i class="fas fa-comment"></i></a>` : `<span class="text-muted small">-</span>`;
+            const renderActions = (linkRaw, hasTele) => {
+                let btns = '<div class="d-flex align-items-center gap-1 justify-content-end">';
+                if(hasTele) btns += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
+                if(linkRaw) btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary"><i class="fas fa-comment"></i></a>`;
+                else btns += `<span class="text-muted small">-</span>`;
+                btns += '</div>';
+                return btns;
             };
 
+            // NOTA: window.resetPasswordSekolah dipanggil di sini. Pastikan settings.js dimuatkan.
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
@@ -138,15 +142,15 @@ function renderGrid(data) {
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
                         <h6 class="fw-bold text-primary mb-0 text-truncate" style="max-width: 100%;">${s.kod_sekolah}</h6>
-                        <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1"><i class="fas fa-key me-1"></i>Reset</button>
+                        <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1" title="Reset Password Default"><i class="fas fa-key me-1"></i>Reset</button>
                     </div>
                     ${statusBadge}
                   </div>
-                  <p class="school-name mb-auto">${s.nama_sekolah}</p>
+                  <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
                 </div>
                 <div class="tele-status-row bg-light border-top">
-                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(linkG)}</div>
-                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${renderActions(linkA)}</div>
+                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(linkG, s.telegram_id_gpict)}</div>
+                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${renderActions(linkA, s.telegram_id_admin)}</div>
                 </div>
               </div>
             </div>`;
@@ -158,10 +162,11 @@ function renderGrid(data) {
 
 // --- UTILS & EXPORTS ---
 window.viewSchoolProfile = function(kod) {
-    sessionStorage.setItem(APP_CONFIG.SESSION.USER_KOD, kod);
+    sessionStorage.setItem('smpid_user_kod', kod);
     window.location.href = 'user.html'; 
 };
 
+// Fungsi Eksport CSV (Wajib ada)
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
     let csvContent = "BIL,KOD,NAMA,JENIS,GPICT,TEL GPICT,ADMIN,TEL ADMIN,STATUS\n";
@@ -180,6 +185,7 @@ window.eksportDataTapis = function() {
     link.click();
 };
 
+// Fungsi Copy List Telegram (Wajib ada)
 window.janaSenaraiTelegram = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
@@ -188,19 +194,22 @@ window.janaSenaraiTelegram = function() {
     if(pending.length === 0) return Swal.fire('Hebat', 'Semua lengkap!', 'success'); 
     
     pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
+    txt += `\nMohon tindakan segera.`;
     navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
 };
 
-// --- QUEUE SYSTEM ---
+// --- QUEUE SYSTEM (TINDAKAN PANTAS) ---
 window.mulaTindakanPantas = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     reminderQueue = [];
     
     list.forEach(i => {
-        if (!i.is_lengkap) {
-            // Logic mudah: Jika tak lengkap, cari siapa yang ada no telefon
-            if(i.no_telefon_gpict) reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
-            if(i.no_telefon_admin_delima) reminderQueue.push({role:'Admin', ...i, targetName: i.nama_admin_delima, targetTel: i.no_telefon_admin_delima});
+        // Hanya masukkan yang belum lengkap dan ada no telefon tetapi belum ada ID Telegram
+        if (i.no_telefon_gpict && !i.telegram_id_gpict) {
+            reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
+        }
+        if (i.no_telefon_admin_delima && !i.telegram_id_admin) {
+            reminderQueue.push({role:'Admin', ...i, targetName: i.nama_admin_delima, targetTel: i.no_telefon_admin_delima});
         }
     });
     

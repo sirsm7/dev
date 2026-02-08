@@ -4,12 +4,14 @@
  * * CHANGE LOG:
  * - Dibuang: Logic truncate pada nama sekolah, peserta, dan program.
  * - Ditambah: class="text-wrap" untuk paparan penuh multi-line.
+ * - NEW: Added CSV Export functionality based on filtered list.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading } from '../core/helpers.js';
 
 let pencapaianList = [];
+let currentPencapaianFiltered = []; // Store filtered list for export
 let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
 let sortState = { column: 'created_at', direction: 'desc' };
@@ -101,14 +103,6 @@ window.renderPencapaianTable = function() {
     updateStats(data);
     updateCloud(data); // Jawatan Cloud
 
-    // Render Top 5 Schools Table
-    renderTopSchools(data);
-
-    if(data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">Tiada rekod sepadan.</td></tr>`;
-        return;
-    }
-
     // Sort Logic
     data.sort((a,b) => {
         let valA = a[sortState.column] || '';
@@ -117,6 +111,17 @@ window.renderPencapaianTable = function() {
         if (sortState.direction === 'asc') return valA > valB ? 1 : -1;
         return valA < valB ? 1 : -1;
     });
+
+    // Save filtered and sorted data for export
+    currentPencapaianFiltered = data;
+
+    // Render Top 5 Schools Table
+    renderTopSchools(data);
+
+    if(data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">Tiada rekod sepadan.</td></tr>`;
+        return;
+    }
 
     tbody.innerHTML = data.map(i => {
         let namaSekolah = i.kod_sekolah;
@@ -133,7 +138,6 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-dark';
         else if (i.kategori === 'PPD') badgeClass = 'bg-primary';
 
-        // --- VISUAL FIX: CLASS text-wrap APPLIED ---
         return `<tr>
             <td class="fw-bold small align-middle">${i.kod_sekolah}</td>
             <td class="small text-wrap align-middle">${namaSekolah}</td>
@@ -219,7 +223,6 @@ function renderTopSchools(data) {
         return;
     }
     
-    // VISUAL FIX: Added 'text-wrap' to Top 5 table
     table.innerHTML = sorted.map(([kod, count], idx) => {
         let nama = kod;
         const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
@@ -459,4 +462,45 @@ window.simpanPencapaianPPD = async function() {
         if(btn) btn.disabled = false;
         Swal.fire('Ralat', 'Gagal simpan rekod.', 'error');
     }
+};
+
+// --- NEW EXPORT FUNCTION ---
+window.eksportPencapaian = function() {
+    if (!currentPencapaianFiltered || currentPencapaianFiltered.length === 0) {
+        Swal.fire('Tiada Data', 'Tiada data untuk dieksport pada paparan semasa.', 'info');
+        return;
+    }
+
+    let csvContent = "BIL,KOD,NAMA SEKOLAH,KATEGORI,PESERTA,JAWATAN,PROGRAM,PERINGKAT,PENCAPAIAN,TAHUN,PAUTAN BUKTI\n";
+
+    currentPencapaianFiltered.forEach((i, index) => {
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        
+        let namaSekolah = i.kod_sekolah;
+        if(i.kod_sekolah === 'M030') namaSekolah = "PPD ALOR GAJAH";
+        else if(window.globalDashboardData) {
+            const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
+            if(s) namaSekolah = s.nama_sekolah;
+        }
+
+        let row = [
+            index + 1,
+            clean(i.kod_sekolah),
+            clean(namaSekolah),
+            clean(i.kategori),
+            clean(i.nama_peserta),
+            clean(i.jawatan || '-'),
+            clean(i.nama_pertandingan),
+            clean(i.peringkat || '-'),
+            clean(i.pencapaian),
+            i.tahun,
+            clean(i.pautan_bukti)
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `Laporan_Pencapaian_SMPID_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
 };

@@ -193,7 +193,11 @@
                 <div class="mt-5">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="fw-bold m-0 text-dark">Data Terperinci Sekolah</h6>
-                        <input type="text" id="searchAnalisa" class="form-control form-control-sm w-25" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
+                        <div class="d-flex gap-2 align-items-center">
+                            <!-- EXPORT BUTTON (NEW) -->
+                            <button onclick="eksportDcs()" class="btn btn-sm btn-outline-success fw-bold shadow-sm text-nowrap"><i class="fas fa-file-csv me-1"></i> Eksport CSV</button>
+                            <input type="text" id="searchAnalisa" class="form-control form-control-sm" style="min-width: 200px;" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
+                        </div>
                     </div>
                     <div class="table-responsive border rounded-3" style="max-height: 500px;">
                         <table class="table table-hover table-striped mb-0 small align-middle">
@@ -215,6 +219,10 @@
                          <div><h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5><small class="text-muted">Klik Kad Statistik untuk menapis data.</small></div>
                     </div>
                     <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <!-- EXPORT BUTTON (NEW) -->
+                        <button onclick="eksportPencapaian()" class="btn btn-outline-success btn-sm fw-bold shadow-sm" title="Muat Turun Laporan CSV"><i class="fas fa-file-csv me-1"></i> Eksport Data</button>
+                        <div class="vr mx-1"></div>
+                        
                         <button onclick="resetPencapaianFilters()" class="btn btn-light border shadow-sm fw-bold btn-sm text-secondary" title="Reset Semua Filter"><i class="fas fa-undo me-1"></i> Reset</button>
                         <div class="vr mx-1"></div>
                         <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)</button>

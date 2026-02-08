@@ -3,12 +3,14 @@
  * Menguruskan laporan DCS dan DELIMa.
  * * FIXES:
  * - Removed truncation. Added text-wrap classes.
+ * - NEW: Added CSV Export functionality based on current view.
  */
 
 import { DcsService } from '../services/dcs.service.js';
 import { toggleLoading } from '../core/helpers.js';
 
 let dcsDataList = [];
+let currentFilteredDcs = []; // Store currently filtered data for export
 let charts = { donut: null, bar: null };
 
 window.loadDcsAdmin = async function() {
@@ -94,7 +96,6 @@ function processDcsPanel(field) {
 
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
     
-    // UPDATE: TEXT WRAP CLASS ADDED
     document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold align-middle">${i+1}</td><td class="text-wrap-safe align-middle">${d.nama_sekolah}</td><td class="text-end fw-bold text-primary align-middle">${d[field]?.toFixed(2) || '-'}</td></tr>`).join('')}</tbody>`;
 }
 
@@ -121,7 +122,6 @@ function processActivePanel(field) {
 
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
     
-    // UPDATE: TEXT WRAP CLASS ADDED
     document.getElementById('tableTopActive').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold align-middle">${i+1}</td><td class="text-wrap-safe align-middle">${d.nama_sekolah}</td><td class="text-end fw-bold text-success align-middle">${d[field] || '-'}%</td></tr>`).join('')}</tbody>`;
 }
 
@@ -131,6 +131,10 @@ window.filterAnalisaTable = function(currYear, prevYear) {
 
     const keyword = document.getElementById('searchAnalisa').value.toUpperCase();
     const list = keyword ? dcsDataList.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) : dcsDataList;
+    
+    // Update global filtered list for export
+    currentFilteredDcs = list;
+
     const wrapper = document.getElementById('tableAnalisaBody');
     
     if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
@@ -140,7 +144,6 @@ window.filterAnalisaTable = function(currYear, prevYear) {
         const valAct = d[`peratus_aktif_${currYear}`] || 0;
         const cat = getKategoriDcs(d[`dcs_${currYear}`]);
         
-        // UPDATE: TEXT WRAP CLASS ADDED
         return `<tr><td class="fw-bold text-muted">${d.kod_sekolah}</td><td class="text-wrap-safe">${d.nama_sekolah}</td><td class="text-center"><span class="fw-bold">${valDcs}</span> <span class="badge ${cat.class}">${cat.label}</span></td><td class="text-center fw-bold text-success">${valAct}%</td><td class="text-center"><button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border"><i class="fas fa-edit"></i></button></td></tr>`;
     }).join('');
 };
@@ -175,4 +178,37 @@ window.simpanDcs = async function() {
         toggleLoading(false);
         Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
     }
+};
+
+// --- NEW EXPORT FUNCTION ---
+window.eksportDcs = function() {
+    if (!currentFilteredDcs || currentFilteredDcs.length === 0) {
+        Swal.fire('Tiada Data', 'Tiada data untuk dieksport pada paparan semasa.', 'info');
+        return;
+    }
+
+    const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
+    let csvContent = `BIL,KOD SEKOLAH,NAMA SEKOLAH,SKOR DCS ${currYear},PERATUS AKTIF ${currYear},KATEGORI DCS\n`;
+
+    currentFilteredDcs.forEach((d, index) => {
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        const valDcs = d[`dcs_${currYear}`]?.toFixed(2) || '0.00';
+        const valAct = d[`peratus_aktif_${currYear}`] || '0';
+        const cat = getKategoriDcs(d[`dcs_${currYear}`]).label;
+
+        let row = [
+            index + 1,
+            clean(d.kod_sekolah),
+            clean(d.nama_sekolah),
+            valDcs,
+            valAct,
+            cat
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `Laporan_DCS_DELIMa_${currYear}.csv`;
+    link.click();
 };

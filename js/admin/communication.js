@@ -1,13 +1,67 @@
 import { SupportService } from '../services/support.service.js';
 import { toggleLoading } from '../core/helpers.js';
 
-// --- EMAIL BLASTER ---
+let quill;
+
+// --- EMAIL BLASTER & EDITOR ---
+
+window.initEmailEditor = function() {
+    // Elak init dua kali
+    if (quill || !document.getElementById('editor-container')) return;
+
+    // Konfigurasi Quill
+    quill = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: 'Tulis mesej anda di sini...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],        // Format asas
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],     // Senarai
+                [{ 'header': [1, 2, 3, false] }],                 // Tajuk
+                [{ 'color': [] }, { 'background': [] }],          // Warna
+                ['link', 'clean']                                 // Pautan & Bersih format
+            ]
+        }
+    });
+
+    // Tetapkan kandungan default (Format HTML)
+    const defaultContent = `
+        <p>Salam Sejahtera Tuan/Puan,</p>
+        <p><br></p>
+        <p>Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.</p>
+        <p><br></p>
+        <p><strong>Sila ikuti langkah berikut:</strong></p>
+        <ol>
+            <li>Klik pautan bot: <a href="https://t.me/smpid_bot" target="_blank">https://t.me/smpid_bot</a></li>
+            <li>Tekan butang <strong>'Start'</strong> atau hantar <em>/start</em></li>
+            <li>Masukkan <strong>KOD SEKOLAH</strong> anda.</li>
+            <li>Pilih butang peranan yang betul.</li>
+        </ol>
+        <p><br></p>
+        <p>Kerjasama Tuan/Puan amat dihargai.</p>
+        <p>Sekian, terima kasih.</p>
+        <p><br></p>
+        <p><strong>Unit Sumber Teknologi Pendidikan,</strong><br>PPD Alor Gajah.</p>
+    `;
+    
+    // Masukkan ke dalam editor
+    quill.clipboard.dangerouslyPasteHTML(defaultContent);
+
+    // Tambah listener untuk update mailto link secara realtime
+    quill.on('text-change', function() {
+        updateMailtoLink();
+    });
+};
+
 window.generateList = function() {
     const includeGpict = document.getElementById('checkGpict').checked;
     const includeAdmin = document.getElementById('checkAdmin').checked;
     const filterStatus = document.getElementById('statusFilter').value;
     const uniqueEmails = new Set();
     
+    // Pastikan editor dihidupkan jika belum
+    if(!quill) window.initEmailEditor();
+
     if(!window.globalDashboardData) return;
 
     window.globalDashboardData.forEach(row => {
@@ -30,21 +84,60 @@ window.generateList = function() {
     document.getElementById('countEmail').innerText = arr.length;
     document.getElementById('emailOutput').value = arr.join(', ');
     
-    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
-    const body = encodeURIComponent(document.getElementById('msgBody').value);
-    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
+    updateMailtoLink();
 };
+
+function updateMailtoLink() {
+    if (!quill) return;
+    
+    const arr = document.getElementById('emailOutput').value.split(', ');
+    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
+    
+    // PENTING: Mailto hanya support plain text. Kita ambil text dari Quill.
+    const plainTextBody = quill.getText(); 
+    const body = encodeURIComponent(plainTextBody);
+    
+    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
+}
 
 window.copyEmails = function() {
     const el = document.getElementById("emailOutput");
     if(el.value) {
         el.select();
-        navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success'));
+        navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', 'Senarai emel disalin.', 'success'));
     }
 };
 
 window.copyTemplate = function() {
-    navigator.clipboard.writeText(document.getElementById("msgBody").value).then(() => Swal.fire('Disalin', '', 'success'));
+    // Salin Rich Text (HTML) ke Clipboard untuk Paste dalam Gmail/Outlook
+    if (!quill) return;
+
+    const htmlContent = quill.root.innerHTML;
+    const textContent = quill.getText();
+
+    // Gunakan Clipboard API moden untuk menyokong 'text/html'
+    const blobHtml = new Blob([htmlContent], { type: "text/html" });
+    const blobText = new Blob([textContent], { type: "text/plain" });
+    const data = [new ClipboardItem({ 
+        "text/html": blobHtml, 
+        "text/plain": blobText 
+    })];
+
+    navigator.clipboard.write(data).then(() => {
+        Swal.fire({
+            icon: 'success',
+            title: 'Teks Kaya Disalin!',
+            html: 'Format (Bold/Italic) telah disalin.<br>Sila <b>Paste (Ctrl+V)</b> dalam tetingkap emel anda.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }).catch(err => {
+        console.error('Gagal salin rich text:', err);
+        // Fallback ke teks biasa jika browser tidak sokong
+        navigator.clipboard.writeText(textContent).then(() => {
+            Swal.fire('Disalin (Teks Biasa)', 'Format tidak disokong pelayar ini.', 'info');
+        });
+    });
 };
 
 // --- HELPDESK ---

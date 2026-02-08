@@ -1,10 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (DEV)
+ * ADMIN MODULE: ACHIEVEMENT (DEV) - FIX TEXT WRAP
  * Menguruskan rekod pencapaian murid, guru, dan sekolah.
- * * FIXES:
- * - Fungsi simpanPencapaianPPD dilengkapkan (sebelum ini placeholder).
- * - Integrasi Service penuh.
- * - Logic 'Jawatan Cloud' disalin dari SMPID.
+ * FIXES:
+ * - Menukar 'text-truncate' kepada 'text-wrap' untuk paparan penuh.
+ * - Membuang had lebar tetap pada kolum nama sekolah.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -122,10 +121,18 @@ window.renderPencapaianTable = function() {
 
     tbody.innerHTML = data.map(i => {
         let namaSekolah = i.kod_sekolah;
-        if(i.kod_sekolah === 'M030') namaSekolah = `<span class="text-indigo fw-bold">PPD ALOR GAJAH</span>`;
+        let namaSekolahClean = i.kod_sekolah; // Untuk title attribute
+
+        if(i.kod_sekolah === 'M030') {
+            namaSekolah = `<span class="text-indigo fw-bold">PPD ALOR GAJAH</span>`;
+            namaSekolahClean = "PPD ALOR GAJAH";
+        }
         else if(window.globalDashboardData) {
             const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
-            if(s) namaSekolah = s.nama_sekolah;
+            if(s) {
+                namaSekolah = s.nama_sekolah;
+                namaSekolahClean = s.nama_sekolah;
+            }
         }
 
         let badgeClass = 'bg-secondary';
@@ -135,18 +142,21 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-dark';
         else if (i.kategori === 'PPD') badgeClass = 'bg-primary';
 
+        // --- PEMBAIKAN PAPARAN JADUAL DI SINI ---
+        // 1. Buang text-truncate dan max-width pada Nama Sekolah
+        // 2. Tambah text-wrap pada Nama Peserta
         return `<tr>
-            <td class="fw-bold small">${i.kod_sekolah}</td>
-            <td class="small text-truncate" style="max-width: 200px;" title="${i.kod_sekolah}">${namaSekolah}</td>
-            <td class="text-center"><span class="badge ${badgeClass} shadow-sm">${i.kategori}</span></td>
-            <td>
-                <div class="fw-bold text-dark small">${i.nama_peserta}</div>
+            <td class="fw-bold small align-middle">${i.kod_sekolah}</td>
+            <td class="small text-wrap align-middle" title="${namaSekolahClean}">${namaSekolah}</td>
+            <td class="text-center align-middle"><span class="badge ${badgeClass} shadow-sm">${i.kategori}</span></td>
+            <td class="align-middle">
+                <div class="fw-bold text-dark small text-wrap">${i.nama_peserta}</div>
                 ${i.jawatan ? `<span class="badge bg-light text-secondary border mt-1" style="font-size:0.6rem;">${i.jawatan}</span>` : ''}
             </td>
-            <td><div class="text-primary small fw-bold">${i.nama_pertandingan}</div></td>
-            <td class="text-center fw-bold small">${i.pencapaian}</td>
-            <td class="text-center"><a href="${i.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary"><i class="fas fa-link"></i></a></td>
-            <td class="text-center text-nowrap">
+            <td class="align-middle"><div class="text-primary small fw-bold text-wrap">${i.nama_pertandingan}</div></td>
+            <td class="text-center fw-bold small align-middle">${i.pencapaian}</td>
+            <td class="text-center align-middle"><a href="${i.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary"><i class="fas fa-link"></i></a></td>
+            <td class="text-center text-nowrap align-middle">
                 <button onclick="openEditPencapaian(${i.id})" class="btn btn-sm btn-outline-warning me-1"><i class="fas fa-edit"></i></button>
                 <button onclick="hapusPencapaianAdmin(${i.id})" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
             </td>
@@ -232,7 +242,7 @@ function renderTopSchools(data) {
         let medal = idx < 3 ? `<span class="medal-icon medal-${idx+1}">${idx+1}</span>` : `<span class="fw-bold ps-2">${idx+1}</span>`;
         return `<tr class="top-school-row" onclick="filterBySchoolFromTop5('${kod}')">
             <td style="width: 40px;" class="text-center align-middle">${medal}</td>
-            <td class="align-middle"><div class="fw-bold small text-dark">${nama}</div><div class="text-muted" style="font-size:0.65rem;">${kod}</div></td>
+            <td class="align-middle"><div class="fw-bold small text-dark text-wrap">${nama}</div><div class="text-muted" style="font-size:0.65rem;">${kod}</div></td>
             <td class="text-end fw-bold text-primary align-middle pe-3">${count}</td>
         </tr>`;
     }).join('');

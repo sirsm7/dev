@@ -1,9 +1,11 @@
 /**
- * ADMIN MODULE: ANALYSIS
+ * ADMIN MODULE: ANALYSIS (DEV) - FIX TEXT WRAP
  * Menguruskan laporan DCS dan DELIMa.
+ * FIXES:
+ * - Menambah 'text-wrap' untuk paparan nama sekolah penuh dalam jadual.
  */
 
-import { DcsService } from '../services/dcs.service.js'; // Updated Import
+import { DcsService } from '../services/dcs.service.js';
 import { toggleLoading } from '../core/helpers.js';
 
 let dcsDataList = [];
@@ -92,7 +94,7 @@ function processDcsPanel(field) {
     });
 
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
-    document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td>${d.nama_sekolah}</td><td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td></tr>`).join('')}</tbody>`;
+    document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td class="text-wrap">${d.nama_sekolah}</td><td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td></tr>`).join('')}</tbody>`;
 }
 
 function processActivePanel(field) {
@@ -117,7 +119,7 @@ function processActivePanel(field) {
     });
 
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
-    document.getElementById('tableTopActive').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td>${d.nama_sekolah}</td><td class="text-end fw-bold text-success">${d[field] || '-'}%</td></tr>`).join('')}</tbody>`;
+    document.getElementById('tableTopActive').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td class="text-wrap">${d.nama_sekolah}</td><td class="text-end fw-bold text-success">${d[field] || '-'}%</td></tr>`).join('')}</tbody>`;
 }
 
 window.filterAnalisaTable = function(currYear, prevYear) {
@@ -134,7 +136,8 @@ window.filterAnalisaTable = function(currYear, prevYear) {
         const valDcs = d[`dcs_${currYear}`]?.toFixed(2) || '-';
         const valAct = d[`peratus_aktif_${currYear}`] || 0;
         const cat = getKategoriDcs(d[`dcs_${currYear}`]);
-        return `<tr><td class="fw-bold text-muted">${d.kod_sekolah}</td><td>${d.nama_sekolah}</td><td class="text-center"><span class="fw-bold">${valDcs}</span> <span class="badge ${cat.class}">${cat.label}</span></td><td class="text-center fw-bold text-success">${valAct}%</td><td class="text-center"><button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border"><i class="fas fa-edit"></i></button></td></tr>`;
+        // MENAMBAH 'text-wrap' DI SINI
+        return `<tr><td class="fw-bold text-muted">${d.kod_sekolah}</td><td class="text-wrap">${d.nama_sekolah}</td><td class="text-center"><span class="fw-bold">${valDcs}</span> <span class="badge ${cat.class}">${cat.label}</span></td><td class="text-center fw-bold text-success">${valAct}%</td><td class="text-center"><button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border"><i class="fas fa-edit"></i></button></td></tr>`;
     }).join('');
 };
 

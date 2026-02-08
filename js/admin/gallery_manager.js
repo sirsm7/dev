@@ -2,24 +2,21 @@
  * ADMIN MODULE: GALLERY MANAGER (DEV)
  * Menguruskan paparan galeri admin, carian sekolah, dan tapisan.
  * * FIXES:
- * - Ditambah logik 'Live Search' dengan Debounce (sama seperti SMPID).
- * - Ditambah logik 'Auto Select' jika carian tepat.
- * - Integrasi penuh dengan AchievementService.
+ * - Removed truncation classes (text-truncate, text-truncate-2)
+ * - Added text-wrap-safe for full content display
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 
 let adminGalleryData = [];
-let gallerySchoolListCache = []; // Cache untuk carian pantas
-let searchDebounceTimer; // Timer untuk debounce
+let gallerySchoolListCache = [];
+let searchDebounceTimer;
 
 // --- 1. INITIALIZATION ---
 window.initAdminGallery = function() {
-    console.log("📸 Init Admin Gallery (DEV)...");
     if (window.globalDashboardData && window.globalDashboardData.length > 0) {
         populateGallerySchoolList();
     } else {
-        // Fallback jika data dashboard belum load (biasanya tak berlaku jika flow betul)
         console.warn("Gallery: Global data missing. Waiting...");
     }
 };
@@ -29,10 +26,7 @@ function populateGallerySchoolList() {
     const select = document.getElementById('gallerySchoolSelector');
     if (!select) return;
 
-    // Cache data untuk carian pantas (elak query berulang)
     gallerySchoolListCache = window.globalDashboardData.filter(s => s.kod_sekolah !== 'M030');
-
-    // Render awal (Default M030)
     renderGalleryDropdown();
     window.loadAdminGalleryGrid('M030');
 }
@@ -44,7 +38,6 @@ function renderGalleryDropdown(filterText = '') {
     const currentValue = select.value;
     select.innerHTML = '<option value="M030">PPD ALOR GAJAH (M030)</option>';
 
-    // Filter data berdasarkan input carian
     const listToRender = filterText 
         ? gallerySchoolListCache.filter(s => 
             s.nama_sekolah.toUpperCase().includes(filterText.toUpperCase()) || 
@@ -59,18 +52,15 @@ function renderGalleryDropdown(filterText = '') {
         select.appendChild(opt);
     });
 
-    // --- LOGIK PINTAR: AUTO SELECTION (Sama seperti SMPID) ---
     const exactMatch = listToRender.find(s => s.kod_sekolah === filterText.toUpperCase());
-    
     if (exactMatch) {
         select.value = exactMatch.kod_sekolah;
-        return; // handleGallerySchoolSearch akan handle loading
+        return; 
     }
 
     if (filterText && listToRender.length === 1) {
         select.value = listToRender[0].kod_sekolah;
     } else {
-        // Cuba kekalkan nilai lama jika masih valid
         const exists = Array.from(select.options).some(o => o.value === currentValue);
         if (exists && currentValue) {
             select.value = currentValue;
@@ -80,20 +70,14 @@ function renderGalleryDropdown(filterText = '') {
     }
 }
 
-// Fungsi Carian Global (Diletakkan pada window untuk akses HTML oninput)
 window.handleGallerySchoolSearch = function(val) {
-    // 1. Update visual dropdown dulu
     renderGalleryDropdown(val);
-    
-    // 2. Dapatkan nilai yang terpilih (mungkin berubah akibat auto-select)
     const select = document.getElementById('gallerySchoolSelector');
     const selectedKod = select.value;
 
-    // 3. Debounce Loading (Tunggu 500ms berhenti menaip baru fetch data)
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
         if(selectedKod) {
-            console.log("🔍 Auto-loading gallery for:", selectedKod);
             window.loadAdminGalleryGrid(selectedKod);
         }
     }, 500);
@@ -106,11 +90,8 @@ window.resetGallery = function() {
     if(select) {
         clearTimeout(searchDebounceTimer);
         if(searchInput) searchInput.value = "";
-        
-        // Reset dropdown ke senarai penuh
         renderGalleryDropdown(''); 
         select.value = "M030";
-        
         window.loadAdminGalleryGrid("M030");
     }
 };
@@ -123,20 +104,16 @@ window.loadAdminGalleryGrid = async function(kod) {
 
     if(!grid) return;
 
-    // Update Header Text
     updateGalleryHeader(kod);
 
-    // UI Loading
     grid.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-indigo"></div><p class="mt-2 small text-muted">Memuatkan galeri...</p></div>`;
     if(counterEl) counterEl.innerText = "0";
     filterContainer.innerHTML = '';
 
     try {
-        // Guna Service
         const data = await AchievementService.getBySchool(kod);
         adminGalleryData = data;
 
-        // Generate Filter Buttons (Dynamic)
         const categories = [...new Set(data.map(item => item.kategori))].filter(c => c).sort();
         let filterHtml = `<button class="btn btn-sm btn-dark rounded-pill px-3 active fw-bold" onclick="filterAdminGallery('ALL', this)">SEMUA</button>`;
         
@@ -150,8 +127,6 @@ window.loadAdminGalleryGrid = async function(kod) {
         });
         
         filterContainer.innerHTML = filterHtml;
-
-        // Render Default
         renderAdminCards('ALL');
 
     } catch (e) {
@@ -180,15 +155,11 @@ function updateGalleryHeader(kod) {
 // --- 4. FILTERING & CARDS ---
 window.filterAdminGallery = function(type, btn) {
     if (btn) {
-        // Reset classes
         const btns = document.querySelectorAll('#galleryFilterContainer button');
         btns.forEach(b => {
-            // Revert to outline style based on text
             const txt = b.innerText;
             b.className = "btn btn-sm rounded-pill px-3 fw-bold ms-1 " + getBtnClass(txt, false);
         });
-        
-        // Set active style
         btn.className = "btn btn-sm rounded-pill px-3 fw-bold ms-1 active btn-dark text-white";
     }
     renderAdminCards(type);
@@ -218,7 +189,6 @@ function renderAdminCards(filterType) {
         return;
     }
 
-    // Group by Year
     const uniqueYears = [...new Set(filtered.map(item => item.tahun))].sort((a, b) => b - a);
 
     uniqueYears.forEach(year => {
@@ -242,7 +212,6 @@ function createAdminCardHTML(item) {
     let thumbnailArea = "";
     let iconType = "fa-link";
     
-    // Style logic
     let borderClass = "border-top-dark";
     let textClass = "text-dark";
     let catIcon = "fa-user";
@@ -253,7 +222,6 @@ function createAdminCardHTML(item) {
     else if (item.kategori === 'SEKOLAH') { borderClass="border-top-success"; textClass="text-success"; catIcon="fa-school"; catColor="#198754"; }
     else if (item.kategori === 'PPD') { borderClass="border-top-indigo"; textClass="text-indigo"; catIcon="fa-building"; catColor="#4b0082"; }
 
-    // Thumbnail Logic (YouTube/Drive/Folder)
     const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]+)/);
     const youtubeMatch = link.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
@@ -276,17 +244,20 @@ function createAdminCardHTML(item) {
         thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center flex-column"><img src="${faviconUrl}" style="width: 48px; height: 48px;" class="mb-2 shadow-sm rounded-circle bg-white p-1" onerror="this.style.display='none';"><div class="text-muted small mt-1 text-truncate w-75 text-center">${domain}</div></div>`;
     }
 
+    // UPDATE: TEXT WRAP AND FLEX GROWTH
+    // Removed: text-truncate-2
+    // Added: text-wrap-safe, card-body-flex
     return `
     <div class="col-6 col-sm-4 col-md-3 col-lg-2 fade-up">
         <div class="card-gallery ${borderClass} h-100 shadow-sm" onclick="window.open('${link}', '_blank')" title="Klik untuk lihat bukti">
             ${thumbnailArea}
             <div class="category-icon ${textClass}"><i class="fas ${catIcon}"></i> ${item.kategori}</div>
             <div class="icon-overlay"><i class="fas ${iconType}"></i></div>
-            <div class="card-body d-flex flex-column p-3">
-                <h6 class="fw-bold text-dark mb-1 text-truncate-2" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
-                <p class="text-secondary mb-2 text-truncate small fw-bold opacity-75" style="font-size: 0.7rem;">${item.nama_peserta}</p>
+            <div class="card-body p-3 card-body-flex">
+                <h6 class="fw-bold text-dark mb-1 text-wrap-safe" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
+                <p class="text-secondary mb-2 small fw-bold opacity-75 text-wrap-safe" style="font-size: 0.7rem;">${item.nama_peserta}</p>
                 <div class="mt-auto pt-2 border-top border-light d-flex justify-content-between align-items-center">
-                    <span class="${textClass} fw-bold" style="font-size: 0.75rem;">${item.pencapaian}</span>
+                    <span class="${textClass} fw-bold text-wrap-safe" style="font-size: 0.75rem;">${item.pencapaian}</span>
                 </div>
             </div>
         </div>

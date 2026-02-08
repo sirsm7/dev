@@ -2,8 +2,9 @@
  * ADMIN MODULE: DASHBOARD (DEV)
  * Menguruskan senarai sekolah, filter, dan status data.
  * * FIXES:
- * - Menambah fungsi 'eksportDataTapis' dan 'janaSenaraiTelegram' yang tertinggal.
- * - Memastikan fungsi 'resetPasswordSekolah' boleh dipanggil dari grid (melalui settings.js).
+ * - Menambah fungsi 'eksportDataTapis' dan 'janaSenaraiTelegram'.
+ * - Memastikan fungsi 'resetPasswordSekolah' boleh dipanggil.
+ * - REMOVED TRUNCATION: Nama sekolah dan kod kini wrap text sepenuhnya.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -134,19 +135,20 @@ function renderGrid(data) {
                 return btns;
             };
 
-            // NOTA: window.resetPasswordSekolah dipanggil di sini. Pastikan settings.js dimuatkan.
+            // UPDATE: Removed text-truncate and style="max-width: 100%"
+            // Added card-body-flex for flex growth
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
-                <div class="card-body p-3 d-flex flex-column">
+                <div class="card-body p-3 card-body-flex">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                        <h6 class="fw-bold text-primary mb-0 text-truncate" style="max-width: 100%;">${s.kod_sekolah}</h6>
+                        <h6 class="fw-bold text-primary mb-0 text-wrap-safe">${s.kod_sekolah}</h6>
                         <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1" title="Reset Password Default"><i class="fas fa-key me-1"></i>Reset</button>
                     </div>
                     ${statusBadge}
                   </div>
-                  <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
+                  <p class="school-name mb-auto text-wrap-safe" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
                 </div>
                 <div class="tele-status-row bg-light border-top">
                    <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(linkG, s.telegram_id_gpict)}</div>
@@ -166,7 +168,6 @@ window.viewSchoolProfile = function(kod) {
     window.location.href = 'user.html'; 
 };
 
-// Fungsi Eksport CSV (Wajib ada)
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
     let csvContent = "BIL,KOD,NAMA,JENIS,GPICT,TEL GPICT,ADMIN,TEL ADMIN,STATUS\n";
@@ -185,7 +186,6 @@ window.eksportDataTapis = function() {
     link.click();
 };
 
-// Fungsi Copy List Telegram (Wajib ada)
 window.janaSenaraiTelegram = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
@@ -198,13 +198,12 @@ window.janaSenaraiTelegram = function() {
     navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
 };
 
-// --- QUEUE SYSTEM (TINDAKAN PANTAS) ---
+// --- QUEUE SYSTEM ---
 window.mulaTindakanPantas = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     reminderQueue = [];
     
     list.forEach(i => {
-        // Hanya masukkan yang belum lengkap dan ada no telefon tetapi belum ada ID Telegram
         if (i.no_telefon_gpict && !i.telegram_id_gpict) {
             reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
         }

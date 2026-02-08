@@ -1,9 +1,9 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
  * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
- * * CHANGE LOG:
- * - Fix Visual: Mengaktifkan text wrapping untuk Nama Murid/Guru dalam jadual.
- * - Buang: .text-truncate dan style="max-width:200px"
+ * * FIXES:
+ * - REMOVED TRUNCATION: Teks dalam jadual kini wrap sepenuhnya.
+ * - Added text-wrap-safe class.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -208,7 +208,7 @@ function renderDcsChart(data) {
     });
 }
 
-// --- VISUAL FIX HERE: Text Wrap Enabled ---
+// UPDATE: TEXT WRAP ENABLED HERE
 window.loadPencapaianSekolah = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tbody = document.getElementById('tbodyRekodPencapaian');
@@ -230,6 +230,7 @@ window.loadPencapaianSekolah = async function() {
             let program = item.nama_pertandingan;
             if (item.jenis_rekod === 'PENSIJILAN') program = `<span class="badge bg-secondary me-1"><i class="fas fa-certificate"></i></span> ${item.nama_pertandingan}`;
 
+            // UPDATE: Removed max-width and truncation. Added text-wrap-safe class.
             html += `
             <tr>
                 <td class="text-center align-middle">
@@ -237,11 +238,10 @@ window.loadPencapaianSekolah = async function() {
                     <div class="small text-muted mt-1 fw-bold">${item.tahun}</div>
                 </td>
                 <td class="align-middle">
-                    <!-- VISUAL FIX: text-wrap and remove max-width -->
-                    <div class="fw-bold text-dark small text-wrap">${item.nama_peserta}</div>
+                    <div class="fw-bold text-dark small text-wrap-safe">${item.nama_peserta}</div>
                     ${item.jawatan ? `<span class="badge bg-light text-secondary border mt-1" style="font-size:0.65rem;">${item.jawatan}</span>` : ''}
-                    <div class="mt-2 text-primary small fw-bold text-wrap">${program}</div>
-                    <div class="d-flex gap-2 mt-1">
+                    <div class="mt-2 text-primary small fw-bold text-wrap-safe">${program}</div>
+                    <div class="d-flex gap-2 mt-1 flex-wrap">
                         <span class="badge bg-light text-dark border">${item.peringkat}</span>
                         <span class="badge bg-success bg-opacity-10 text-success border border-success">${item.pencapaian}</span>
                     </div>
@@ -458,7 +458,20 @@ window.loadTiketUser = async function() {
         data.forEach(t => {
             const status = t.status === 'SELESAI' ? '<span class="badge bg-success">SELESAI</span>' : '<span class="badge bg-warning text-dark">DALAM PROSES</span>';
             const balasan = t.balasan_admin ? `<div class="bg-light p-2 mt-2 border rounded small"><strong>Admin:</strong> ${t.balasan_admin}</div>` : '';
-            container.innerHTML += `<div class="card mb-2 shadow-sm border-0"><div class="card-body p-3"><div class="d-flex justify-content-between mb-1"><small class="text-muted fw-bold">${new Date(t.created_at).toLocaleDateString()}</small>${status}</div><h6 class="fw-bold mb-1">${t.tajuk}</h6><p class="small text-secondary mb-0">${t.butiran_masalah}</p>${balasan}</div></div>`;
+            
+            // UPDATE: TEXT WRAP FOR TICKET DETAILS
+            container.innerHTML += `
+            <div class="card mb-2 shadow-sm border-0">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted fw-bold">${new Date(t.created_at).toLocaleDateString()}</small>
+                        ${status}
+                    </div>
+                    <h6 class="fw-bold mb-1 text-wrap-safe">${t.tajuk}</h6>
+                    <p class="small text-secondary mb-0 text-wrap-safe">${t.butiran_masalah}</p>
+                    <div class="text-wrap-safe">${balasan}</div>
+                </div>
+            </div>`;
         });
     } catch (e) { container.innerHTML = `<div class="text-danger small">Gagal memuatkan tiket.</div>`; }
 };

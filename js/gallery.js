@@ -1,7 +1,8 @@
 /**
  * GALLERY CONTROLLER (FIXED VISUALS)
  * Memaparkan galeri pencapaian sekolah dengan visual penuh (Thumbnails + Masonry).
- * Menyamai visual SMPID asal.
+ * * FIXES:
+ * - Removed truncation. Kad kini akan memanjang ke bawah.
  */
 
 import { AchievementService } from './services/achievement.service.js';
@@ -109,7 +110,7 @@ window.renderGallery = function(filterType) {
         return;
     }
 
-    // 4. Render Mengikut Tahun (Year Grouping) - VISUAL RESTORED
+    // 4. Render Mengikut Tahun (Year Grouping)
     const uniqueYears = [...new Set(filteredData.map(item => item.tahun))].sort((a, b) => b - a);
 
     uniqueYears.forEach(year => {
@@ -131,7 +132,6 @@ window.renderGallery = function(filterType) {
     });
 };
 
-// --- PENJANA KAD VISUAL (SAMA SEPERTI SMPID) ---
 function createCardHTML(item) {
     const link = item.pautan_bukti || "";
     let thumbnailArea = "";
@@ -142,7 +142,6 @@ function createCardHTML(item) {
     let catIcon = "";
     let catColor = "";
 
-    // Tentukan Warna & Ikon Kategori
     if (item.kategori === 'MURID') {
         borderClass = "border-top-primary"; textClass = "text-primary"; catIcon = "fa-user-graduate"; catColor = "#0d6efd";
     } else if (item.kategori === 'GURU') {
@@ -151,12 +150,10 @@ function createCardHTML(item) {
         borderClass = "border-top-indigo"; textClass = "text-indigo"; catIcon = "fa-school"; catColor = "#4b0082";
     }
 
-    // Regex Thumbnail (YouTube / Drive / Folder)
     const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]+)/);
     const youtubeMatch = link.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
 
-    // Logik Thumbnail
     if (folderMatch) {
         iconType = "fa-folder";
         thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center"><i class="fas fa-folder folder-icon" style="color: ${catColor} !important; opacity: 0.8;"></i></div>`;
@@ -177,33 +174,32 @@ function createCardHTML(item) {
         thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center flex-column"><img src="${faviconUrl}" style="width: 48px; height: 48px;" class="mb-2 shadow-sm rounded-circle bg-white p-1" onerror="this.style.display='none';"><div class="text-muted small mt-1 text-truncate w-75 text-center">${domain}</div></div>`;
     }
 
-    // HTML Kad Penuh
+    // UPDATE: TEXT WRAP ENABLED
+    // Removed: text-truncate-2
+    // Added: text-wrap-safe, card-body-flex
     return `
     <div class="col-6 col-sm-4 col-md-3 col-lg-2 fade-up">
         <div class="card-gallery ${borderClass} h-100 shadow-sm" onclick="window.open('${link}', '_blank')" title="Klik untuk lihat bukti">
             ${thumbnailArea}
             <div class="category-icon ${textClass}"><i class="fas ${catIcon}"></i> ${item.kategori}</div>
             <div class="icon-overlay"><i class="fas ${iconType}"></i></div>
-            <div class="card-body d-flex flex-column p-3">
-                <h6 class="fw-bold text-dark mb-1 text-truncate-2" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
-                <p class="text-secondary mb-2 text-truncate small fw-bold opacity-75" style="font-size: 0.7rem;">${item.nama_peserta}</p>
+            <div class="card-body d-flex flex-column p-3 card-body-flex">
+                <h6 class="fw-bold text-dark mb-1 text-wrap-safe" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
+                <p class="text-secondary mb-2 small fw-bold opacity-75 text-wrap-safe" style="font-size: 0.7rem;">${item.nama_peserta}</p>
                 <div class="mt-auto pt-2 border-top border-light d-flex justify-content-between align-items-center">
-                    <span class="${textClass} fw-bold" style="font-size: 0.75rem;">${item.pencapaian}</span>
+                    <span class="${textClass} fw-bold text-wrap-safe" style="font-size: 0.75rem;">${item.pencapaian}</span>
                 </div>
             </div>
         </div>
     </div>`;
 }
 
-// --- FUNGSI CLOUD JAWATAN (RESTORED) ---
 function generateJawatanCloud() {
     const container = document.getElementById('jawatanCloudContainer');
     if (!container) return;
 
-    // 1. Dapatkan data guru sahaja
     const guruData = allGalleryData.filter(item => item.kategori === 'GURU');
     
-    // 2. Kira Frekuensi Jawatan
     const counts = {};
     let maxCount = 0;
 
@@ -217,26 +213,19 @@ function generateJawatanCloud() {
 
     const entries = Object.entries(counts);
     
-    // Jika tiada jawatan direkodkan
     if (entries.length === 0) {
         container.innerHTML = `<small class="text-muted fst-italic">Tiada data jawatan spesifik.</small>`;
         return;
     }
 
-    // 3. Susun (Paling banyak ke paling sikit)
     entries.sort((a, b) => b[1] - a[1]);
 
-    // 4. Render HTML
     container.innerHTML = '';
     entries.forEach(([jawatan, count]) => {
-        // Tentukan saiz visual berdasarkan populariti
         let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 4)}`; 
         if(count === 1) sizeClass = 'tag-size-1';
 
         const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
-        
-        // Buat elemen secara manual atau string HTML
-        // Gunakan string HTML untuk konsistensi dengan CSS .cloud-tag
         const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
         container.innerHTML += btnHTML;
     });

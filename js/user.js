@@ -1,10 +1,11 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 7.1 (Fix: Logout Confirmation Restored)
  * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
+ * * CHANGE LOG:
+ * - Fix Visual: Mengaktifkan text wrapping untuk Nama Murid/Guru dalam jadual.
+ * - Buang: .text-truncate dan style="max-width:200px"
  */
 
-// Import keluarSistem dari helpers supaya pengesahan berfungsi
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
 import { SchoolService } from './services/school.service.js';
 import { AuthService } from './services/auth.service.js';
@@ -13,7 +14,6 @@ import { SupportService } from './services/support.service.js';
 import { AchievementService } from './services/achievement.service.js';
 import { APP_CONFIG } from './config/app.config.js';
 
-// Global Variables
 let analisaChart = null;
 let userPencapaianList = []; 
 
@@ -54,10 +54,6 @@ function initUserPortal() {
     loadProfil(kod);
 }
 
-// ==========================================
-// 2. NAVIGASI (SPA FEEL)
-// ==========================================
-
 window.showSection = function(section) {
     const menuSection = document.getElementById('section-menu');
     const profilSection = document.getElementById('section-profil');
@@ -92,10 +88,6 @@ window.showSection = function(section) {
         window.loadPencapaianSekolah();
     }
 };
-
-// ==========================================
-// 3. PENGURUSAN PROFIL
-// ==========================================
 
 async function loadProfil(kod) {
     try {
@@ -152,10 +144,6 @@ window.salinData = function() {
         });
     }
 };
-
-// ==========================================
-// 4. ANALISA DIGITAL
-// ==========================================
 
 async function loadAnalisaSekolah() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
@@ -220,10 +208,7 @@ function renderDcsChart(data) {
     });
 }
 
-// ==========================================
-// 5. REKOD PENCAPAIAN (Dengan Fix Jawatan)
-// ==========================================
-
+// --- VISUAL FIX HERE: Text Wrap Enabled ---
 window.loadPencapaianSekolah = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tbody = document.getElementById('tbodyRekodPencapaian');
@@ -252,9 +237,10 @@ window.loadPencapaianSekolah = async function() {
                     <div class="small text-muted mt-1 fw-bold">${item.tahun}</div>
                 </td>
                 <td class="align-middle">
-                    <div class="fw-bold text-dark small text-truncate" style="max-width: 200px;">${item.nama_peserta}</div>
+                    <!-- VISUAL FIX: text-wrap and remove max-width -->
+                    <div class="fw-bold text-dark small text-wrap">${item.nama_peserta}</div>
                     ${item.jawatan ? `<span class="badge bg-light text-secondary border mt-1" style="font-size:0.65rem;">${item.jawatan}</span>` : ''}
-                    <div class="mt-2 text-primary small fw-bold">${program}</div>
+                    <div class="mt-2 text-primary small fw-bold text-wrap">${program}</div>
                     <div class="d-flex gap-2 mt-1">
                         <span class="badge bg-light text-dark border">${item.peringkat}</span>
                         <span class="badge bg-success bg-opacity-10 text-success border border-success">${item.pencapaian}</span>
@@ -443,10 +429,6 @@ window.toggleJenisPencapaian = function() {
     }
 };
 
-// ==========================================
-// 6. HELPDESK & SYSTEM
-// ==========================================
-
 window.hantarTiket = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const peranan = document.getElementById('tiketPeranan').value;
@@ -512,7 +494,7 @@ window.resetDataSekolah = async function() {
         confirmButtonText: 'Sahkan'
     });
 
-    if (password === 'pkgag') { // Master Key
+    if (password === 'pkgag') { 
          Swal.fire({
             title: 'Pasti Reset Data?',
             text: "Semua data GPICT/Admin akan dipadam (NULL). Kod sekolah kekal.",

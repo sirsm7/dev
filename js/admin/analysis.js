@@ -1,8 +1,9 @@
 /**
- * ADMIN MODULE: ANALYSIS (DEV) - FIX TEXT WRAP
+ * ADMIN MODULE: ANALYSIS (DEV) - VISUAL FIX (FULL WRAP)
  * Menguruskan laporan DCS dan DELIMa.
- * FIXES:
- * - Menambah 'text-wrap' untuk paparan nama sekolah penuh dalam jadual.
+ * * CHANGE LOG:
+ * - Dibuang: Logic truncate pada nama sekolah.
+ * - Ditambah: class="text-wrap" pada jadual Top 5 dan jadual utama.
  */
 
 import { DcsService } from '../services/dcs.service.js';
@@ -46,7 +47,6 @@ window.updateDashboardAnalisa = function() {
     if (!currYear) return;
     const prevYear = currYear - 1; 
 
-    // Update Label UI
     const lblDcs = document.getElementById('lblYearDcs');
     const lblAktif = document.getElementById('lblYearAktif');
     if(lblDcs) lblDcs.innerHTML = `<small class="opacity-75">(${currYear} vs ${prevYear})</small>`;
@@ -94,7 +94,9 @@ function processDcsPanel(field) {
     });
 
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
-    document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td class="text-wrap">${d.nama_sekolah}</td><td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td></tr>`).join('')}</tbody>`;
+    
+    // VISUAL FIX: Added 'text-wrap'
+    document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold align-middle">${i+1}</td><td class="text-wrap align-middle">${d.nama_sekolah}</td><td class="text-end fw-bold text-primary align-middle">${d[field]?.toFixed(2) || '-'}</td></tr>`).join('')}</tbody>`;
 }
 
 function processActivePanel(field) {
@@ -119,7 +121,9 @@ function processActivePanel(field) {
     });
 
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
-    document.getElementById('tableTopActive').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold">${i+1}</td><td class="text-wrap">${d.nama_sekolah}</td><td class="text-end fw-bold text-success">${d[field] || '-'}%</td></tr>`).join('')}</tbody>`;
+    
+    // VISUAL FIX: Added 'text-wrap'
+    document.getElementById('tableTopActive').innerHTML = `<tbody>${top5.map((d,i) => `<tr><td class="fw-bold align-middle">${i+1}</td><td class="text-wrap align-middle">${d.nama_sekolah}</td><td class="text-end fw-bold text-success align-middle">${d[field] || '-'}%</td></tr>`).join('')}</tbody>`;
 }
 
 window.filterAnalisaTable = function(currYear, prevYear) {
@@ -136,7 +140,8 @@ window.filterAnalisaTable = function(currYear, prevYear) {
         const valDcs = d[`dcs_${currYear}`]?.toFixed(2) || '-';
         const valAct = d[`peratus_aktif_${currYear}`] || 0;
         const cat = getKategoriDcs(d[`dcs_${currYear}`]);
-        // MENAMBAH 'text-wrap' DI SINI
+        
+        // VISUAL FIX: Added 'text-wrap' to name column
         return `<tr><td class="fw-bold text-muted">${d.kod_sekolah}</td><td class="text-wrap">${d.nama_sekolah}</td><td class="text-center"><span class="fw-bold">${valDcs}</span> <span class="badge ${cat.class}">${cat.label}</span></td><td class="text-center fw-bold text-success">${valAct}%</td><td class="text-center"><button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border"><i class="fas fa-edit"></i></button></td></tr>`;
     }).join('');
 };

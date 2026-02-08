@@ -1,9 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (DEV) - FIX TEXT WRAP
+ * ADMIN MODULE: ACHIEVEMENT (DEV) - VISUAL FIX (FULL WRAP)
  * Menguruskan rekod pencapaian murid, guru, dan sekolah.
- * FIXES:
- * - Menukar 'text-truncate' kepada 'text-wrap' untuk paparan penuh.
- * - Membuang had lebar tetap pada kolum nama sekolah.
+ * * CHANGE LOG:
+ * - Dibuang: Logic truncate pada nama sekolah, peserta, dan program.
+ * - Ditambah: class="text-wrap" untuk paparan penuh multi-line.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -113,26 +113,17 @@ window.renderPencapaianTable = function() {
     data.sort((a,b) => {
         let valA = a[sortState.column] || '';
         let valB = b[sortState.column] || '';
-        // Special case for 'nama_sekolah' sorting if needed
-        if (sortState.column === 'nama_sekolah') valA = a.kod_sekolah; // Simple fallback
+        if (sortState.column === 'nama_sekolah') valA = a.kod_sekolah; 
         if (sortState.direction === 'asc') return valA > valB ? 1 : -1;
         return valA < valB ? 1 : -1;
     });
 
     tbody.innerHTML = data.map(i => {
         let namaSekolah = i.kod_sekolah;
-        let namaSekolahClean = i.kod_sekolah; // Untuk title attribute
-
-        if(i.kod_sekolah === 'M030') {
-            namaSekolah = `<span class="text-indigo fw-bold">PPD ALOR GAJAH</span>`;
-            namaSekolahClean = "PPD ALOR GAJAH";
-        }
+        if(i.kod_sekolah === 'M030') namaSekolah = `<span class="text-indigo fw-bold">PPD ALOR GAJAH</span>`;
         else if(window.globalDashboardData) {
             const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
-            if(s) {
-                namaSekolah = s.nama_sekolah;
-                namaSekolahClean = s.nama_sekolah;
-            }
+            if(s) namaSekolah = s.nama_sekolah;
         }
 
         let badgeClass = 'bg-secondary';
@@ -142,12 +133,10 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-dark';
         else if (i.kategori === 'PPD') badgeClass = 'bg-primary';
 
-        // --- PEMBAIKAN PAPARAN JADUAL DI SINI ---
-        // 1. Buang text-truncate dan max-width pada Nama Sekolah
-        // 2. Tambah text-wrap pada Nama Peserta
+        // --- VISUAL FIX: CLASS text-wrap APPLIED ---
         return `<tr>
             <td class="fw-bold small align-middle">${i.kod_sekolah}</td>
-            <td class="small text-wrap align-middle" title="${namaSekolahClean}">${namaSekolah}</td>
+            <td class="small text-wrap align-middle">${namaSekolah}</td>
             <td class="text-center align-middle"><span class="badge ${badgeClass} shadow-sm">${i.kategori}</span></td>
             <td class="align-middle">
                 <div class="fw-bold text-dark small text-wrap">${i.nama_peserta}</div>
@@ -172,18 +161,15 @@ function updateStats(data) {
         document.getElementById(id).innerText = data.filter(i => i.kategori === cats[idx]).length;
     });
     
-    // KPI Cards
     document.getElementById('statKebangsaan').innerText = data.filter(i => i.peringkat === 'KEBANGSAAN').length;
     document.getElementById('statAntarabangsa').innerText = data.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length;
     
-    // Tech Badges
     const pensijilan = data.filter(i => i.jenis_rekod === 'PENSIJILAN');
     document.getElementById('statGoogle').innerText = pensijilan.filter(i => i.penyedia === 'GOOGLE').length;
     document.getElementById('statApple').innerText = pensijilan.filter(i => i.penyedia === 'APPLE').length;
     document.getElementById('statMicrosoft').innerText = pensijilan.filter(i => i.penyedia === 'MICROSOFT').length;
     document.getElementById('statLain').innerText = pensijilan.filter(i => i.penyedia === 'LAIN-LAIN').length;
     
-    // Active Filters Visuals
     const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
     cards.forEach(c => document.getElementById(`card-${c}`)?.classList.remove('card-active-filter'));
     if(currentCardFilter !== 'ALL') document.getElementById(`card-${currentCardFilter}`)?.classList.add('card-active-filter');
@@ -207,7 +193,6 @@ function updateCloud(data) {
         if(counts[i.jawatan] > maxCount) maxCount = counts[i.jawatan];
     });
     
-    // Render Cloud
     container.innerHTML = Object.entries(counts)
         .sort((a, b) => b[1] - a[1])
         .map(([j, c]) => {
@@ -234,6 +219,7 @@ function renderTopSchools(data) {
         return;
     }
     
+    // VISUAL FIX: Added 'text-wrap' to Top 5 table
     table.innerHTML = sorted.map(([kod, count], idx) => {
         let nama = kod;
         const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
@@ -259,9 +245,8 @@ window.resetPencapaianFilters = function() {
     document.getElementById('searchPencapaianInput').value = '';
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
     document.getElementById('filterSekolahPencapaian').value = 'ALL';
-    document.getElementById('filterTahunPencapaian').value = 'ALL'; // Reset tahun juga
-    window.loadMasterPencapaian(); // Reload penuh
-    
+    document.getElementById('filterTahunPencapaian').value = 'ALL';
+    window.loadMasterPencapaian();
     Swal.fire({ icon: 'success', title: 'Filter Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
 };
 
@@ -270,7 +255,6 @@ window.handleSort = function(col) {
     else { sortState.column = col; sortState.direction = 'asc'; }
     window.renderPencapaianTable();
     
-    // Update icon visuals
     const icons = ['kod_sekolah','nama_sekolah','kategori','nama_peserta','nama_pertandingan','pencapaian'];
     icons.forEach(i => document.getElementById(`icon-${i}`)?.classList.replace('text-white','text-muted'));
     const activeIcon = document.getElementById(`icon-${col}`);
@@ -282,7 +266,7 @@ window.handleSort = function(col) {
 };
 window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
 
-// CRUD
+// CRUD Operations
 window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
     if(!item) return;
@@ -394,12 +378,10 @@ window.toggleJenisPencapaianPPD = function() {
     const isPensijilan = document.getElementById('radPpdPensijilan').checked;
     document.getElementById('ppdInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
     
-    // Toggle Visual
     document.getElementById('divPpdPenyedia').classList.toggle('hidden', !isPensijilan);
     document.getElementById('rowPpdPeringkat').classList.toggle('hidden', isPensijilan);
     document.getElementById('divPpdTahunOnly').classList.toggle('hidden', !isPensijilan);
     
-    // Update Labels
     const lblProg = document.getElementById('lblPpdProgram');
     const inpProg = document.getElementById('ppdInputProgram');
     const lblPenc = document.getElementById('lblPpdPencapaian');
@@ -422,11 +404,7 @@ window.simpanPencapaianPPD = async function() {
     const btn = document.querySelector('#formPencapaianPPD button[type="submit"]');
     const radKategori = document.querySelector('input[name="radKatPPD"]:checked').value;
     const jenisRekod = document.getElementById('ppdInputJenisRekod').value;
-    
     const nama = document.getElementById('ppdInputNama').value.trim().toUpperCase();
-    const program = document.getElementById('ppdInputProgram').value.trim().toUpperCase();
-    const pencapaian = document.getElementById('ppdInputPencapaian').value.trim().toUpperCase();
-    const link = document.getElementById('ppdInputLink').value.trim();
     
     let tahun = 2024;
     let peringkat = 'KEBANGSAAN';
@@ -440,6 +418,10 @@ window.simpanPencapaianPPD = async function() {
         peringkat = document.getElementById('ppdInputPeringkat').value;
         tahun = document.getElementById('ppdInputTahun').value;
     }
+
+    const program = document.getElementById('ppdInputProgram').value.trim().toUpperCase();
+    const pencapaian = document.getElementById('ppdInputPencapaian').value.trim().toUpperCase();
+    const link = document.getElementById('ppdInputLink').value.trim();
 
     if (!nama || !program || !pencapaian || !link || !tahun) {
         Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat.', 'warning');

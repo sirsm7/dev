@@ -2,11 +2,7 @@
  * ADMIN MODULE: ACHIEVEMENT (PRECISION UPDATE v2)
  * Menguruskan rekod pencapaian dengan kawalan integriti data (Pertandingan vs Pensijilan).
  * * UPDATE LOG:
- * - Added 'filterJenisPencapaian' logic in renderTable.
- * - Added Visual Badges [PERTANDINGAN/PENSIJILAN] in table view.
- * - Updated 'openEditPencapaian' to handle Radio Buttons.
- * - Added 'toggleEditJenis' for dynamic modal UI.
- * - Updated 'simpanEditPencapaian' to capture corrected record type.
+ * - Refined Dropdown population logic for standardized UI.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -29,6 +25,7 @@ window.populateTahunFilter = async function() {
     if (!select) return;
     try {
         const years = await AchievementService.getAvailableYears();
+        // Standardized Text
         select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
         years.forEach(y => select.innerHTML += `<option value="${y}">TAHUN ${y}</option>`);
         window.loadMasterPencapaian();
@@ -58,7 +55,25 @@ function populateSekolahFilter(data) {
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
     
-    const sortedData = [...data].sort((a, b) => a.kod_sekolah.localeCompare(b.kod_sekolah));
+    // Sort logic: PPD (M030) first, then others alphabetically by Name (not Code) if possible, else Code.
+    // Assuming globalDashboardData exists to get names.
+    
+    const sortedData = [...data].sort((a, b) => {
+        if (a.kod_sekolah === 'M030') return -1;
+        if (b.kod_sekolah === 'M030') return 1;
+        
+        let nameA = a.kod_sekolah;
+        let nameB = b.kod_sekolah;
+        
+        if(window.globalDashboardData) {
+            const sA = window.globalDashboardData.find(x => x.kod_sekolah === a.kod_sekolah);
+            const sB = window.globalDashboardData.find(x => x.kod_sekolah === b.kod_sekolah);
+            if(sA) nameA = sA.nama_sekolah;
+            if(sB) nameB = sB.nama_sekolah;
+        }
+        
+        return nameA.localeCompare(nameB);
+    });
 
     sortedData.forEach(i => {
         if(!seen.has(i.kod_sekolah)) {
@@ -68,12 +83,16 @@ function populateSekolahFilter(data) {
                 const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
                 if(s) label = `${s.nama_sekolah} (${i.kod_sekolah})`;
             }
+            // Count specific to current year context if filtered, strictly speaking getAll(tahun) already filters list.
             const count = data.filter(d => d.kod_sekolah === i.kod_sekolah).length;
             select.innerHTML += `<option value="${i.kod_sekolah}">${label} (${count})</option>`;
             seen.add(i.kod_sekolah);
         }
     });
+    
+    // Restore selection if valid
     if(seen.has(oldVal)) select.value = oldVal;
+    else select.value = 'ALL';
 }
 
 // --- RENDERING TABLE (UPDATED) ---
@@ -82,13 +101,13 @@ window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     const katFilter = document.getElementById('filterKategoriPencapaian').value;
     const sekFilter = document.getElementById('filterSekolahPencapaian').value;
-    const jenisFilter = document.getElementById('filterJenisPencapaian').value; // NEW FILTER
+    const jenisFilter = document.getElementById('filterJenisPencapaian').value; 
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
     let data = pencapaianList.filter(i => {
         if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
-        if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false; // NEW LOGIC
+        if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false; 
         
         if(search) {
             let namaSekolah = (i.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
@@ -262,7 +281,8 @@ window.resetPencapaianFilters = function() {
     document.getElementById('searchPencapaianInput').value = '';
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
     document.getElementById('filterSekolahPencapaian').value = 'ALL';
-    document.getElementById('filterTahunPencapaian').value = 'ALL';
+    // Don't reset year to ALL, keep current loaded year for stability or reload default
+    // document.getElementById('filterTahunPencapaian').value = 'ALL'; 
     document.getElementById('filterJenisPencapaian').value = 'ALL';
     window.loadMasterPencapaian();
     Swal.fire({ icon: 'success', title: 'Filter Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });

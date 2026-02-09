@@ -78,6 +78,36 @@
       .nav-compact .nav-link i {
           margin-right: 6px;
       }
+
+      /* FORM SELECT CUSTOMIZATION */
+      .form-select-clean {
+          border: 1px solid #dee2e6;
+          background-color: #f8f9fa;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #495057;
+          border-radius: 8px;
+          padding-top: 0.4rem;
+          padding-bottom: 0.4rem;
+          transition: all 0.2s;
+      }
+      .form-select-clean:focus {
+          border-color: #86b7fe;
+          box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+          background-color: white;
+      }
+      .input-group-clean .form-control {
+          border-top-right-radius: 8px;
+          border-bottom-right-radius: 8px;
+          font-size: 0.85rem;
+      }
+      .input-group-clean .input-group-text {
+          border-top-left-radius: 8px;
+          border-bottom-left-radius: 8px;
+          background-color: #f8f9fa;
+          border: 1px solid #dee2e6;
+          border-right: none;
+      }
   </style>
 </head>
 <body id="page-admin">
@@ -194,7 +224,6 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="fw-bold m-0 text-dark">Data Terperinci Sekolah</h6>
                         <div class="d-flex gap-2 align-items-center">
-                            <!-- EXPORT BUTTON (NEW) -->
                             <button onclick="eksportDcs()" class="btn btn-sm btn-outline-success fw-bold shadow-sm text-nowrap"><i class="fas fa-file-csv me-1"></i> Eksport CSV</button>
                             <input type="text" id="searchAnalisa" class="form-control form-control-sm" style="min-width: 200px;" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
                         </div>
@@ -209,54 +238,89 @@
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN -->
+          <!-- TAB 3: PENCAPAIAN (DIKEMASKINI) -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
+                
+                <!-- HEADER & ACTIONS -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
                     <div class="d-flex align-items-center">
                          <button id="btnLogoutUnitPPD" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold me-3 hidden"><i class="fas fa-sign-out-alt me-1"></i> Log Keluar</button>
                          <button id="btnUbahPassUnitPPD" onclick="ubahKataLaluanSendiri()" class="btn btn-outline-warning text-dark btn-sm fw-bold me-3 hidden"><i class="fas fa-key me-1"></i> Tukar Password</button>
-                         <div><h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5><small class="text-muted">Klik Kad Statistik untuk menapis data.</small></div>
+                         <div>
+                             <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
+                             <small class="text-muted">Pangkalan Data Pusat</small>
+                         </div>
                     </div>
-                    <div class="d-flex gap-2 align-items-center flex-wrap">
-                        <!-- EXPORT BUTTON -->
-                        <button onclick="eksportPencapaian()" class="btn btn-outline-success btn-sm fw-bold shadow-sm" title="Muat Turun Laporan CSV"><i class="fas fa-file-csv me-1"></i> Eksport Data</button>
-                        <div class="vr mx-1"></div>
-                        
-                        <button onclick="resetPencapaianFilters()" class="btn btn-light border shadow-sm fw-bold btn-sm text-secondary" title="Reset Semua Filter"><i class="fas fa-undo me-1"></i> Reset</button>
-                        <div class="vr mx-1"></div>
-                        
-                        <!-- SERAGAMKAN DATA -->
-                        <button onclick="openStandardizeModal()" class="btn btn-dark btn-sm fw-bold shadow-sm" title="Seragamkan Nama Program"><i class="fas fa-magic me-1"></i> Seragamkan Data</button>
-                        <div class="vr mx-1"></div>
-
-                        <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)</button>
-                        <div class="vr mx-1"></div>
-                        
-                        <div class="input-group input-group-sm shadow-sm" style="width: 200px;">
-                            <span class="input-group-text bg-white border-primary text-primary"><i class="fas fa-search"></i></span>
-                            <input type="text" id="searchPencapaianInput" class="form-control border-primary fw-bold text-primary" placeholder="Cari Sekolah / Kod..." onkeyup="handlePencapaianSearch(this.value)">
-                        </div>
-
-                        <!-- NEW: FILTER JENIS REKOD (Pertandingan/Sijil) -->
-                        <select id="filterJenisPencapaian" class="form-select form-select-sm fw-bold shadow-sm border-warning" onchange="renderPencapaianTable()">
-                            <option value="ALL" selected>SEMUA JENIS REKOD</option>
-                            <option value="PERTANDINGAN">PERTANDINGAN</option>
-                            <option value="PENSIJILAN">PENSIJILAN</option>
-                        </select>
-
-                        <select id="filterSekolahPencapaian" class="form-select form-select-sm fw-bold shadow-sm text-primary border-primary" style="max-width: 150px;" onchange="renderPencapaianTable()"><option value="ALL" selected>SEMUA SEKOLAH</option></select>
-                        <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()"><option value="" disabled selected>Memuatkan...</option></select>
-                        <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="renderPencapaianTable()"><option value="ALL" selected>SEMUA KATEGORI</option><option value="MURID">MURID</option><option value="GURU">GURU</option><option value="SEKOLAH">SEKOLAH</option><option value="PEGAWAI">PEGAWAI PPD</option><option value="PPD">UNIT PPD</option></select>
+                    <div class="d-flex gap-2">
+                        <button onclick="eksportPencapaian()" class="btn btn-outline-success btn-sm fw-bold shadow-sm" title="Eksport ke CSV"><i class="fas fa-file-csv me-1"></i> Eksport</button>
+                        <button onclick="openStandardizeModal()" class="btn btn-dark btn-sm fw-bold shadow-sm" title="Seragamkan Data"><i class="fas fa-magic me-1"></i> Seragamkan</button>
+                        <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD</button>
                     </div>
                 </div>
 
+                <!-- NEW CONTROL BAR DESIGN -->
+                <div class="bg-light p-3 rounded-4 mb-4 border shadow-sm">
+                    <div class="row g-2 align-items-end">
+                        
+                        <!-- ZON 1: CARIAN & TAHUN -->
+                        <div class="col-lg-3 col-md-6">
+                            <label class="small fw-bold text-muted mb-1 ms-1">Carian Pantas</label>
+                            <div class="input-group input-group-clean">
+                                <span class="input-group-text"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" id="searchPencapaianInput" class="form-control" placeholder="Sekolah / Peserta..." onkeyup="handlePencapaianSearch(this.value)">
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="small fw-bold text-muted mb-1 ms-1">Tahun</label>
+                            <select id="filterTahunPencapaian" class="form-select form-select-clean text-primary" onchange="loadMasterPencapaian()">
+                                <option value="" disabled selected>Memuatkan...</option>
+                            </select>
+                        </div>
+
+                        <!-- ZON 2: PENAPISAN KATEGORI -->
+                        <div class="col-lg-2 col-md-4">
+                            <label class="small fw-bold text-muted mb-1 ms-1">Kategori</label>
+                            <select id="filterKategoriPencapaian" class="form-select form-select-clean" onchange="renderPencapaianTable()">
+                                <option value="ALL" selected>SEMUA KATEGORI</option>
+                                <option value="MURID">MURID</option>
+                                <option value="GURU">GURU</option>
+                                <option value="SEKOLAH">SEKOLAH</option>
+                                <option value="PEGAWAI">PEGAWAI PPD</option>
+                                <option value="PPD">UNIT PPD</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-4">
+                            <label class="small fw-bold text-muted mb-1 ms-1">Jenis Rekod</label>
+                            <select id="filterJenisPencapaian" class="form-select form-select-clean" onchange="renderPencapaianTable()">
+                                <option value="ALL" selected>SEMUA JENIS</option>
+                                <option value="PERTANDINGAN">PERTANDINGAN</option>
+                                <option value="PENSIJILAN">PENSIJILAN</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-4">
+                            <label class="small fw-bold text-muted mb-1 ms-1">Sekolah</label>
+                            <select id="filterSekolahPencapaian" class="form-select form-select-clean" onchange="renderPencapaianTable()">
+                                <option value="ALL" selected>SEMUA SEKOLAH</option>
+                            </select>
+                        </div>
+
+                        <!-- ZON 3: RESET -->
+                        <div class="col-lg-1 text-end">
+                            <button onclick="resetPencapaianFilters()" class="btn btn-outline-secondary w-100 btn-sm fw-bold border-0" title="Reset Semua Filter" style="height: 38px;">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STATISTIK CARDS (KEKALKAN TAPI DIKEMASKINI) -->
                 <div class="row g-3 mb-3 justify-content-center">
-                    <div class="col-6 col-md-4"><div onclick="filterByKategori('MURID')" class="card bg-info bg-opacity-10 border-info border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-info mb-1" style="font-size: 0.8rem;">MURID</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalMurid">0</h2></div><i class="fas fa-user-graduate fa-2x text-info opacity-50"></i></div></div></div>
-                    <div class="col-6 col-md-4"><div onclick="filterByKategori('GURU')" class="card bg-warning bg-opacity-10 border-warning border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-warning mb-1 text-dark" style="font-size: 0.8rem;">GURU</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalGuru">0</h2></div><i class="fas fa-chalkboard-teacher fa-2x text-warning opacity-50"></i></div></div></div>
-                    <div class="col-6 col-md-4"><div onclick="filterByKategori('SEKOLAH')" class="card bg-success bg-opacity-10 border-success border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-success mb-1" style="font-size: 0.8rem;">SEKOLAH</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalSekolah">0</h2></div><i class="fas fa-school fa-2x text-success opacity-50"></i></div></div></div>
-                    <div class="col-6 col-md-6"><div onclick="filterByKategori('PEGAWAI')" class="card bg-dark bg-opacity-10 border-dark border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-dark mb-1" style="font-size: 0.8rem;">PEGAWAI PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h2></div><i class="fas fa-user-tie fa-2x text-dark opacity-50"></i></div></div></div>
-                    <div class="col-6 col-md-6"><div onclick="filterByKategori('PPD')" class="card bg-primary bg-opacity-10 border-primary border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-primary mb-1" style="font-size: 0.8rem;">UNIT PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalUnit">0</h2></div><i class="fas fa-building fa-2x text-primary opacity-50"></i></div></div></div>
+                    <div class="col-6 col-md-2"><div onclick="filterByKategori('MURID')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">MURID</small><h4 class="fw-bold mb-0 text-info" id="statTotalMurid">0</h4></div></div>
+                    <div class="col-6 col-md-2"><div onclick="filterByKategori('GURU')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">GURU</small><h4 class="fw-bold mb-0 text-warning" id="statTotalGuru">0</h4></div></div>
+                    <div class="col-6 col-md-2"><div onclick="filterByKategori('SEKOLAH')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">SEKOLAH</small><h4 class="fw-bold mb-0 text-success" id="statTotalSekolah">0</h4></div></div>
+                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PEGAWAI')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">PEGAWAI PPD</small><h4 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h4></div></div>
+                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PPD')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">UNIT PPD</small><h4 class="fw-bold mb-0 text-primary" id="statTotalUnit">0</h4></div></div>
                 </div>
 
                 <!-- JAWATAN CLOUD -->

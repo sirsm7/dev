@@ -2,8 +2,8 @@
  * ADMIN MODULE: ACHIEVEMENT (STABLE)
  * Menguruskan rekod pencapaian murid, guru, dan sekolah.
  * * FIXES:
- * - STANDARDIZATION UPDATE: Menggunakan rujukan indeks (array) dan bukannya string raw untuk mengelakkan ralat syntax pada nama program yang mengandungi simbol khas.
- * - INPUT FOCUS: Memastikan SweetAlert boleh ditaip walaupun di atas Modal Bootstrap.
+ * - MOD SQL: Menggantikan fungsi edit terus dengan penjanaan skrip SQL untuk dijalankan di Supabase.
+ * - BYPASS INPUT ISSUE: Mengelakkan masalah fokus input modal dengan hanya memaparkan output readonly.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -505,7 +505,7 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (ROBUST VERSION) ---
+// --- DATA STANDARDIZATION LOGIC (SQL GENERATOR MODE) ---
 
 window.openStandardizeModal = function() {
     const counts = {};
@@ -514,24 +514,21 @@ window.openStandardizeModal = function() {
         counts[name] = (counts[name] || 0) + 1;
     });
 
-    // PENTING: Simpan senarai nama unik (sorted) ke dalam array global module
-    // untuk diakses menggunakan indeks
+    // Simpan cache
     standardizationList = Object.keys(counts).sort();
     
     const tbody = document.getElementById('tbodyStandardize');
     if (!tbody) return;
     
     tbody.innerHTML = standardizationList.map((name, index) => {
-        // Paparan HTML kekal (hanya untuk visual)
         return `
             <tr>
                 <td class="text-center fw-bold small">${index + 1}</td>
                 <td class="fw-bold text-primary small text-wrap">${name}</td>
                 <td class="text-center"><span class="badge bg-secondary rounded-pill">${counts[name]} Rekod</span></td>
                 <td class="text-center">
-                    <!-- Gunakan INDEX, bukan string raw, untuk elak ralat syntax -->
-                    <button onclick="editProgramNameByIndex(${index})" class="btn btn-sm btn-outline-dark fw-bold">
-                        <i class="fas fa-edit me-1"></i> Edit
+                    <button onclick="generateSqlByIndex(${index})" class="btn btn-sm btn-info text-white fw-bold shadow-sm">
+                        <i class="fas fa-code me-1"></i> Jana SQL
                     </button>
                 </td>
             </tr>
@@ -541,73 +538,48 @@ window.openStandardizeModal = function() {
     new bootstrap.Modal(document.getElementById('modalStandardize')).show();
 };
 
-// Fungsi perantara untuk ambil string sebenar dari array
-window.editProgramNameByIndex = function(index) {
+window.generateSqlByIndex = function(index) {
     const oldName = standardizationList[index];
-    if (oldName) {
-        window.editProgramName(oldName);
-    } else {
-        Swal.fire('Ralat', 'Indeks nama tidak dijumpai.', 'error');
-    }
-};
+    if (!oldName) return Swal.fire('Ralat', 'Data tidak dijumpai.', 'error');
 
-window.editProgramName = async function(oldName) {
-    const { value: newName } = await Swal.fire({
-        title: 'Kemaskini Nama Program',
-        html: `Ubah semua rekod <b>"${oldName}"</b> kepada:`,
-        input: 'text',
-        inputValue: oldName,
+    // Escape single quotes untuk SQL (Contoh: D'Hulu -> D''Hulu)
+    const safeOldName = oldName.replace(/'/g, "''");
+    
+    const sqlQuery = `UPDATE smpid_pencapaian\nSET nama_pertandingan = 'GANTI_NAMA_BARU_DI_SINI'\nWHERE nama_pertandingan = '${safeOldName}';`;
+
+    Swal.fire({
+        title: 'Jana SQL Update',
+        html: `
+            <p class="small text-muted mb-3">Salin kod di bawah dan jalankan di <b>Supabase SQL Editor</b>. Jangan lupa ganti teks 'GANTI_NAMA_BARU_DI_SINI'.</p>
+            <div class="position-relative">
+                <textarea id="sqlOutput" class="form-control bg-dark text-warning font-monospace small" rows="4" readonly>${sqlQuery}</textarea>
+            </div>
+        `,
         showCancelButton: true,
-        confirmButtonText: 'Simpan Perubahan',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#4b0082',
-        inputValidator: (value) => { if (!value) return 'Nama program tidak boleh kosong!'; },
+        confirmButtonText: '<i class="fas fa-copy"></i> Salin SQL',
+        cancelButtonText: 'Tutup',
+        confirmButtonColor: '#198754',
         
-        // PENTING: Fix untuk masalah fokus input dalam Modal Bootstrap
-        willOpen: () => {
-            const modal = document.getElementById('modalStandardize');
-            if (modal) modal.removeAttribute('tabindex'); // Matikan 'trap' fokus Bootstrap sementara
-        },
         didOpen: () => {
-            const input = Swal.getInput();
-            if (input) input.focus();
-        },
-        // Kembalikan tabindex selepas tutup (pilihan, tapi removeAttribute biasanya cukup)
-        didClose: () => {
-             // Optional cleanup
+            // Auto-select text untuk mudahkan copy
+            const textarea = document.getElementById('sqlOutput');
+            if(textarea) textarea.select();
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const copyText = document.getElementById('sqlOutput');
+            if (copyText) {
+                copyText.select();
+                navigator.clipboard.writeText(copyText.value).then(() => {
+                    Swal.fire({
+                        icon: 'success', 
+                        title: 'Disalin!',
+                        text: 'Sila paste di Supabase SQL Editor.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                });
+            }
         }
     });
-
-    if (newName) {
-        // Trim whitespace untuk elak ralat "nampak sama tapi tak sama"
-        const cleanOld = oldName.trim();
-        const cleanNew = newName.trim().toUpperCase();
-
-        if (cleanNew !== cleanOld.toUpperCase()) {
-            toggleLoading(true);
-            try {
-                await AchievementService.batchUpdateProgramName(cleanOld, cleanNew);
-                toggleLoading(false);
-                
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Berjaya!',
-                    text: `Rekod telah diseragamkan kepada "${cleanNew}".`,
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                
-                // Refresh data dan tutup modal
-                bootstrap.Modal.getInstance(document.getElementById('modalStandardize')).hide();
-                window.loadMasterPencapaian(); 
-                
-            } catch (e) {
-                toggleLoading(false);
-                console.error(e);
-                Swal.fire('Ralat Pangkalan Data', 'Gagal mengemaskini data. Sila cuba lagi.', 'error');
-            }
-        } else {
-            Swal.fire('Tiada Perubahan', 'Nama program adalah sama. Tiada tindakan diambil.', 'info');
-        }
-    }
 };

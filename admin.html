@@ -594,8 +594,8 @@
   </div>
 
   <!-- NEW MODAL: STANDARDIZE DATA (PENYERAGAMAN) -->
-  <!-- FIX: Buang tabindex="-1" supaya SweetAlert input boleh fokus -->
-  <div class="modal fade" id="modalStandardize">
+  <!-- FIX FINAL: Tiada tabindex, tiada aria-hidden untuk elak konflik input -->
+  <div class="modal fade" id="modalStandardize" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header bg-dark text-white">

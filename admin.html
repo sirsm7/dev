@@ -225,6 +225,11 @@
                         
                         <button onclick="resetPencapaianFilters()" class="btn btn-light border shadow-sm fw-bold btn-sm text-secondary" title="Reset Semua Filter"><i class="fas fa-undo me-1"></i> Reset</button>
                         <div class="vr mx-1"></div>
+                        
+                        <!-- NEW BUTTON: SERAGAMKAN DATA -->
+                        <button onclick="openStandardizeModal()" class="btn btn-dark btn-sm fw-bold shadow-sm" title="Seragamkan Nama Program"><i class="fas fa-magic me-1"></i> Seragamkan Data</button>
+                        <div class="vr mx-1"></div>
+
                         <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)</button>
                         <div class="vr mx-1"></div>
                         
@@ -583,6 +588,42 @@
                     <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="editInputLink" class="form-control text-primary"></div>
                     <button type="submit" class="btn btn-warning w-100 fw-bold py-3 rounded-3 shadow-sm">SIMPAN PERUBAHAN</button>
                 </form>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- NEW MODAL: STANDARDIZE DATA (PENYERAGAMAN) -->
+  <div class="modal fade" id="modalStandardize" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-dark text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-magic me-2"></i>Penyeragaman Nama Program</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="alert alert-light border-bottom mb-0 small">
+                    <i class="fas fa-info-circle me-2 text-primary"></i> 
+                    Senarai di bawah adalah semua nama unik yang ditemui dalam pangkalan data. Klik butang <b>Edit</b> untuk menyeragamkan ejaan bagi <b>SEMUA</b> rekod yang berkaitan sekaligus.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0 small align-middle">
+                        <thead class="bg-light sticky-top">
+                            <tr>
+                                <th style="width: 5%;" class="text-center">#</th>
+                                <th style="width: 60%;">Nama Program (Unik)</th>
+                                <th style="width: 20%;" class="text-center">Kekerapan</th>
+                                <th style="width: 15%;" class="text-center">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyStandardize">
+                            <!-- Data akan diisi oleh JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>

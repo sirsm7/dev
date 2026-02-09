@@ -5,6 +5,7 @@
  * - STANDARDISASI: Dropdown Jawatan & Penyedia diselaraskan.
  * - UI FIX: Logik tahun dipisahkan dari peringkat (tidak lagi hilang).
  * - LOGIC: Auto-set peringkat Antarabangsa untuk Pensijilan.
+ * - BARU: Fungsi 'openStandardizeModal' untuk penyeragaman data pukal.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -514,4 +515,79 @@ window.eksportPencapaian = function() {
     link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
     link.download = `Laporan_Pencapaian_SMPID_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
+};
+
+// --- DATA STANDARDIZATION LOGIC (NEW) ---
+
+window.openStandardizeModal = function() {
+    // 1. Collect Frequency
+    const counts = {};
+    pencapaianList.forEach(item => {
+        const name = item.nama_pertandingan || "TIADA NAMA";
+        counts[name] = (counts[name] || 0) + 1;
+    });
+
+    // 2. Sort Alphabetically
+    const sortedNames = Object.keys(counts).sort();
+
+    // 3. Render Table inside Modal
+    const tbody = document.getElementById('tbodyStandardize');
+    if (!tbody) return;
+    
+    tbody.innerHTML = sortedNames.map((name, index) => {
+        // Selamatkan tanda petikan untuk fungsi onclick
+        const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        
+        return `
+            <tr>
+                <td class="text-center fw-bold small">${index + 1}</td>
+                <td class="fw-bold text-primary small text-wrap">${name}</td>
+                <td class="text-center"><span class="badge bg-secondary rounded-pill">${counts[name]} Rekod</span></td>
+                <td class="text-center">
+                    <button onclick="editProgramName('${safeName}')" class="btn btn-sm btn-outline-dark fw-bold">
+                        <i class="fas fa-edit me-1"></i> Edit
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    new bootstrap.Modal(document.getElementById('modalStandardize')).show();
+};
+
+window.editProgramName = async function(oldName) {
+    const { value: newName } = await Swal.fire({
+        title: 'Kemaskini Nama Program',
+        html: `Ubah semua rekod <b>"${oldName}"</b> kepada:`,
+        input: 'text',
+        inputValue: oldName,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#4b0082',
+        inputValidator: (value) => {
+            if (!value) {
+                return 'Nama program tidak boleh kosong!';
+            }
+        }
+    });
+
+    if (newName && newName !== oldName) {
+        toggleLoading(true);
+        try {
+            await AchievementService.batchUpdateProgramName(oldName, newName.toUpperCase());
+            toggleLoading(false);
+            
+            await Swal.fire('Berjaya', `Rekod telah diseragamkan kepada "${newName.toUpperCase()}".`, 'success');
+            
+            // Refresh Data & UI
+            window.loadMasterPencapaian(); 
+            // Tutup modal supaya data di-refresh sepenuhnya bila dibuka semula
+            bootstrap.Modal.getInstance(document.getElementById('modalStandardize')).hide();
+
+        } catch (e) {
+            toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
+        }
+    }
 };

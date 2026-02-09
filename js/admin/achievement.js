@@ -17,6 +17,7 @@ let sortState = { column: 'created_at', direction: 'desc' };
 
 // Cache untuk senarai nama program unik bagi tujuan penyeragaman
 let standardizationList = []; 
+let filteredStandardizationList = [];
 
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
@@ -505,80 +506,114 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (SQL GENERATOR MODE) ---
+// --- DATA STANDARDIZATION LOGIC (UPDATED: DIRECT EDIT & SEARCH) ---
 
 window.openStandardizeModal = function() {
     const counts = {};
+    // Reset cache
+    standardizationList = [];
+    filteredStandardizationList = [];
+
+    // 1. Kira Kekerapan Unik
     pencapaianList.forEach(item => {
         const name = item.nama_pertandingan || "TIADA NAMA";
         counts[name] = (counts[name] || 0) + 1;
     });
 
-    // Simpan cache
-    standardizationList = Object.keys(counts).sort();
+    // 2. Simpan Cache Data (Structure: {oldName, count})
+    Object.keys(counts).sort().forEach(name => {
+        standardizationList.push({ name: name, count: counts[name] });
+    });
+
+    filteredStandardizationList = standardizationList; // Default: Show all
+    document.getElementById('standardizeSearch').value = ''; // Reset search
     
+    renderStandardizeTable(filteredStandardizationList);
+    new bootstrap.Modal(document.getElementById('modalStandardize')).show();
+};
+
+window.renderStandardizeTable = function(list) {
     const tbody = document.getElementById('tbodyStandardize');
     if (!tbody) return;
     
-    tbody.innerHTML = standardizationList.map((name, index) => {
+    if(list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">Tiada padanan carian.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map((item, index) => {
+        // Safe string untuk ID HTML (remove spaces/quotes)
+        const safeId = index; 
+        // Escape quotes untuk JS function call
+        const safeName = item.name.replace(/'/g, "\\'"); 
+
         return `
             <tr>
-                <td class="text-center fw-bold small">${index + 1}</td>
-                <td class="fw-bold text-primary small text-wrap">${name}</td>
-                <td class="text-center"><span class="badge bg-secondary rounded-pill">${counts[name]} Rekod</span></td>
+                <td class="text-center fw-bold small text-muted">${index + 1}</td>
+                <td class="fw-bold text-dark small text-wrap text-break">${item.name}</td>
+                <td class="text-center"><span class="badge bg-secondary rounded-pill">${item.count}</span></td>
+                <td>
+                    <input type="text" id="std-input-${safeId}" class="form-control form-control-sm border-primary fw-bold text-primary" placeholder="Tulis nama baru..." value="${item.name.replace(/"/g, '&quot;')}">
+                </td>
                 <td class="text-center">
-                    <button onclick="generateSqlByIndex(${index})" class="btn btn-sm btn-info text-white fw-bold shadow-sm">
-                        <i class="fas fa-code me-1"></i> Jana SQL
+                    <button onclick="executeStandardization('${safeName}', 'std-input-${safeId}')" class="btn btn-sm btn-success text-white fw-bold shadow-sm">
+                        <i class="fas fa-save me-1"></i> Simpan
                     </button>
                 </td>
             </tr>
         `;
     }).join('');
-
-    new bootstrap.Modal(document.getElementById('modalStandardize')).show();
 };
 
-window.generateSqlByIndex = function(index) {
-    const oldName = standardizationList[index];
-    if (!oldName) return Swal.fire('Ralat', 'Data tidak dijumpai.', 'error');
+window.handleStandardizeSearch = function(val) {
+    const term = val.toUpperCase().trim();
+    if (!term) {
+        filteredStandardizationList = standardizationList;
+    } else {
+        filteredStandardizationList = standardizationList.filter(item => item.name.toUpperCase().includes(term));
+    }
+    renderStandardizeTable(filteredStandardizationList);
+};
 
-    // Escape single quotes untuk SQL (Contoh: D'Hulu -> D''Hulu)
-    const safeOldName = oldName.replace(/'/g, "''");
+window.executeStandardization = function(oldName, inputId) {
+    const newName = document.getElementById(inputId).value.trim().toUpperCase();
     
-    const sqlQuery = `UPDATE smpid_pencapaian\nSET nama_pertandingan = 'GANTI_NAMA_BARU_DI_SINI'\nWHERE nama_pertandingan = '${safeOldName}';`;
+    if (!newName) return Swal.fire('Ralat', 'Nama baru tidak boleh kosong.', 'warning');
+    if (newName === oldName) return Swal.fire('Tiada Perubahan', 'Nama baru sama dengan nama asal.', 'info');
 
     Swal.fire({
-        title: 'Jana SQL Update',
-        html: `
-            <p class="small text-muted mb-3">Salin kod di bawah dan jalankan di <b>Supabase SQL Editor</b>. Jangan lupa ganti teks 'GANTI_NAMA_BARU_DI_SINI'.</p>
-            <div class="position-relative">
-                <textarea id="sqlOutput" class="form-control bg-dark text-warning font-monospace small" rows="4" readonly>${sqlQuery}</textarea>
-            </div>
-        `,
+        title: 'Sahkan Penyeragaman?',
+        html: `Anda akan menukar <b>"${oldName}"</b> kepada <br><b class="text-success">"${newName}"</b><br>untuk semua rekod yang berkaitan.`,
+        icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-copy"></i> Salin SQL',
-        cancelButtonText: 'Tutup',
         confirmButtonColor: '#198754',
-        
-        didOpen: () => {
-            // Auto-select text untuk mudahkan copy
-            const textarea = document.getElementById('sqlOutput');
-            if(textarea) textarea.select();
-        }
-    }).then((result) => {
+        confirmButtonText: 'Ya, Seragamkan!',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
         if (result.isConfirmed) {
-            const copyText = document.getElementById('sqlOutput');
-            if (copyText) {
-                copyText.select();
-                navigator.clipboard.writeText(copyText.value).then(() => {
-                    Swal.fire({
-                        icon: 'success', 
-                        title: 'Disalin!',
-                        text: 'Sila paste di Supabase SQL Editor.',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+            toggleLoading(true);
+            try {
+                // Panggil Service Update Batch
+                await AchievementService.batchUpdateProgramName(oldName, newName);
+                
+                toggleLoading(false);
+                
+                Swal.fire({
+                    title: 'Berjaya!',
+                    text: 'Data telah diseragamkan.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
                 });
+
+                // Auto-refresh: Reload master data & modal list
+                await window.loadMasterPencapaian(); // Ini akan refresh pencapaianList
+                window.openStandardizeModal(); // Re-populate modal dengan data baru
+
+            } catch (e) {
+                toggleLoading(false);
+                console.error(e);
+                Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
             }
         }
     });

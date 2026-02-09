@@ -593,38 +593,50 @@
     </div>
   </div>
 
-  <!-- NEW MODAL: STANDARDIZE DATA (PENYERAGAMAN) -->
-  <!-- FIX FINAL: Tiada tabindex, tiada aria-hidden untuk elak konflik input -->
+  <!-- NEW MODAL: STANDARDIZE DATA (PENYERAGAMAN) - UPDATED -->
   <div class="modal fade" id="modalStandardize" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header bg-dark text-white">
-                <h6 class="modal-title fw-bold"><i class="fas fa-magic me-2"></i>Penyeragaman Nama Program</h6>
+                <div class="d-flex flex-column">
+                    <h6 class="modal-title fw-bold"><i class="fas fa-magic me-2 text-warning"></i>Penyeragaman Data Induk</h6>
+                    <small class="opacity-75" style="font-size: 0.75rem;">Kemaskini nama program secara pukal untuk mengelakkan duplikasi.</small>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0">
-                <div class="alert alert-light border-bottom mb-0 small">
-                    <i class="fas fa-info-circle me-2 text-primary"></i> 
-                    Senarai di bawah adalah semua nama unik yang ditemui dalam pangkalan data. Klik butang <b>Edit</b> untuk menyeragamkan ejaan bagi <b>SEMUA</b> rekod yang berkaitan sekaligus.
+            
+            <div class="modal-body p-0 bg-light">
+                <!-- Search & Filters -->
+                <div class="p-3 bg-white border-bottom sticky-top shadow-sm z-index-10">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                        <input type="text" id="standardizeSearch" class="form-control border-start-0" placeholder="Cari nama program (Contoh: CATUR)..." oninput="handleStandardizeSearch(this.value)">
+                        <button class="btn btn-outline-secondary" onclick="document.getElementById('standardizeSearch').value=''; handleStandardizeSearch('');">Reset</button>
+                    </div>
                 </div>
+
+                <!-- Data Table -->
                 <div class="table-responsive">
                     <table class="table table-hover table-striped mb-0 small align-middle">
-                        <thead class="bg-light sticky-top">
+                        <thead class="bg-dark text-white sticky-top" style="top: 0px;">
                             <tr>
                                 <th style="width: 5%;" class="text-center">#</th>
-                                <th style="width: 60%;">Nama Program (Unik)</th>
-                                <th style="width: 20%;" class="text-center">Kekerapan</th>
-                                <th style="width: 15%;" class="text-center">Tindakan</th>
+                                <th style="width: 40%;">Nama Program Asal (Sedia Ada)</th>
+                                <th style="width: 10%;" class="text-center">Kekerapan</th>
+                                <th style="width: 35%;">Nama Baru (Untuk Diseragamkan)</th>
+                                <th style="width: 10%;" class="text-center">Tindakan</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyStandardize">
                             <!-- Data akan diisi oleh JS -->
+                            <tr><td colspan="5" class="text-center py-5 text-muted">Memuatkan data analisa...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer bg-light p-2">
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            <div class="modal-footer bg-white p-2 justify-content-between">
+                <span class="text-muted small ms-2"><i class="fas fa-info-circle me-1"></i> Perubahan akan dikemaskini serta-merta di pangkalan data.</span>
+                <button type="button" class="btn btn-sm btn-secondary fw-bold" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>

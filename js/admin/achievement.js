@@ -1,9 +1,12 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (STABLE)
- * Menguruskan rekod pencapaian murid, guru, dan sekolah.
- * * FIXES:
- * - MOD SQL: Menggantikan fungsi edit terus dengan penjanaan skrip SQL untuk dijalankan di Supabase.
- * - BYPASS INPUT ISSUE: Mengelakkan masalah fokus input modal dengan hanya memaparkan output readonly.
+ * ADMIN MODULE: ACHIEVEMENT (PRECISION UPDATE v2)
+ * Menguruskan rekod pencapaian dengan kawalan integriti data (Pertandingan vs Pensijilan).
+ * * UPDATE LOG:
+ * - Added 'filterJenisPencapaian' logic in renderTable.
+ * - Added Visual Badges [PERTANDINGAN/PENSIJILAN] in table view.
+ * - Updated 'openEditPencapaian' to handle Radio Buttons.
+ * - Added 'toggleEditJenis' for dynamic modal UI.
+ * - Updated 'simpanEditPencapaian' to capture corrected record type.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -18,6 +21,8 @@ let sortState = { column: 'created_at', direction: 'desc' };
 // Cache untuk senarai nama program unik bagi tujuan penyeragaman
 let standardizationList = []; 
 let filteredStandardizationList = [];
+
+// --- INITIALIZATION ---
 
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
@@ -71,15 +76,19 @@ function populateSekolahFilter(data) {
     if(seen.has(oldVal)) select.value = oldVal;
 }
 
+// --- RENDERING TABLE (UPDATED) ---
+
 window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     const katFilter = document.getElementById('filterKategoriPencapaian').value;
     const sekFilter = document.getElementById('filterSekolahPencapaian').value;
+    const jenisFilter = document.getElementById('filterJenisPencapaian').value; // NEW FILTER
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
     let data = pencapaianList.filter(i => {
         if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
+        if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false; // NEW LOGIC
         
         if(search) {
             let namaSekolah = (i.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
@@ -132,6 +141,14 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-dark';
         else if (i.kategori === 'PPD') badgeClass = 'bg-primary';
 
+        // VISUAL BADGE FOR INTEGRITY CHECK
+        let jenisBadge = '';
+        if (i.jenis_rekod === 'PENSIJILAN') {
+            jenisBadge = `<span class="badge bg-warning text-dark border border-dark me-1" style="font-size:0.6rem; opacity:0.8;">PENSIJILAN</span>`;
+        } else {
+            jenisBadge = `<span class="badge bg-primary bg-opacity-75 me-1" style="font-size:0.6rem;">PERTANDINGAN</span>`;
+        }
+
         return `<tr>
             <td class="fw-bold small align-middle">${i.kod_sekolah}</td>
             <td class="small text-wrap align-middle">${namaSekolah}</td>
@@ -140,7 +157,10 @@ window.renderPencapaianTable = function() {
                 <div class="fw-bold text-dark small text-wrap">${i.nama_peserta}</div>
                 ${i.jawatan ? `<span class="badge bg-light text-secondary border mt-1" style="font-size:0.6rem;">${i.jawatan}</span>` : ''}
             </td>
-            <td class="align-middle"><div class="text-primary small fw-bold text-wrap">${i.nama_pertandingan}</div></td>
+            <td class="align-middle">
+                <div class="mb-1">${jenisBadge}</div>
+                <div class="text-primary small fw-bold text-wrap">${i.nama_pertandingan}</div>
+            </td>
             <td class="text-center fw-bold small align-middle">${i.pencapaian}</td>
             <td class="text-center align-middle"><a href="${i.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary"><i class="fas fa-link"></i></a></td>
             <td class="text-center text-nowrap align-middle">
@@ -243,6 +263,7 @@ window.resetPencapaianFilters = function() {
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
     document.getElementById('filterSekolahPencapaian').value = 'ALL';
     document.getElementById('filterTahunPencapaian').value = 'ALL';
+    document.getElementById('filterJenisPencapaian').value = 'ALL';
     window.loadMasterPencapaian();
     Swal.fire({ icon: 'success', title: 'Filter Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
 };
@@ -263,13 +284,13 @@ window.handleSort = function(col) {
 };
 window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
 
-// CRUD Operations
+// --- CRUD OPERATIONS (UPDATED INTEGRITY CHECK) ---
+
 window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
     if(!item) return;
     
     document.getElementById('editIdPencapaian').value = id;
-    document.getElementById('editJenisRekod').value = item.jenis_rekod;
     document.getElementById('editNamaSekolah').value = item.kod_sekolah;
     document.getElementById('editInputNama').value = item.nama_peserta;
     document.getElementById('editInputProgram').value = item.nama_pertandingan;
@@ -277,6 +298,13 @@ window.openEditPencapaian = function(id) {
     document.getElementById('editInputLink').value = item.pautan_bukti;
     document.getElementById('editInputTahun').value = item.tahun;
     
+    // NEW: SET RADIO BUTTON
+    if (item.jenis_rekod === 'PENSIJILAN') {
+        document.getElementById('editRadioPensijilan').checked = true;
+    } else {
+        document.getElementById('editRadioPertandingan').checked = true;
+    }
+
     const divJawatan = document.getElementById('divEditJawatan');
     if(item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
@@ -285,36 +313,51 @@ window.openEditPencapaian = function(id) {
         divJawatan.classList.add('hidden');
     }
     
-    const divPenyedia = document.getElementById('divEditPenyedia');
-    const colPeringkat = document.getElementById('divEditColPeringkat');
-
+    // SETUP PENYEDIA vs PERINGKAT (Initial)
     if (item.jenis_rekod === 'PENSIJILAN') {
-        divPenyedia.classList.remove('hidden');
-        colPeringkat.classList.add('hidden'); 
         document.getElementById('editInputPenyedia').value = item.penyedia || 'LAIN-LAIN';
-        document.getElementById('lblEditProgram').innerText = "NAMA SIJIL";
-        document.getElementById('lblEditPencapaian').innerText = "TAHAP / SKOR";
     } else {
-        divPenyedia.classList.add('hidden');
-        colPeringkat.classList.remove('hidden'); 
         document.getElementById('editInputPeringkat').value = item.peringkat;
-        document.getElementById('lblEditProgram').innerText = "NAMA PERTANDINGAN";
-        document.getElementById('lblEditPencapaian').innerText = "PENCAPAIAN";
     }
+    
+    // APPLY TOGGLE UI
+    window.toggleEditJenis();
     
     new bootstrap.Modal(document.getElementById('modalEditPencapaian')).show();
 };
 
+window.toggleEditJenis = function() {
+    const jenis = document.querySelector('input[name="editRadioJenis"]:checked').value;
+    
+    const divPenyedia = document.getElementById('divEditPenyedia');
+    const colPeringkat = document.getElementById('divEditColPeringkat');
+    const lblProgram = document.getElementById('lblEditProgram');
+    const lblPencapaian = document.getElementById('lblEditPencapaian');
+
+    if (jenis === 'PENSIJILAN') {
+        divPenyedia.classList.remove('hidden');
+        colPeringkat.classList.add('hidden'); 
+        lblProgram.innerText = "NAMA SIJIL";
+        lblPencapaian.innerText = "TAHAP / SKOR";
+    } else {
+        divPenyedia.classList.add('hidden');
+        colPeringkat.classList.remove('hidden'); 
+        lblProgram.innerText = "NAMA PERTANDINGAN";
+        lblPencapaian.innerText = "PENCAPAIAN";
+    }
+};
+
 window.simpanEditPencapaian = async function() {
     const id = document.getElementById('editIdPencapaian').value;
-    const jenis = document.getElementById('editJenisRekod').value;
+    const jenis = document.querySelector('input[name="editRadioJenis"]:checked').value;
     
     const payload = {
         nama_peserta: document.getElementById('editInputNama').value.toUpperCase(),
         nama_pertandingan: document.getElementById('editInputProgram').value.toUpperCase(),
         pencapaian: document.getElementById('editInputPencapaian').value.toUpperCase(),
         pautan_bukti: document.getElementById('editInputLink').value,
-        tahun: parseInt(document.getElementById('editInputTahun').value)
+        tahun: parseInt(document.getElementById('editInputTahun').value),
+        jenis_rekod: jenis // Capture Corrected Type
     };
     
     if(!document.getElementById('divEditJawatan').classList.contains('hidden')) {
@@ -323,7 +366,7 @@ window.simpanEditPencapaian = async function() {
 
     if (jenis === 'PENSIJILAN') {
         payload.penyedia = document.getElementById('editInputPenyedia').value;
-        payload.peringkat = 'ANTARABANGSA'; 
+        payload.peringkat = 'ANTARABANGSA'; // Force default for Certification
     } else {
         payload.peringkat = document.getElementById('editInputPeringkat').value;
     }
@@ -333,7 +376,7 @@ window.simpanEditPencapaian = async function() {
         await AchievementService.update(id, payload);
         toggleLoading(false);
         bootstrap.Modal.getInstance(document.getElementById('modalEditPencapaian')).hide();
-        Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => window.loadMasterPencapaian());
+        Swal.fire('Berjaya', 'Integriti data telah dikemaskini.', 'success').then(() => window.loadMasterPencapaian());
     } catch (e) {
         toggleLoading(false);
         Swal.fire('Ralat', 'Gagal mengemaskini.', 'error');
@@ -472,7 +515,7 @@ window.eksportPencapaian = function() {
         return;
     }
 
-    let csvContent = "BIL,KOD,NAMA SEKOLAH,KATEGORI,PESERTA,JAWATAN,PROGRAM,PERINGKAT,PENCAPAIAN,TAHUN,PAUTAN BUKTI\n";
+    let csvContent = "BIL,KOD,NAMA SEKOLAH,JENIS REKOD,KATEGORI,PESERTA,JAWATAN,PROGRAM,PERINGKAT,PENCAPAIAN,TAHUN,PAUTAN BUKTI\n";
 
     currentPencapaianFiltered.forEach((i, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
@@ -488,6 +531,7 @@ window.eksportPencapaian = function() {
             index + 1,
             clean(i.kod_sekolah),
             clean(namaSekolah),
+            clean(i.jenis_rekod), // Added Type
             clean(i.kategori),
             clean(i.nama_peserta),
             clean(i.jawatan || '-'),
@@ -506,27 +550,24 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (UPDATED: DIRECT EDIT & SEARCH) ---
+// --- DATA STANDARDIZATION LOGIC (UPDATED) ---
 
 window.openStandardizeModal = function() {
     const counts = {};
-    // Reset cache
     standardizationList = [];
     filteredStandardizationList = [];
 
-    // 1. Kira Kekerapan Unik
     pencapaianList.forEach(item => {
         const name = item.nama_pertandingan || "TIADA NAMA";
         counts[name] = (counts[name] || 0) + 1;
     });
 
-    // 2. Simpan Cache Data (Structure: {oldName, count})
     Object.keys(counts).sort().forEach(name => {
         standardizationList.push({ name: name, count: counts[name] });
     });
 
-    filteredStandardizationList = standardizationList; // Default: Show all
-    document.getElementById('standardizeSearch').value = ''; // Reset search
+    filteredStandardizationList = standardizationList;
+    document.getElementById('standardizeSearch').value = '';
     
     renderStandardizeTable(filteredStandardizationList);
     new bootstrap.Modal(document.getElementById('modalStandardize')).show();
@@ -542,9 +583,7 @@ window.renderStandardizeTable = function(list) {
     }
 
     tbody.innerHTML = list.map((item, index) => {
-        // Safe string untuk ID HTML (remove spaces/quotes)
         const safeId = index; 
-        // Escape quotes untuk JS function call
         const safeName = item.name.replace(/'/g, "\\'"); 
 
         return `
@@ -597,26 +636,13 @@ window.executeStandardization = function(oldName, inputId) {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
-                // Panggil Service Update Batch
                 await AchievementService.batchUpdateProgramName(oldName, newName);
-                
                 toggleLoading(false);
-                
-                Swal.fire({
-                    title: 'Berjaya!',
-                    text: 'Data telah diseragamkan.',
-                    icon: 'success',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-
-                // Auto-refresh: Reload master data & modal list
-                await window.loadMasterPencapaian(); // Ini akan refresh pencapaianList
-                window.openStandardizeModal(); // Re-populate modal dengan data baru
-
+                Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
+                await window.loadMasterPencapaian(); 
+                window.openStandardizeModal(); 
             } catch (e) {
                 toggleLoading(false);
-                console.error(e);
                 Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
             }
         }

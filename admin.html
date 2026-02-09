@@ -259,57 +259,73 @@
                     </div>
                 </div>
 
-                <!-- NEW CONTROL BAR DESIGN -->
-                <div class="bg-light p-3 rounded-4 mb-4 border shadow-sm">
-                    <div class="row g-2 align-items-end">
-                        
-                        <!-- ZON 1: CARIAN & TAHUN -->
-                        <div class="col-lg-3 col-md-6">
-                            <label class="small fw-bold text-muted mb-1 ms-1">Carian Pantas</label>
-                            <div class="input-group input-group-clean">
-                                <span class="input-group-text"><i class="fas fa-search text-muted"></i></span>
-                                <input type="text" id="searchPencapaianInput" class="form-control" placeholder="Sekolah / Peserta..." onkeyup="handlePencapaianSearch(this.value)">
+                <!-- UNIFIED CONTROL DECK (FLOATING GRID LAYOUT) -->
+                <div class="card border-0 shadow-sm bg-light rounded-4 mb-4">
+                    <div class="card-body p-3">
+                        <div class="row g-2 align-items-center">
+                            
+                            <!-- 1. SEARCH (Paling Kiri - Fokus Utama - 30%) -->
+                            <div class="col-12 col-md-12 col-lg-3">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control border-0 shadow-sm fw-bold" id="searchPencapaianInput" placeholder="Carian..." onkeyup="handlePencapaianSearch(this.value)">
+                                    <label for="searchPencapaianInput"><i class="fas fa-search me-2 text-muted"></i>Cari Nama/Prog</label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-lg-2 col-md-6">
-                            <label class="small fw-bold text-muted mb-1 ms-1">Tahun</label>
-                            <select id="filterTahunPencapaian" class="form-select form-select-clean text-primary" onchange="loadMasterPencapaian()">
-                                <option value="" disabled selected>Memuatkan...</option>
-                            </select>
-                        </div>
 
-                        <!-- ZON 2: PENAPISAN KATEGORI -->
-                        <div class="col-lg-2 col-md-4">
-                            <label class="small fw-bold text-muted mb-1 ms-1">Kategori</label>
-                            <select id="filterKategoriPencapaian" class="form-select form-select-clean" onchange="renderPencapaianTable()">
-                                <option value="ALL" selected>SEMUA KATEGORI</option>
-                                <option value="MURID">MURID</option>
-                                <option value="GURU">GURU</option>
-                                <option value="SEKOLAH">SEKOLAH</option>
-                                <option value="PEGAWAI">PEGAWAI PPD</option>
-                                <option value="PPD">UNIT PPD</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-md-4">
-                            <label class="small fw-bold text-muted mb-1 ms-1">Jenis Rekod</label>
-                            <select id="filterJenisPencapaian" class="form-select form-select-clean" onchange="renderPencapaianTable()">
-                                <option value="ALL" selected>SEMUA JENIS</option>
-                                <option value="PERTANDINGAN">PERTANDINGAN</option>
-                                <option value="PENSIJILAN">PENSIJILAN</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-md-4">
-                            <label class="small fw-bold text-muted mb-1 ms-1">Sekolah</label>
-                            <select id="filterSekolahPencapaian" class="form-select form-select-clean" onchange="renderPencapaianTable()">
-                                <option value="ALL" selected>SEMUA SEKOLAH</option>
-                            </select>
-                        </div>
+                            <!-- 2. TAHUN (15%) -->
+                            <div class="col-6 col-md-3 col-lg-2">
+                                <div class="form-floating">
+                                    <select class="form-select border-0 shadow-sm fw-bold text-primary" id="filterTahunPencapaian" onchange="loadMasterPencapaian()">
+                                        <option value="" disabled selected>Memuatkan...</option>
+                                    </select>
+                                    <label for="filterTahunPencapaian">Tahun</label>
+                                </div>
+                            </div>
 
-                        <!-- ZON 3: RESET -->
-                        <div class="col-lg-1 text-end">
-                            <button onclick="resetPencapaianFilters()" class="btn btn-outline-secondary w-100 btn-sm fw-bold border-0" title="Reset Semua Filter" style="height: 38px;">
-                                <i class="fas fa-undo"></i>
-                            </button>
+                            <!-- 3. KATEGORI (15%) -->
+                            <div class="col-6 col-md-3 col-lg-2">
+                                <div class="form-floating">
+                                    <select class="form-select border-0 shadow-sm fw-bold" id="filterKategoriPencapaian" onchange="renderPencapaianTable()">
+                                        <option value="ALL" selected>SEMUA</option>
+                                        <option value="MURID">MURID</option>
+                                        <option value="GURU">GURU</option>
+                                        <option value="SEKOLAH">SEKOLAH</option>
+                                        <option value="PEGAWAI">PEGAWAI PPD</option>
+                                        <option value="PPD">UNIT PPD</option>
+                                    </select>
+                                    <label for="filterKategoriPencapaian">Kategori</label>
+                                </div>
+                            </div>
+
+                            <!-- 4. JENIS REKOD (15%) -->
+                            <div class="col-6 col-md-3 col-lg-2">
+                                <div class="form-floating">
+                                    <select class="form-select border-0 shadow-sm fw-bold" id="filterJenisPencapaian" onchange="renderPencapaianTable()">
+                                        <option value="ALL" selected>SEMUA</option>
+                                        <option value="PERTANDINGAN">PERTANDINGAN</option>
+                                        <option value="PENSIJILAN">PENSIJILAN</option>
+                                    </select>
+                                    <label for="filterJenisPencapaian">Jenis</label>
+                                </div>
+                            </div>
+
+                            <!-- 5. SEKOLAH (20%) -->
+                            <div class="col-6 col-md-3 col-lg-2">
+                                <div class="form-floating">
+                                    <select class="form-select border-0 shadow-sm fw-bold" id="filterSekolahPencapaian" onchange="renderPencapaianTable()">
+                                        <option value="ALL" selected>SEMUA SEKOLAH</option>
+                                    </select>
+                                    <label for="filterSekolahPencapaian">Sekolah</label>
+                                </div>
+                            </div>
+
+                            <!-- 6. RESET BUTTON (5% - Auto Width) -->
+                            <div class="col-12 col-lg-1 d-flex align-items-stretch">
+                                <button onclick="resetPencapaianFilters()" class="btn btn-white border-0 shadow-sm w-100 py-3 text-secondary" title="Reset Filter" style="height: 58px;">
+                                    <i class="fas fa-sync-alt fa-lg"></i>
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 </div>

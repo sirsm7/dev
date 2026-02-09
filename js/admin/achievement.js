@@ -1,9 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (DEV) - FIX STANDARDIZE INPUT
+ * ADMIN MODULE: ACHIEVEMENT (STABLE)
  * Menguruskan rekod pencapaian murid, guru, dan sekolah.
- * * LOGIK FIX:
- * - Menambah 'willOpen' pada Swal untuk membuang tabindex modal secara dinamik.
- * - Menambah 'else' block untuk memberitahu user jika tiada perubahan dikesan.
+ * * FIXES:
+ * - STANDARDIZATION UPDATE: Menggunakan rujukan indeks (array) dan bukannya string raw untuk mengelakkan ralat syntax pada nama program yang mengandungi simbol khas.
+ * - INPUT FOCUS: Memastikan SweetAlert boleh ditaip walaupun di atas Modal Bootstrap.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -14,6 +14,9 @@ let currentPencapaianFiltered = [];
 let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
 let sortState = { column: 'created_at', direction: 'desc' };
+
+// Cache untuk senarai nama program unik bagi tujuan penyeragaman
+let standardizationList = []; 
 
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
@@ -281,19 +284,18 @@ window.openEditPencapaian = function(id) {
         divJawatan.classList.add('hidden');
     }
     
-    // UPDATED: Logic to handle new HTML Structure
     const divPenyedia = document.getElementById('divEditPenyedia');
     const colPeringkat = document.getElementById('divEditColPeringkat');
 
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
-        colPeringkat.classList.add('hidden'); // Hide dropdown Peringkat
+        colPeringkat.classList.add('hidden'); 
         document.getElementById('editInputPenyedia').value = item.penyedia || 'LAIN-LAIN';
         document.getElementById('lblEditProgram').innerText = "NAMA SIJIL";
         document.getElementById('lblEditPencapaian').innerText = "TAHAP / SKOR";
     } else {
         divPenyedia.classList.add('hidden');
-        colPeringkat.classList.remove('hidden'); // Show dropdown Peringkat
+        colPeringkat.classList.remove('hidden'); 
         document.getElementById('editInputPeringkat').value = item.peringkat;
         document.getElementById('lblEditProgram').innerText = "NAMA PERTANDINGAN";
         document.getElementById('lblEditPencapaian').innerText = "PENCAPAIAN";
@@ -320,7 +322,7 @@ window.simpanEditPencapaian = async function() {
 
     if (jenis === 'PENSIJILAN') {
         payload.penyedia = document.getElementById('editInputPenyedia').value;
-        payload.peringkat = 'ANTARABANGSA'; // Force Antarabangsa
+        payload.peringkat = 'ANTARABANGSA'; 
     } else {
         payload.peringkat = document.getElementById('editInputPeringkat').value;
     }
@@ -376,7 +378,6 @@ window.toggleJenisPencapaianPPD = function() {
     const divPenyedia = document.getElementById('divPpdPenyedia');
     const colPeringkat = document.getElementById('divPpdColPeringkat');
     
-    // UPDATED: Logic toggle Peringkat vs Penyedia
     if (isPensijilan) {
         divPenyedia.classList.remove('hidden');
         colPeringkat.classList.add('hidden');
@@ -412,7 +413,6 @@ window.simpanPencapaianPPD = async function() {
     let peringkat = 'KEBANGSAAN';
     let penyedia = 'LAIN-LAIN';
     
-    // UPDATED: Standardized Value Retrieval
     const tahun = parseInt(document.getElementById('ppdInputTahun').value);
 
     if (jenisRekod === 'PENSIJILAN') {
@@ -455,7 +455,7 @@ window.simpanPencapaianPPD = async function() {
         
         bootstrap.Modal.getInstance(document.getElementById('modalRekodPPD')).hide();
         document.getElementById('formPencapaianPPD').reset();
-        document.getElementById('ppdInputTahun').value = '2026'; // Reset default
+        document.getElementById('ppdInputTahun').value = '2026';
         
         Swal.fire('Berjaya', 'Rekod PPD Disimpan.', 'success').then(() => window.loadMasterPencapaian());
     } catch(e) {
@@ -465,7 +465,6 @@ window.simpanPencapaianPPD = async function() {
     }
 };
 
-// --- NEW EXPORT FUNCTION ---
 window.eksportPencapaian = function() {
     if (!currentPencapaianFiltered || currentPencapaianFiltered.length === 0) {
         Swal.fire('Tiada Data', 'Tiada data untuk dieksport pada paparan semasa.', 'info');
@@ -506,7 +505,7 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (NEW FIXED) ---
+// --- DATA STANDARDIZATION LOGIC (ROBUST VERSION) ---
 
 window.openStandardizeModal = function() {
     const counts = {};
@@ -515,19 +514,23 @@ window.openStandardizeModal = function() {
         counts[name] = (counts[name] || 0) + 1;
     });
 
-    const sortedNames = Object.keys(counts).sort();
+    // PENTING: Simpan senarai nama unik (sorted) ke dalam array global module
+    // untuk diakses menggunakan indeks
+    standardizationList = Object.keys(counts).sort();
+    
     const tbody = document.getElementById('tbodyStandardize');
     if (!tbody) return;
     
-    tbody.innerHTML = sortedNames.map((name, index) => {
-        const safeName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    tbody.innerHTML = standardizationList.map((name, index) => {
+        // Paparan HTML kekal (hanya untuk visual)
         return `
             <tr>
                 <td class="text-center fw-bold small">${index + 1}</td>
                 <td class="fw-bold text-primary small text-wrap">${name}</td>
                 <td class="text-center"><span class="badge bg-secondary rounded-pill">${counts[name]} Rekod</span></td>
                 <td class="text-center">
-                    <button onclick="editProgramName('${safeName}')" class="btn btn-sm btn-outline-dark fw-bold">
+                    <!-- Gunakan INDEX, bukan string raw, untuk elak ralat syntax -->
+                    <button onclick="editProgramNameByIndex(${index})" class="btn btn-sm btn-outline-dark fw-bold">
                         <i class="fas fa-edit me-1"></i> Edit
                     </button>
                 </td>
@@ -536,6 +539,16 @@ window.openStandardizeModal = function() {
     }).join('');
 
     new bootstrap.Modal(document.getElementById('modalStandardize')).show();
+};
+
+// Fungsi perantara untuk ambil string sebenar dari array
+window.editProgramNameByIndex = function(index) {
+    const oldName = standardizationList[index];
+    if (oldName) {
+        window.editProgramName(oldName);
+    } else {
+        Swal.fire('Ralat', 'Indeks nama tidak dijumpai.', 'error');
+    }
 };
 
 window.editProgramName = async function(oldName) {
@@ -550,34 +563,51 @@ window.editProgramName = async function(oldName) {
         confirmButtonColor: '#4b0082',
         inputValidator: (value) => { if (!value) return 'Nama program tidak boleh kosong!'; },
         
-        // PENTING: Force focus kepada input SweetAlert apabila ia dibuka
-        // dan buang fokus trap Bootstrap jika ada
+        // PENTING: Fix untuk masalah fokus input dalam Modal Bootstrap
         willOpen: () => {
             const modal = document.getElementById('modalStandardize');
-            if (modal) modal.removeAttribute('tabindex'); // Matikan fokus trap Bootstrap
+            if (modal) modal.removeAttribute('tabindex'); // Matikan 'trap' fokus Bootstrap sementara
         },
         didOpen: () => {
             const input = Swal.getInput();
             if (input) input.focus();
+        },
+        // Kembalikan tabindex selepas tutup (pilihan, tapi removeAttribute biasanya cukup)
+        didClose: () => {
+             // Optional cleanup
         }
     });
 
     if (newName) {
-        if (newName !== oldName) {
+        // Trim whitespace untuk elak ralat "nampak sama tapi tak sama"
+        const cleanOld = oldName.trim();
+        const cleanNew = newName.trim().toUpperCase();
+
+        if (cleanNew !== cleanOld.toUpperCase()) {
             toggleLoading(true);
             try {
-                await AchievementService.batchUpdateProgramName(oldName, newName.toUpperCase());
+                await AchievementService.batchUpdateProgramName(cleanOld, cleanNew);
                 toggleLoading(false);
-                await Swal.fire('Berjaya', `Rekod telah diseragamkan kepada "${newName.toUpperCase()}".`, 'success');
-                window.loadMasterPencapaian(); 
+                
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Berjaya!',
+                    text: `Rekod telah diseragamkan kepada "${cleanNew}".`,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                
+                // Refresh data dan tutup modal
                 bootstrap.Modal.getInstance(document.getElementById('modalStandardize')).hide();
+                window.loadMasterPencapaian(); 
+                
             } catch (e) {
                 toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
+                console.error(e);
+                Swal.fire('Ralat Pangkalan Data', 'Gagal mengemaskini data. Sila cuba lagi.', 'error');
             }
         } else {
-            // Beritahu pengguna jika tiada perubahan dibuat
-            Swal.fire('Tiada Perubahan', 'Nama program adalah sama. Tiada kemaskini dilakukan.', 'info');
+            Swal.fire('Tiada Perubahan', 'Nama program adalah sama. Tiada tindakan diambil.', 'info');
         }
     }
 };

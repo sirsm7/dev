@@ -553,7 +553,11 @@ window.renderStandardizeTable = function(list) {
                 <td class="fw-bold text-dark small text-wrap text-break">${item.name}</td>
                 <td class="text-center"><span class="badge bg-secondary rounded-pill">${item.count}</span></td>
                 <td>
-                    <input type="text" id="std-input-${safeId}" class="form-control form-control-sm border-primary fw-bold text-primary" placeholder="Tulis nama baru..." value="${item.name.replace(/"/g, '&quot;')}">
+                    <input type="text" id="std-input-${safeId}" 
+                           class="form-control form-control-sm border-primary fw-bold text-primary uppercase-input" 
+                           placeholder="Tulis nama baru..." 
+                           value="${item.name.replace(/"/g, '&quot;')}"
+                           oninput="this.value = this.value.toUpperCase()">
                 </td>
                 <td class="text-center">
                     <button onclick="executeStandardization('${safeName}', 'std-input-${safeId}')" class="btn btn-sm btn-success text-white fw-bold shadow-sm">

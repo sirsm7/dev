@@ -34,13 +34,16 @@ export const AuthService = {
     },
 
     /**
-     * Dapatkan senarai semua admin (Untuk Super Admin)
+     * Dapatkan senarai semua admin (Untuk Super Admin & Admin)
+     * Kemaskini: Menambah SUPER_ADMIN dalam senarai fetch
      */
     async getAllAdmins() {
         const { data, error } = await db
             .from('smpid_users')
             .select('*')
-            .in('role', ['ADMIN', 'PPD_UNIT'])
+            // Kita ambil semua role pengurusan. Filtering akan dibuat di frontend (settings.js)
+            // berdasarkan siapa yang sedang login untuk keselamatan UI.
+            .in('role', ['SUPER_ADMIN', 'ADMIN', 'PPD_UNIT'])
             .order('email', { ascending: true });
 
         if (error) throw error;

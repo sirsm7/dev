@@ -1,7 +1,7 @@
 /**
  * ADMIN MODULE: SETTINGS (DEV)
  * Menguruskan pengguna admin dan reset password sekolah.
- * Kemaskini: Sokongan untuk SUPER ADMIN dan penapisan akses.
+ * Kemaskini: Matriks Kuasa SUPER ADMIN vs ADMIN.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -14,8 +14,9 @@ window.loadAdminList = async function() {
     if (!wrapper) return;
     wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
     
-    // Dapatkan role semasa pengguna yang sedang login
+    // Dapatkan info sesi semasa
     const currentUserRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    const currentUserId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID);
     
     // Kemaskini Dropdown Pilihan Role untuk Tambah Admin
     updateRoleDropdown(currentUserRole);
@@ -23,12 +24,10 @@ window.loadAdminList = async function() {
     try {
         let data = await AuthService.getAllAdmins();
         
-        // --- LOGIK PENAPISAN (FILTERING) ---
-        // Jika ADMIN biasa, buang SUPER_ADMIN dari senarai paparan
-        if (currentUserRole !== 'SUPER_ADMIN') {
-            data = data.filter(user => user.role !== 'SUPER_ADMIN');
-        }
-
+        // --- LOGIK PENAPISAN DATA (VIEW) ---
+        // Jika ADMIN biasa, sembunyikan baris SUPER_ADMIN dari pandangan (Security by obscurity)
+        // atau tunjuk tapi disable action. Di sini kita pilih untuk tunjuk tapi kawal butang.
+        
         if(data.length === 0) { 
             wrapper.innerHTML = `<div class="alert alert-warning">Tiada data admin dijumpai.</div>`; 
             return; 
@@ -38,40 +37,78 @@ window.loadAdminList = async function() {
         <table class="table table-hover table-bordered align-middle mb-0 bg-white">
             <thead class="bg-light">
                 <tr>
-                    <th class="small text-uppercase text-secondary">Emel</th>
-                    <th class="small text-uppercase text-secondary">Peranan</th>
-                    <th class="small text-uppercase text-secondary text-center" style="width: 150px;">Tindakan</th>
+                    <th class="small text-uppercase text-secondary" style="width: 5%;">#</th>
+                    <th class="small text-uppercase text-secondary">Emel Pengguna</th>
+                    <th class="small text-uppercase text-secondary text-center" style="width: 15%;">Peranan</th>
+                    <th class="small text-uppercase text-secondary text-center" style="width: 25%;">Tindakan</th>
                 </tr>
             </thead>
             <tbody>`;
             
-        data.forEach(user => {
+        data.forEach((user, index) => {
+            const isSelf = (user.id === currentUserId);
+            
+            // 1. Badge Peranan
             let roleBadge = '';
-            if (user.role === 'SUPER_ADMIN') {
-                roleBadge = `<span class="badge bg-danger">SUPER ADMIN</span>`;
-            } else if (user.role === 'ADMIN') {
-                roleBadge = `<span class="badge bg-primary">ADMIN</span>`;
-            } else {
-                roleBadge = `<span class="badge bg-indigo" style="background-color: #4b0082;">UNIT PPD</span>`;
-            }
+            if (user.role === 'SUPER_ADMIN') roleBadge = `<span class="badge bg-danger">SUPER ADMIN</span>`;
+            else if (user.role === 'ADMIN') roleBadge = `<span class="badge bg-primary">ADMIN</span>`;
+            else roleBadge = `<span class="badge bg-indigo" style="background-color: #4b0082;">UNIT PPD</span>`;
 
-            // Halang butang padam diri sendiri (optional UI enhancement)
-            const currentUserId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID);
-            let deleteBtn = `
-                <button onclick="padamAdmin('${user.id}', '${user.email}', '${user.role}')" class="btn btn-sm btn-outline-danger" title="Padam Akaun">
+            // 2. Logik Butang Tindakan (MATRIX KUASA)
+            let actionButtons = '';
+
+            // --- BUTANG PADAM (DELETE) ---
+            // Hanya SUPER_ADMIN boleh padam pengguna lain.
+            // Tidak boleh padam diri sendiri di sini.
+            // Tidak boleh padam SUPER_ADMIN lain (jika ada).
+            if (currentUserRole === 'SUPER_ADMIN' && user.role !== 'SUPER_ADMIN' && !isSelf) {
+                actionButtons += `
+                <button onclick="padamAdmin('${user.id}', '${user.email}')" class="btn btn-sm btn-outline-danger me-1" title="Padam Akaun">
                     <i class="fas fa-trash-alt"></i>
                 </button>`;
-            
-            if (user.id === currentUserId) {
-                deleteBtn = `<span class="badge bg-light text-muted border">ANDA</span>`;
+            } 
+            // ADMIN biasa TIDAK BOLEH padam sesiapa berdasarkan arahan.
+
+            // --- BUTANG RESET PASSWORD (FORCE) ---
+            let canReset = false;
+
+            if (user.role === 'SUPER_ADMIN') {
+                // Hanya boleh reset diri sendiri
+                if (isSelf) canReset = true;
+            } else {
+                // Target: ADMIN atau UNIT PPD
+                // Doer: SUPER_ADMIN atau ADMIN
+                if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') {
+                    canReset = true;
+                }
+            }
+
+            if (canReset) {
+                // Jika diri sendiri, panggil fungsi ubah password biasa (lama + baru)
+                // Jika orang lain, panggil fungsi force reset (baru sahaja)
+                const resetFunc = isSelf ? `ubahKataLaluanSendiri()` : `resetUserPass('${user.id}', '${user.email}', '${user.role}')`;
+                const btnColor = isSelf ? 'btn-warning' : 'btn-outline-dark';
+                const btnIcon = isSelf ? 'fa-key' : 'fa-unlock-alt';
+                const btnTitle = isSelf ? 'Tukar Password Anda' : 'Reset Password Pengguna Ini';
+                
+                actionButtons += `
+                <button onclick="${resetFunc}" class="btn btn-sm ${btnColor}" title="${btnTitle}">
+                    <i class="fas ${btnIcon}"></i>
+                </button>`;
+            }
+
+            // Penanda 'ANDA'
+            if (isSelf) {
+                roleBadge += ` <span class="badge bg-light text-dark border ms-1">ANDA</span>`;
             }
 
             html += `
             <tr>
+                <td class="text-center text-muted small">${index + 1}</td>
                 <td class="fw-bold text-dark small">${user.email}</td>
-                <td class="small">${roleBadge}</td>
+                <td class="text-center">${roleBadge}</td>
                 <td class="text-center">
-                    ${deleteBtn}
+                    ${actionButtons || '<span class="text-muted small fst-italic">- Tiada Akses -</span>'}
                 </td>
             </tr>`;
         });
@@ -80,6 +117,34 @@ window.loadAdminList = async function() {
     } catch (e) { 
         console.error(e);
         wrapper.innerHTML = `<div class="alert alert-danger">Ralat memuatkan senarai admin.</div>`; 
+    }
+};
+
+// Fungsi Reset Password Paksa (Untuk Admin reset user lain)
+window.resetUserPass = async function(targetId, targetEmail, targetRole) {
+    const { value: newPass } = await Swal.fire({
+        title: 'Reset Kata Laluan',
+        html: `Masukkan kata laluan baharu untuk<br><b>${targetEmail}</b> (${targetRole})`,
+        input: 'text',
+        inputPlaceholder: 'Kata laluan baru...',
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        confirmButtonColor: '#198754',
+        cancelButtonText: 'Batal'
+    });
+
+    if (newPass) {
+        if (newPass.length < 6) return Swal.fire('Ralat', 'Kata laluan terlalu pendek (Min 6).', 'warning');
+
+        toggleLoading(true);
+        try {
+            await AuthService.forceResetUserPassword(targetId, newPass);
+            toggleLoading(false);
+            Swal.fire('Berjaya', `Kata laluan untuk ${targetEmail} telah diubah.`, 'success');
+        } catch (e) {
+            toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal menetapkan kata laluan.', 'error');
+        }
     }
 };
 
@@ -97,7 +162,7 @@ function updateRoleDropdown(currentUserRole) {
         { val: 'PPD_UNIT', txt: 'UNIT PPD (Pencapaian Sahaja)' }
     ];
 
-    // Jika SUPER ADMIN, tambah pilihan SUPER ADMIN
+    // Jika SUPER ADMIN, tambah pilihan SUPER ADMIN (Optional: Jika mahu create Super Admin lain)
     if (currentUserRole === 'SUPER_ADMIN') {
         opts.unshift({ val: 'SUPER_ADMIN', txt: 'SUPER ADMIN (Akses Mutlak)' });
     }
@@ -117,7 +182,7 @@ window.tambahAdmin = async function() {
     
     if(!email || !pass) return Swal.fire('Ralat', 'Sila isi emel dan kata laluan.', 'warning');
     
-    // Double check keselamatan di sisi klien (walaupun dropdown dah filter)
+    // Semakan Keselamatan: Hanya SUPER_ADMIN boleh cipta SUPER_ADMIN
     const currentUserRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     if (role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
         return Swal.fire('Dilarang', 'Anda tidak mempunyai kuasa mencipta Super Admin.', 'error');
@@ -138,20 +203,22 @@ window.tambahAdmin = async function() {
     }
 };
 
-window.padamAdmin = async function(id, email, targetRole) {
+window.padamAdmin = async function(id, email) {
     // Semakan Keselamatan Tambahan
     const currentUserRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     
-    if (currentUserRole !== 'SUPER_ADMIN' && targetRole === 'SUPER_ADMIN') {
-        return Swal.fire('Dilarang', 'Anda tidak boleh memadam Super Admin.', 'error');
+    if (currentUserRole !== 'SUPER_ADMIN') {
+        return Swal.fire('Dilarang', 'Hanya Super Admin boleh memadam pengguna.', 'error');
     }
 
     Swal.fire({ 
-        title: 'Padam Admin?', 
-        text: `Padam akses untuk ${email}?`, 
+        title: 'Padam Pengguna?', 
+        text: `Adakah anda pasti mahu memadam akses untuk ${email}?`, 
         icon: 'warning', 
         showCancelButton: true, 
-        confirmButtonColor: '#d33' 
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal'
     }).then(async (r) => {
         if(r.isConfirmed) {
             toggleLoading(true);
@@ -191,7 +258,7 @@ window.resetPasswordSekolah = async function(kod) {
     });
 };
 
-// --- UNIT PPD SELF-SERVICE ---
+// --- SELF-SERVICE CHANGE PASSWORD ---
 window.ubahKataLaluanSendiri = async function() {
     const userId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID); 
     
@@ -201,7 +268,7 @@ window.ubahKataLaluanSendiri = async function() {
     }
 
     const { value: formValues } = await Swal.fire({
-        title: 'Tukar Kata Laluan',
+        title: 'Tukar Kata Laluan Anda',
         html:
             '<input id="swal-pass-old" type="password" class="swal2-input" placeholder="Kata Laluan Lama">' +
             '<input id="swal-pass-new" type="password" class="swal2-input" placeholder="Kata Laluan Baru (Min 6)">',
@@ -223,7 +290,6 @@ window.ubahKataLaluanSendiri = async function() {
         try {
             await AuthService.changePassword(userId, oldPass, newPass);
             toggleLoading(false);
-            // Panggil keluarSistem yang diimport
             Swal.fire('Berjaya', 'Kata laluan ditukar. Sila log masuk semula.', 'success').then(() => keluarSistem());
         } catch (err) {
             toggleLoading(false);

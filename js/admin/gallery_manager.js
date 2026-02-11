@@ -1,7 +1,7 @@
 /**
  * ADMIN MODULE: GALLERY MANAGER (DEV)
  * Menguruskan paparan galeri admin, carian sekolah, dan tapisan.
- * * DIKEMASKINI: Visual diselaraskan 100% dengan gallery.html (Public View).
+ * * DIKEMASKINI: Ditambah Word Cloud Jawatan & Visual Kad (100% Parity dengan Public).
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -9,6 +9,7 @@ import { AchievementService } from '../services/achievement.service.js';
 let adminGalleryData = [];
 let gallerySchoolListCache = [];
 let searchDebounceTimer;
+let currentJawatanFilter = 'ALL'; // State untuk filter jawatan
 
 // --- 1. INITIALIZATION ---
 window.initAdminGallery = function() {
@@ -99,14 +100,20 @@ window.loadAdminGalleryGrid = async function(kod) {
     const grid = document.getElementById('adminGalleryGrid');
     const filterContainer = document.getElementById('galleryFilterContainer');
     const counterEl = document.getElementById('galleryTotalCount');
+    const cloudWrapper = document.getElementById('jawatanCloudWrapper');
 
     if(!grid) return;
 
     updateGalleryHeader(kod);
 
+    // Reset UI
     grid.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-indigo"></div><p class="mt-2 small text-muted">Memuatkan galeri...</p></div>`;
     if(counterEl) counterEl.innerText = "0";
     filterContainer.innerHTML = '';
+    
+    // Reset Filter State
+    currentJawatanFilter = 'ALL';
+    if(cloudWrapper) cloudWrapper.classList.add('hidden');
 
     try {
         const data = await AchievementService.getBySchool(kod);
@@ -120,7 +127,7 @@ window.loadAdminGalleryGrid = async function(kod) {
             if (cat === 'MURID') btnClass = 'btn-outline-primary';
             else if (cat === 'GURU') btnClass = 'btn-outline-warning text-dark';
             else if (cat === 'SEKOLAH') btnClass = 'btn-outline-success';
-            else if (cat === 'PPD') btnClass = 'btn-outline-indigo'; // Tambahan untuk PPD
+            else if (cat === 'PPD') btnClass = 'btn-outline-indigo';
             
             filterHtml += `<button class="btn btn-sm ${btnClass} rounded-pill px-3 fw-bold ms-1" onclick="filterAdminGallery('${cat}', this)">${cat}</button>`;
         });
@@ -161,6 +168,18 @@ window.filterAdminGallery = function(type, btn) {
         });
         btn.className = "btn btn-sm rounded-pill px-3 fw-bold ms-1 active btn-dark text-white";
     }
+
+    // --- LOGIK WORD CLOUD (BARU) ---
+    const cloudWrapper = document.getElementById('jawatanCloudWrapper');
+    
+    if (type === 'GURU') {
+        if(cloudWrapper) cloudWrapper.classList.remove('hidden');
+        generateJawatanCloud();
+    } else {
+        if(cloudWrapper) cloudWrapper.classList.add('hidden');
+        currentJawatanFilter = 'ALL';
+    }
+
     renderAdminCards(type);
 };
 
@@ -178,14 +197,24 @@ function renderAdminCards(filterType) {
     const counterEl = document.getElementById('galleryTotalCount');
     grid.innerHTML = '';
 
-    const filtered = (filterType === 'ALL') 
+    // Filter Utama
+    let filtered = (filterType === 'ALL') 
         ? adminGalleryData 
         : adminGalleryData.filter(item => item.kategori === filterType);
+
+    // Filter Sub-Kategori (Jawatan) - BARU
+    if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
+        filtered = filtered.filter(item => item.jawatan === currentJawatanFilter);
+    }
 
     if(counterEl) counterEl.innerText = filtered.length;
 
     if (filtered.length === 0) {
-        grid.innerHTML = `<div class="col-12 text-center py-5 text-muted fst-italic">Tiada rekod untuk kategori ini.</div>`;
+        let msg = "Tiada rekod untuk kategori ini.";
+        if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
+            msg = `Tiada rekod untuk jawatan <b>${currentJawatanFilter}</b>.`;
+        }
+        grid.innerHTML = `<div class="col-12 text-center py-5 text-muted fst-italic">${msg}</div>`;
         return;
     }
 
@@ -209,13 +238,64 @@ function renderAdminCards(filterType) {
     });
 }
 
-// --- FUNGSI INI DISELARASKAN DENGAN JS/GALLERY.JS ---
+// --- FUNGSI WORD CLOUD (DISALIN DARI JS/GALLERY.JS & DIADAPTASI) ---
+function generateJawatanCloud() {
+    const container = document.getElementById('jawatanCloudContainer');
+    if (!container) return;
+
+    // Guna data Guru sahaja
+    const guruData = adminGalleryData.filter(item => item.kategori === 'GURU');
+    
+    const counts = {};
+    let maxCount = 0;
+
+    guruData.forEach(item => {
+        if (item.jawatan && item.jawatan.trim() !== "") {
+            const j = item.jawatan.trim();
+            counts[j] = (counts[j] || 0) + 1;
+            if (counts[j] > maxCount) maxCount = counts[j];
+        }
+    });
+
+    const entries = Object.entries(counts);
+    
+    if (entries.length === 0) {
+        container.innerHTML = `<small class="text-muted fst-italic">Tiada data jawatan spesifik.</small>`;
+        return;
+    }
+
+    entries.sort((a, b) => b[1] - a[1]);
+
+    container.innerHTML = '';
+    entries.forEach(([jawatan, count]) => {
+        let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 4)}`; 
+        if(count === 1) sizeClass = 'tag-size-1';
+
+        const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
+        // Perhatian: Menggunakan filterByJawatan (fungsi global baru di bawah)
+        const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
+        container.innerHTML += btnHTML;
+    });
+}
+
+window.filterByJawatan = function(jawatan) {
+    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
+    
+    const btnReset = document.getElementById('btnResetJawatan');
+    if(btnReset) {
+        if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
+        else btnReset.classList.add('hidden');
+    }
+
+    generateJawatanCloud(); // Re-render cloud untuk update status 'active'
+    renderAdminCards('GURU'); // Re-render grid
+};
+
 function createAdminCardHTML(item) {
     const link = item.pautan_bukti || "";
     let thumbnailArea = "";
     let iconType = "fa-link";
     
-    // Pewarnaan Kategori (Sama seperti Public Gallery)
     let borderClass = "";
     let textClass = "";
     let catIcon = "";
@@ -233,7 +313,6 @@ function createAdminCardHTML(item) {
         borderClass = "border-top-dark"; textClass = "text-dark"; catIcon = "fa-folder"; catColor = "#212529";
     }
 
-    // Logik Thumbnail (Sama seperti Public Gallery)
     const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]+)/);
     const youtubeMatch = link.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
@@ -258,8 +337,6 @@ function createAdminCardHTML(item) {
         thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center flex-column"><img src="${faviconUrl}" style="width: 48px; height: 48px;" class="mb-2 shadow-sm rounded-circle bg-white p-1" onerror="this.style.display='none';"><div class="text-muted small mt-1 text-truncate w-75 text-center">${domain}</div></div>`;
     }
 
-    // HTML Output (Sama struktur dengan Public Gallery, disesuaikan Grid Admin)
-    // Menggunakan col-6 col-sm-4 col-md-3 col-lg-2 untuk ketumpatan tinggi di admin
     return `
     <div class="col-6 col-sm-4 col-md-3 col-lg-2 fade-up">
         <div class="card-gallery ${borderClass} h-100 shadow-sm" onclick="window.open('${link}', '_blank')" title="Klik untuk lihat bukti">

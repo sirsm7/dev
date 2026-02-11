@@ -1,7 +1,7 @@
 /**
  * ADMIN MODULE: GALLERY MANAGER (DEV)
  * Menguruskan paparan galeri admin, carian sekolah, dan tapisan.
- * * DIKEMASKINI: Ditambah Word Cloud Jawatan & Visual Kad (100% Parity dengan Public).
+ * * DIKEMASKINI: Word Cloud fix & Visual Kad 100% Sekolah Parity.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -9,10 +9,13 @@ import { AchievementService } from '../services/achievement.service.js';
 let adminGalleryData = [];
 let gallerySchoolListCache = [];
 let searchDebounceTimer;
-let currentJawatanFilter = 'ALL'; // State untuk filter jawatan
+let currentJawatanFilter = 'ALL'; 
 
 // --- 1. INITIALIZATION ---
 window.initAdminGallery = function() {
+    // Pastikan reset filter bila init
+    currentJawatanFilter = 'ALL';
+    
     if (window.globalDashboardData && window.globalDashboardData.length > 0) {
         populateGallerySchoolList();
     } else {
@@ -27,6 +30,8 @@ function populateGallerySchoolList() {
 
     gallerySchoolListCache = window.globalDashboardData.filter(s => s.kod_sekolah !== 'M030');
     renderGalleryDropdown();
+    
+    // Default load M030
     window.loadAdminGalleryGrid('M030');
 }
 
@@ -111,9 +116,14 @@ window.loadAdminGalleryGrid = async function(kod) {
     if(counterEl) counterEl.innerText = "0";
     filterContainer.innerHTML = '';
     
-    // Reset Filter State
+    // Reset Filter State & Hide Cloud
     currentJawatanFilter = 'ALL';
-    if(cloudWrapper) cloudWrapper.classList.add('hidden');
+    if(cloudWrapper) {
+        cloudWrapper.classList.add('hidden');
+        // Reset butang reset dalam cloud juga
+        const btnReset = document.getElementById('btnResetJawatan');
+        if(btnReset) btnReset.classList.add('hidden');
+    }
 
     try {
         const data = await AchievementService.getBySchool(kod);
@@ -169,12 +179,14 @@ window.filterAdminGallery = function(type, btn) {
         btn.className = "btn btn-sm rounded-pill px-3 fw-bold ms-1 active btn-dark text-white";
     }
 
-    // --- LOGIK WORD CLOUD (BARU) ---
+    // --- LOGIK WORD CLOUD ---
     const cloudWrapper = document.getElementById('jawatanCloudWrapper');
     
     if (type === 'GURU') {
-        if(cloudWrapper) cloudWrapper.classList.remove('hidden');
-        generateJawatanCloud();
+        if(cloudWrapper) {
+            cloudWrapper.classList.remove('hidden');
+            generateJawatanCloud();
+        }
     } else {
         if(cloudWrapper) cloudWrapper.classList.add('hidden');
         currentJawatanFilter = 'ALL';
@@ -202,9 +214,9 @@ function renderAdminCards(filterType) {
         ? adminGalleryData 
         : adminGalleryData.filter(item => item.kategori === filterType);
 
-    // Filter Sub-Kategori (Jawatan) - BARU
+    // Filter Sub-Kategori (Jawatan)
     if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
-        filtered = filtered.filter(item => item.jawatan === currentJawatanFilter);
+        filtered = filtered.filter(item => (item.jawatan || '') === currentJawatanFilter);
     }
 
     if(counterEl) counterEl.innerText = filtered.length;
@@ -238,7 +250,7 @@ function renderAdminCards(filterType) {
     });
 }
 
-// --- FUNGSI WORD CLOUD (DISALIN DARI JS/GALLERY.JS & DIADAPTASI) ---
+// --- FUNGSI WORD CLOUD ---
 function generateJawatanCloud() {
     const container = document.getElementById('jawatanCloudContainer');
     if (!container) return;
@@ -250,8 +262,9 @@ function generateJawatanCloud() {
     let maxCount = 0;
 
     guruData.forEach(item => {
-        if (item.jawatan && item.jawatan.trim() !== "") {
-            const j = item.jawatan.trim();
+        // SAFETY FIX: Handle null/undefined jawatan
+        const j = (item.jawatan || '').trim();
+        if (j !== "") {
             counts[j] = (counts[j] || 0) + 1;
             if (counts[j] > maxCount) maxCount = counts[j];
         }
@@ -272,7 +285,7 @@ function generateJawatanCloud() {
         if(count === 1) sizeClass = 'tag-size-1';
 
         const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
-        // Perhatian: Menggunakan filterByJawatan (fungsi global baru di bawah)
+        // Perhatian: Menggunakan filterByJawatan (fungsi global)
         const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
         container.innerHTML += btnHTML;
     });
@@ -288,7 +301,7 @@ window.filterByJawatan = function(jawatan) {
     }
 
     generateJawatanCloud(); // Re-render cloud untuk update status 'active'
-    renderAdminCards('GURU'); // Re-render grid
+    renderAdminCards('GURU'); // Re-render grid dengan filter jawatan
 };
 
 function createAdminCardHTML(item) {

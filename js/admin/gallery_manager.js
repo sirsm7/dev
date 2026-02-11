@@ -2,6 +2,7 @@
  * ADMIN MODULE: GALLERY MANAGER (DEV)
  * Menguruskan paparan galeri admin, carian sekolah, dan tapisan.
  * * DIKEMASKINI: Word Cloud fix & Visual Kad 100% Sekolah Parity.
+ * * UPDATE FIX (ID COLLISION): Added prefix 'gallery' to IDs to avoid conflict with Tab 3.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -105,7 +106,9 @@ window.loadAdminGalleryGrid = async function(kod) {
     const grid = document.getElementById('adminGalleryGrid');
     const filterContainer = document.getElementById('galleryFilterContainer');
     const counterEl = document.getElementById('galleryTotalCount');
-    const cloudWrapper = document.getElementById('jawatanCloudWrapper');
+    
+    // UPDATED ID: galleryCloudWrapper (Fix ID Collision)
+    const cloudWrapper = document.getElementById('galleryCloudWrapper');
 
     if(!grid) return;
 
@@ -120,8 +123,8 @@ window.loadAdminGalleryGrid = async function(kod) {
     currentJawatanFilter = 'ALL';
     if(cloudWrapper) {
         cloudWrapper.classList.add('hidden');
-        // Reset butang reset dalam cloud juga
-        const btnReset = document.getElementById('btnResetJawatan');
+        // Reset butang reset dalam cloud juga (UPDATED ID)
+        const btnReset = document.getElementById('btnResetGalleryCloud');
         if(btnReset) btnReset.classList.add('hidden');
     }
 
@@ -180,7 +183,8 @@ window.filterAdminGallery = function(type, btn) {
     }
 
     // --- LOGIK WORD CLOUD ---
-    const cloudWrapper = document.getElementById('jawatanCloudWrapper');
+    // UPDATED ID: galleryCloudWrapper
+    const cloudWrapper = document.getElementById('galleryCloudWrapper');
     
     if (type === 'GURU') {
         if(cloudWrapper) {
@@ -252,7 +256,8 @@ function renderAdminCards(filterType) {
 
 // --- FUNGSI WORD CLOUD ---
 function generateJawatanCloud() {
-    const container = document.getElementById('jawatanCloudContainer');
+    // UPDATED ID: galleryCloudContainer
+    const container = document.getElementById('galleryCloudContainer');
     if (!container) return;
 
     // Guna data Guru sahaja
@@ -294,7 +299,8 @@ function generateJawatanCloud() {
 window.filterByJawatan = function(jawatan) {
     currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
     
-    const btnReset = document.getElementById('btnResetJawatan');
+    // UPDATED ID: btnResetGalleryCloud
+    const btnReset = document.getElementById('btnResetGalleryCloud');
     if(btnReset) {
         if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
         else btnReset.classList.add('hidden');

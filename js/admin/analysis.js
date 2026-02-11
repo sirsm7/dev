@@ -2,10 +2,9 @@
  * ADMIN MODULE: ANALYSIS (DEV)
  * Menguruskan laporan DCS dan DELIMa.
  * * PENAMBAHBAIKAN KRITIKAL:
- * - Mengubah jadual 'Data Terperinci Sekolah' untuk memaparkan perbandingan Tahun Semasa vs Tahun Terdahulu.
- * - Menambah indikator trend (ikon anak panah) secara automatik berdasarkan perbezaan skor.
- * - Menambah maklumat konteks (Lalu: ...) pada setiap sel data.
- * - Mengekalkan sokongan eksport CSV dan carian sekolah.
+ * - Mengubah label "Lalu" kepada "Terdahulu" untuk keselarasan terminologi laporan Malaysia.
+ * - Memaparkan perbandingan Tahun Semasa vs Tahun Terdahulu dalam jadual.
+ * - Indikator trend automatik (↑/↓) berdasarkan perbezaan skor.
  */
 
 import { DcsService } from '../services/dcs.service.js';
@@ -174,8 +173,8 @@ function processActivePanel(field) {
 }
 
 /**
- * MENGKEMASKINI JADUAL DATA TERPERINCI (SURGICAL UPDATE)
- * Menampilkan perbandingan antara Tahun Semasa dan Tahun Terdahulu.
+ * MENGKEMASKINI JADUAL DATA TERPERINCI
+ * Menampilkan perbandingan antara Tahun Semasa dan Tahun Terdahulu dengan label "Terdahulu".
  */
 window.filterAnalisaTable = function(currYear, prevYear) {
     if(!currYear) currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
@@ -214,7 +213,7 @@ window.filterAnalisaTable = function(currYear, prevYear) {
             else if (valActCurr < valActPrev) actTrendIcon = '<i class="fas fa-arrow-down text-danger ms-1" style="font-size: 0.7rem;"></i>';
         }
 
-        // Templat Paparan DCS
+        // Templat Paparan DCS (Label: Terdahulu)
         const dcsCellHtml = `
             <div class="d-flex flex-column align-items-center">
                 <div class="mb-1">
@@ -222,13 +221,13 @@ window.filterAnalisaTable = function(currYear, prevYear) {
                     ${dcsTrendIcon}
                 </div>
                 <div class="text-muted small" style="font-size: 0.65rem;">
-                    (Lalu: ${valDcsPrev?.toFixed(2) || '-'})
+                    (Terdahulu: ${valDcsPrev?.toFixed(2) || '-'})
                 </div>
                 <span class="badge ${cat.class} mt-1" style="font-size: 0.6rem; letter-spacing: 0.3px;">${cat.label.toUpperCase()}</span>
             </div>
         `;
 
-        // Templat Paparan % Aktif
+        // Templat Paparan % Aktif (Label: Terdahulu)
         const actCellHtml = `
             <div class="d-flex flex-column align-items-center">
                 <div class="mb-1">
@@ -236,7 +235,7 @@ window.filterAnalisaTable = function(currYear, prevYear) {
                     ${actTrendIcon}
                 </div>
                 <div class="text-muted small" style="font-size: 0.65rem;">
-                    (Lalu: ${valActPrev || 0}%)
+                    (Terdahulu: ${valActPrev || 0}%)
                 </div>
             </div>
         `;

@@ -294,9 +294,15 @@
             <div class="modal-body p-4">
                 <form id="formEditPencapaianUser" onsubmit="event.preventDefault(); updatePencapaianUser();">
                     <input type="hidden" id="editUserId">
-                    <input type="hidden" id="editUserJenis">
                     
-                    <div class="mb-4 text-center"><div class="btn-group w-100 shadow-sm"><input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()"><label class="btn btn-outline-primary fw-bold" for="editRadioPertandingan">PERTANDINGAN</label><input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()"><label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilan">PENSIJILAN</label></div></div>
+                    <div class="mb-4 text-center">
+                        <div class="btn-group w-100 shadow-sm">
+                            <input type="radio" class="btn-check" name="editRadioJenisUser" id="editRadioPertandinganUser" value="PERTANDINGAN" onchange="toggleEditUserJenis()">
+                            <label class="btn btn-outline-primary fw-bold" for="editRadioPertandinganUser">PERTANDINGAN</label>
+                            <input type="radio" class="btn-check" name="editRadioJenisUser" id="editRadioPensijilanUser" value="PENSIJILAN" onchange="toggleEditUserJenis()">
+                            <label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilanUser">PENSIJILAN</label>
+                        </div>
+                    </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted">NAMA PESERTA / SEKOLAH</label>

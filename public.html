@@ -2,19 +2,14 @@
 <html lang="ms">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SMPID - Borang Serahan Data</title>
   
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- FONTAWESOME -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  
-  <!-- GOOGLE FONTS -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <script>
@@ -24,7 +19,16 @@
           fontFamily: { sans: ['Inter', 'sans-serif'] },
           colors: {
             brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 900: '#14532d' },
-            ppd: { 50: '#f3e8ff', 100: '#e9d5ff', 500: '#a855f7', 700: '#7e22ce', 900: '#581c87' } // Ungu untuk PPD
+            ppd: { 50: '#f3e8ff', 100: '#e9d5ff', 500: '#a855f7', 700: '#7e22ce', 900: '#581c87' }
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.5s ease-out forwards',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
           }
         }
       }
@@ -32,22 +36,17 @@
   </script>
 
   <style>
-    /* Transisi untuk borang aktif/tidak aktif */
     .disabled-form { @apply opacity-50 pointer-events-none grayscale transition-all duration-300; }
     .enabled-form { @apply opacity-100 pointer-events-auto grayscale-0; }
     .hidden { display: none !important; }
-    
-    /* Input Text Transform */
     .uppercase-input { text-transform: uppercase; }
   </style>
 
-  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-20">
+<body id="page-public" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
     <div class="text-center text-white">
       <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
@@ -55,113 +54,104 @@
     </div>
   </div>
 
-  <!-- HEADER -->
-  <header class="bg-gradient-to-r from-brand-800 to-emerald-900 py-8 px-4 shadow-lg text-center relative mb-8">
-    <a href="index.html" class="absolute top-4 left-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20">
-        <i class="fas fa-arrow-left"></i> Portal Utama
-    </a>
+  <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-24 pt-12 px-4 shadow-xl relative overflow-hidden text-center">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
     
-    <img src="icoppdag.png" alt="Logo PPD" class="w-16 h-auto mx-auto mb-3 drop-shadow-md">
-    <h1 class="text-2xl font-bold text-white tracking-tight">Portal Serahan Data</h1>
-    <p class="text-emerald-200 text-xs font-medium uppercase tracking-wider mt-1">Unit Sumber Teknologi Pendidikan</p>
+    <div class="relative z-10 max-w-4xl mx-auto">
+        <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20 mb-6">
+            <i class="fas fa-arrow-left"></i> Kembali ke Portal
+        </a>
+        <img src="icoppdag.png" alt="Logo PPD" class="w-20 h-auto mx-auto mb-4 drop-shadow-lg transform hover:scale-105 transition duration-500">
+        <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Portal Serahan Data</h1>
+        <p class="text-emerald-200 text-xs font-bold uppercase tracking-widest mt-2 opacity-90">Unit Sumber Teknologi Pendidikan (USTP)</p>
+    </div>
   </header>
 
-  <!-- MAIN CONTAINER -->
-  <div class="container mx-auto px-4 max-w-3xl">
+  <div class="container mx-auto px-4 -mt-12 pb-20 relative z-20 max-w-3xl">
 
-    <!-- LANGKAH 1: PILIH SEKOLAH -->
-    <div id="cardIdentitiSekolah" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-brand-700 font-bold text-lg flex items-center gap-2">
-                <span class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-sm"><i class="fas fa-school"></i></span>
-                Pilih Sekolah
+    <div id="cardIdentitiSekolah" class="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-8 mb-6 animate-fade-up">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-brand-700 font-bold text-lg flex items-center gap-3">
+                <span class="w-10 h-10 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 shadow-sm"><i class="fas fa-school"></i></span>
+                Pengesahan Sekolah
             </h2>
-            <a id="btnViewGallery" href="#" class="hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition">
-                <i class="fas fa-images"></i> Galeri
+            <a id="btnViewGallery" href="#" class="hidden inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition border border-blue-100">
+                <i class="fas fa-images"></i> Lihat Galeri
             </a>
         </div>
 
-        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-5 rounded-r-lg">
-            <p class="text-xs text-blue-800 font-medium flex items-center gap-2">
-                <i class="fas fa-info-circle"></i> Pastikan nama sekolah betul sebelum mengisi borang.
-            </p>
-        </div>
-
-        <div class="relative">
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Carian Sekolah</label>
-            <input list="listSekolah" id="inputCariSekolah" 
-                   class="w-full p-4 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none font-bold text-slate-700 placeholder-slate-400 transition-all uppercase" 
-                   placeholder="TAIP KOD (MBA...) ATAU NAMA SEKOLAH">
+        <div class="relative group">
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Carian Kod / Nama Sekolah</label>
+            <div class="relative">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors"></i>
+                <input list="listSekolah" id="inputCariSekolah" 
+                       class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none font-bold text-slate-700 placeholder-slate-300 transition-all uppercase shadow-sm" 
+                       placeholder="Contoh: MBA0001">
+            </div>
             <datalist id="listSekolah"></datalist>
             <input type="hidden" id="finalKodSekolah">
         </div>
         
-        <div id="schoolStatusMsg" class="mt-3 text-sm font-bold hidden"></div>
+        <div id="schoolStatusMsg" class="mt-4 p-3 rounded-xl text-sm font-bold hidden flex items-center gap-2"></div>
     </div>
 
-    <!-- HEADER KHAS PPD (M030) - Hidden by default -->
-    <div id="cardIdentitiPPD" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 border-l-8 border-l-ppd-700">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-ppd-700 flex items-center justify-center text-white shadow-md">
-                <i class="fas fa-building"></i>
+    <div id="cardIdentitiPPD" class="hidden bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-8 mb-6 border-l-8 border-l-ppd-700 animate-fade-up">
+        <div class="flex items-center gap-5">
+            <div class="w-14 h-14 rounded-2xl bg-ppd-900 flex items-center justify-center text-white shadow-lg">
+                <i class="fas fa-building text-2xl"></i>
             </div>
             <div>
-                <h2 class="font-bold text-slate-800 text-lg">PEJABAT PENDIDIKAN DAERAH</h2>
-                <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Unit Sumber Teknologi Pendidikan (M030)</p>
+                <h2 class="font-black text-slate-800 text-xl tracking-tight">PEJABAT PENDIDIKAN DAERAH</h2>
+                <p class="text-xs font-bold text-ppd-700 uppercase tracking-widest">Unit Sumber Teknologi Pendidikan (M030)</p>
             </div>
         </div>
     </div>
 
-    <!-- LANGKAH 2: BORANG UTAMA -->
-    <div id="formSection" class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden disabled-form relative">
-        <!-- Top Bar -->
-        <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-            <h3 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fas fa-pen-to-square text-brand-500"></i> Butiran Pencapaian
+    <div id="formSection" class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden disabled-form relative transition-all duration-500">
+        <div class="bg-slate-50/80 backdrop-blur-md p-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <i class="fas fa-edit text-brand-500"></i> Butiran Pencapaian
             </h3>
-            <button onclick="resetBorang()" class="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition">
-                <i class="fas fa-undo mr-1"></i> Reset
+            <button onclick="resetBorang()" class="text-[10px] font-black text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition uppercase tracking-wider">
+                <i class="fas fa-undo mr-1"></i> Reset Borang
             </button>
         </div>
 
-        <div class="p-6 md:p-8">
-            <!-- TAB NAVIGASI -->
-            <div class="flex bg-slate-100 p-1 rounded-xl mb-6" id="publicTabs">
-                <button onclick="setPublicType('MURID')" class="flex-1 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 shadow-sm transition-all text-center">MURID</button>
-                <button onclick="setPublicType('GURU')" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 transition-all text-center">GURU</button>
-                <button onclick="setPublicType('SEKOLAH')" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 transition-all text-center">SEKOLAH</button>
+        <div class="p-6 md:p-10">
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-8" id="publicTabs">
+                <button onclick="setPublicType('MURID')" class="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-brand-600 shadow-md transition-all text-center transform scale-105">MURID</button>
+                <button onclick="setPublicType('GURU')" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 transition-all text-center">GURU</button>
+                <button onclick="setPublicType('SEKOLAH')" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 transition-all text-center">SEKOLAH</button>
             </div>
 
-            <form id="formPublic" onsubmit="event.preventDefault(); hantarBorangAwam();" class="space-y-5">
+            <form id="formPublic" onsubmit="event.preventDefault(); hantarBorangAwam();" class="space-y-6">
                 <input type="hidden" id="pubKategori" value="MURID">
                 <input type="hidden" id="pubJenisRekod" value="PERTANDINGAN">
 
-                <!-- PILIHAN JENIS (GURU ONLY) -->
-                <div id="wrapperPubJenis" class="hidden p-4 bg-orange-50 rounded-xl border border-orange-100 text-center">
-                    <p class="text-xs font-bold text-orange-600 uppercase mb-3">Jenis Rekod Guru</p>
-                    <div class="inline-flex bg-white rounded-lg p-1 border border-orange-200 shadow-sm">
+                <div id="wrapperPubJenis" class="hidden p-6 bg-orange-50 rounded-2xl border border-orange-100 text-center">
+                    <p class="text-[10px] font-black text-orange-600 uppercase mb-4 tracking-widest">Jenis Rekod Guru</p>
+                    <div class="inline-flex bg-white rounded-xl p-1 border border-orange-200 shadow-sm">
                         <div class="flex items-center">
                             <input type="radio" name="radPubJenis" id="radPubPertandingan" class="peer hidden" checked onchange="togglePubJenis()">
-                            <label for="radPubPertandingan" class="cursor-pointer px-4 py-2 rounded-md text-xs font-bold text-slate-500 peer-checked:bg-orange-500 peer-checked:text-white transition-all">
+                            <label for="radPubPertandingan" class="cursor-pointer px-6 py-2.5 rounded-lg text-xs font-black text-slate-400 peer-checked:bg-orange-500 peer-checked:text-white transition-all">
                                 PERTANDINGAN
                             </label>
                         </div>
                         <div class="flex items-center">
                             <input type="radio" name="radPubJenis" id="radPubSijil" class="peer hidden" onchange="togglePubJenis()">
-                            <label for="radPubSijil" class="cursor-pointer px-4 py-2 rounded-md text-xs font-bold text-slate-500 peer-checked:bg-orange-500 peer-checked:text-white transition-all">
+                            <label for="radPubSijil" class="cursor-pointer px-6 py-2.5 rounded-lg text-xs font-black text-slate-400 peer-checked:bg-orange-500 peer-checked:text-white transition-all">
                                 PENSIJILAN
                             </label>
                         </div>
                     </div>
                 </div>
 
-                <!-- JAWATAN (GURU ONLY) -->
                 <div id="divPubJawatan" class="hidden">
-                    <label class="block text-xs font-bold text-orange-600 uppercase mb-2">Jawatan (Wajib)</label>
+                    <label class="block text-[10px] font-black text-orange-600 uppercase mb-2 ml-1">Jawatan Utama</label>
                     <div class="relative">
-                        <select id="pubJawatan" class="w-full p-3 pl-4 rounded-xl bg-orange-50 border-2 border-orange-100 text-slate-700 font-semibold focus:border-orange-400 focus:ring-4 focus:ring-orange-500/10 outline-none appearance-none">
+                        <select id="pubJawatan" class="w-full p-4 rounded-2xl bg-orange-50 border-2 border-orange-100 text-slate-700 font-bold focus:border-orange-400 outline-none appearance-none">
                             <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
-                            <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
+                            <option value="PENGARAH KV / PGB">PENGETUA / GURU BESAR</option>
                             <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
                             <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
                             <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
@@ -173,170 +163,164 @@
                             <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
                             <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                         </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none"></i>
+                        <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none"></i>
                     </div>
                 </div>
 
-                <!-- NAMA -->
                 <div>
-                    <label id="lblPubNama" class="block text-xs font-bold text-slate-500 uppercase mb-2">Nama Murid / Kumpulan</label>
-                    <input type="text" id="pubNama" class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none uppercase-input font-semibold" placeholder="TAIP NAMA PENUH..." oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPubNama" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nama Penuh Peserta</label>
+                    <input type="text" id="pubNama" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: ALI BIN AHMAD" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <!-- PENYEDIA (SIJIL ONLY) -->
                 <div id="divPubPenyedia" class="hidden">
-                    <label class="block text-xs font-bold text-orange-600 uppercase mb-2">Penyedia / Jenama</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Penyedia Sijil</label>
                     <div class="relative">
-                        <select id="pubPenyedia" class="w-full p-3 pl-4 rounded-xl bg-white border border-slate-300 text-slate-700 font-semibold focus:border-brand-500 outline-none appearance-none">
-                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
+                        <select id="pubPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
+                            <option value="LAIN-LAIN" selected>LAIN-LAIN / TIADA</option>
                             <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
                             <option value="APPLE">APPLE EDUCATION</option>
                             <option value="MICROSOFT">MICROSOFT EDUCATION</option>
                         </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                     </div>
                 </div>
 
-                <!-- PROGRAM -->
                 <div>
-                    <label id="lblPubProgram" class="block text-xs font-bold text-slate-500 uppercase mb-2">Nama Pertandingan</label>
-                    <input type="text" id="pubProgram" class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none uppercase-input font-semibold" placeholder="CONTOH: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPubProgram" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nama Program / Pertandingan</label>
+                    <input type="text" id="pubProgram" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <!-- ROW: PERINGKAT & TAHUN -->
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div id="divPubColPeringkat">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Peringkat</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Peringkat Tertinggi</label>
                         <div class="relative">
-                            <select id="pubPeringkat" class="w-full p-3 pl-4 rounded-xl bg-white border border-slate-300 text-slate-700 font-semibold focus:border-brand-500 outline-none appearance-none">
+                            <select id="pubPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
                                 <option value="KEBANGSAAN">KEBANGSAAN</option>
                                 <option value="ANTARABANGSA">ANTARABANGSA</option>
                             </select>
-                            <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                            <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                         </div>
                     </div>
                     <div id="divPubColTahun">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tahun</label>
-                        <input type="number" id="pubTahun" class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-bold text-center" value="2026" min="2023" required>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Tahun Acara</label>
+                        <input type="number" id="pubTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-black text-center text-brand-600" value="2026" min="2023" required>
                     </div>
                 </div>
 
-                <!-- PENCAPAIAN -->
                 <div>
-                    <label id="lblPubPencapaian" class="block text-xs font-bold text-slate-500 uppercase mb-2">Pencapaian</label>
-                    <input type="text" id="pubPencapaian" class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none uppercase-input font-semibold" placeholder="CONTOH: JOHAN / EMAS / PENYERTAAN" oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPubPencapaian" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Keputusan / Pencapaian</label>
+                    <input type="text" id="pubPencapaian" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: JOHAN / EMAS / LULUS" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <!-- LINK BUKTI -->
-                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                    <label class="block text-xs font-bold text-blue-600 uppercase mb-2">Pautan Bukti (Google Drive)</label>
-                    <input type="url" id="pubLink" class="w-full p-3 rounded-lg border border-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-blue-700 text-sm font-medium" placeholder="https://drive.google.com/..." required>
-                    <p class="text-[10px] text-blue-500 mt-2 flex items-center gap-1">
-                        <i class="fas fa-lock"></i> Setkan akses kepada <strong>'Everyone with the link' (Viewer)</strong>.
+                <div class="bg-blue-50/50 p-6 rounded-3xl border border-blue-100">
+                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1">Pautan Bukti (Google Drive)</label>
+                    <div class="relative">
+                        <i class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-blue-300"></i>
+                        <input type="url" id="pubLink" class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-500 outline-none text-blue-700 font-medium bg-white" placeholder="https://drive.google.com/..." required>
+                    </div>
+                    <p class="text-[9px] text-blue-400 mt-3 flex items-center gap-2 font-bold uppercase tracking-wider">
+                        <i class="fas fa-shield-alt"></i> Sila pastikan pautan di-set kepada "Anyone with the link"
                     </p>
                 </div>
 
-                <!-- SUBMIT BUTTON -->
-                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-500/30 transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 mt-4">
-                    <i class="fas fa-paper-plane"></i> HANTAR MAKLUMAT
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-500/20 transform hover:-translate-y-1 transition-all flex items-center justify-center gap-3 mt-4 tracking-widest uppercase text-sm">
+                    <i class="fas fa-paper-plane"></i> Hantar Maklumat
                 </button>
-
             </form>
         </div>
     </div>
 
-    <!-- BORANG PPD (Hidden) -->
-    <div id="formSectionPPD" class="hidden bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden relative">
-        <div class="bg-ppd-900 p-4 text-white flex justify-between items-center">
-            <h3 class="font-bold flex items-center gap-2"><i class="fas fa-user-tie"></i> Rekod Pegawai</h3>
-            <button onclick="resetBorangPPD()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition">Reset</button>
+    <!-- SEKSYEN PPD (M030) -->
+    <div id="formSectionPPD" class="hidden bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden relative animate-fade-up">
+        <div class="bg-ppd-900 p-5 text-white flex justify-between items-center">
+            <h3 class="font-bold flex items-center gap-3"><i class="fas fa-user-tie"></i> Pendaftaran Rekod Pegawai</h3>
+            <button onclick="resetBorangPPD()" class="text-[10px] font-black bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition uppercase tracking-widest">Reset</button>
         </div>
         
-        <div class="p-6">
-            <form id="formPPD" onsubmit="event.preventDefault(); hantarBorangPPD();" class="space-y-5">
+        <div class="p-6 md:p-10">
+            <form id="formPPD" onsubmit="event.preventDefault(); hantarBorangPPD();" class="space-y-6">
                 <input type="hidden" id="ppdKategori" value="PEGAWAI">
                 <input type="hidden" id="ppdJenisRekod" value="PERTANDINGAN">
 
-                <!-- TOGGLE PPD -->
-                <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-2 rounded-2xl">
                     <label class="cursor-pointer">
                         <input type="radio" name="radPpdKat" id="radPpdPegawai" value="PEGAWAI" class="peer hidden" checked onchange="toggleKategoriPPD()">
-                        <div class="p-3 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-ppd-700 peer-checked:text-white peer-checked:border-ppd-700 transition-all">PEGAWAI</div>
+                        <div class="p-3 rounded-xl border-2 border-transparent text-center text-xs font-black text-slate-400 peer-checked:bg-ppd-700 peer-checked:text-white transition-all uppercase">PEGAWAI</div>
                     </label>
                     <label class="cursor-pointer">
                         <input type="radio" name="radPpdKat" id="radPpdUnit" value="PPD" class="peer hidden" onchange="toggleKategoriPPD()">
-                        <div class="p-3 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-ppd-700 peer-checked:text-white peer-checked:border-ppd-700 transition-all">UNIT / SEKTOR</div>
+                        <div class="p-3 rounded-xl border-2 border-transparent text-center text-xs font-black text-slate-400 peer-checked:bg-ppd-700 peer-checked:text-white transition-all uppercase">UNIT / SEKTOR</div>
                     </label>
                 </div>
 
-                <!-- RADIO JENIS -->
-                <div class="flex justify-center gap-4 mb-4">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="radPpdJenis" id="radPpdPertandingan" class="accent-ppd-700" checked onchange="toggleJenisPencapaianPPD()">
-                        <span class="text-xs font-bold">PERTANDINGAN</span>
+                <div class="flex justify-center gap-6 mb-8">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="radio" name="radPpdJenis" id="radPpdPertandingan" class="w-5 h-5 accent-ppd-700" checked onchange="toggleJenisPencapaianPPD()">
+                        <span class="text-xs font-black text-slate-600 group-hover:text-ppd-700 transition-colors">PERTANDINGAN</span>
                     </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="radPpdJenis" id="radPpdSijil" class="accent-ppd-700" onchange="toggleJenisPencapaianPPD()">
-                        <span class="text-xs font-bold">PENSIJILAN</span>
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="radio" name="radPpdJenis" id="radPpdSijil" class="w-5 h-5 accent-ppd-700" onchange="toggleJenisPencapaianPPD()">
+                        <span class="text-xs font-black text-slate-600 group-hover:text-ppd-700 transition-colors">PENSIJILAN</span>
                     </label>
                 </div>
 
-                <!-- INPUT FIELDS PPD (Sama struktur, class berbeza) -->
                 <div>
-                    <label id="lblPpdNama" class="block text-xs font-bold text-ppd-900 uppercase mb-2">Nama Pegawai</label>
-                    <input type="text" id="ppdNama" class="w-full p-3 rounded-xl border border-slate-300 focus:border-ppd-500 focus:ring-2 focus:ring-ppd-500/20 outline-none uppercase-input font-bold" oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPpdNama" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Identiti Pegawai</label>
+                    <input type="text" id="ppdNama" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 focus:ring-4 focus:ring-ppd-500/5 outline-none uppercase-input font-bold text-slate-700" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div id="divPpdPenyedia" class="hidden">
-                    <label class="block text-xs font-bold text-ppd-900 uppercase mb-2">Penyedia</label>
-                    <select id="ppdPenyedia" class="w-full p-3 rounded-xl border border-slate-300 bg-white"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
+                    <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Penyedia</label>
+                    <select id="ppdPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
                 </div>
 
                 <div>
-                    <label id="lblPpdProgram" class="block text-xs font-bold text-ppd-900 uppercase mb-2">Nama Program</label>
-                    <input type="text" id="ppdProgram" class="w-full p-3 rounded-xl border border-slate-300 focus:border-ppd-500 outline-none uppercase-input" oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPpdProgram" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Nama Program</label>
+                    <input type="text" id="ppdProgram" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none uppercase-input font-bold text-slate-700" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div id="divPpdColPeringkat">
-                        <label class="block text-xs font-bold text-ppd-900 uppercase mb-2">Peringkat</label>
-                        <select id="ppdPeringkat" class="w-full p-3 rounded-xl border border-slate-300 bg-white"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select>
+                        <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Peringkat</label>
+                        <select id="ppdPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select>
                     </div>
                     <div id="divPpdColTahun">
-                        <label class="block text-xs font-bold text-ppd-900 uppercase mb-2">Tahun</label>
-                        <input type="number" id="ppdTahun" class="w-full p-3 rounded-xl border border-slate-300 text-center font-bold" value="2026" required>
+                        <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Tahun</label>
+                        <input type="number" id="ppdTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 text-center font-black text-ppd-700" value="2026" required>
                     </div>
                 </div>
 
                 <div>
-                    <label id="lblPpdPencapaian" class="block text-xs font-bold text-ppd-900 uppercase mb-2">Pencapaian</label>
-                    <input type="text" id="ppdPencapaian" class="w-full p-3 rounded-xl border border-slate-300 focus:border-ppd-500 outline-none uppercase-input" oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPpdPencapaian" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Pencapaian</label>
+                    <input type="text" id="ppdPencapaian" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none uppercase-input font-bold text-slate-700" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-ppd-900 uppercase mb-2">Pautan Bukti</label>
-                    <input type="url" id="ppdLink" class="w-full p-3 rounded-xl border border-slate-300 focus:border-ppd-500 outline-none text-blue-600" required>
+                    <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Pautan Bukti</label>
+                    <input type="url" id="ppdLink" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none text-blue-600 font-bold" placeholder="https://..." required>
                 </div>
 
-                <button type="submit" class="w-full bg-ppd-900 hover:bg-ppd-700 text-white font-bold py-4 rounded-xl shadow-lg transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
-                    <i class="fas fa-save"></i> SIMPAN REKOD PPD
+                <button type="submit" class="w-full bg-ppd-900 hover:bg-ppd-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-ppd-900/30 transform hover:-translate-y-1 transition-all flex items-center justify-center gap-3 tracking-widest uppercase text-sm">
+                    <i class="fas fa-save"></i> Simpan Rekod PPD
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- FOOTER LOGIN LINK -->
-    <div class="text-center mt-8">
-        <a href="login.html" class="text-xs font-bold text-slate-400 hover:text-slate-600 transition flex items-center justify-center gap-2">
+    <div class="text-center mt-12">
+        <a href="login.html" class="inline-flex items-center gap-2 text-xs font-black text-slate-400 hover:text-brand-600 transition-all uppercase tracking-widest">
             <i class="fas fa-user-lock"></i> Log Masuk Admin Sekolah
         </a>
     </div>
 
   </div>
 
-  <!-- MODULAR SCRIPTS -->
-  <!-- Nota: js/public.js mengandungi logik tab & toggle yang perlu disesuaikan dengan class Tailwind baru -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <footer class="mt-auto py-10 bg-slate-100 border-t border-slate-200">
+      <div class="container mx-auto px-4 text-center">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; 2026 Unit Sumber Teknologi Pendidikan (USTP) PPDAG</p>
+      </div>
+  </footer>
+
   <script type="module" src="js/public.js"></script>
 
 </body>

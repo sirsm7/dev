@@ -39,6 +39,12 @@
     .tab-active { @apply bg-brand-600 text-white shadow-md transform scale-105; }
     .tab-inactive { @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600; }
     
+    /* Word Cloud Styles */
+    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
+    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md; }
+    .cloud-tag .count { @apply ml-2 bg-slate-100 text-slate-600 px-1.5 rounded-full text-[10px]; }
+    .cloud-tag.active .count { @apply bg-white/20 text-white; }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -266,6 +272,15 @@
                 <div onclick="filterByKategori('PPD')" class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition"><span class="text-[10px] font-bold text-indigo-500 uppercase">Unit</span><h4 class="text-xl font-black text-indigo-700" id="statTotalUnit">0</h4></div>
             </div>
 
+            <!-- WORD CLOUD JAWATAN (New) -->
+            <div id="jawatanCloudWrapper" class="mb-6 hidden fade-up">
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-bold text-slate-500 text-xs uppercase"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan</h6>
+                    <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="text-xs text-slate-400 hover:text-slate-600 hidden">Reset</button>
+                </div>
+                <div id="jawatanCloudContainer" class="cloud-container p-4 bg-slate-50 border border-slate-100 rounded-xl"></div>
+            </div>
+
             <div class="overflow-auto border border-slate-200 rounded-xl max-h-[600px]">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-white uppercase bg-slate-800 sticky top-0 z-10">
@@ -302,6 +317,15 @@
             <div class="flex justify-between items-center mb-6">
                 <div id="galleryFilterContainer" class="flex gap-2"></div>
                 <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">Total: <span id="galleryTotalCount">0</span></span>
+            </div>
+
+            <!-- WORD CLOUD GALERI (New) -->
+            <div id="galleryCloudWrapper" class="mb-6 hidden fade-up">
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-bold text-slate-500 text-xs uppercase"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan</h6>
+                    <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="text-xs text-slate-400 hover:text-slate-600 hidden">Reset</button>
+                </div>
+                <div id="galleryCloudContainer" class="cloud-container p-4 bg-slate-50 border border-slate-100 rounded-xl"></div>
             </div>
 
             <div id="adminGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
@@ -447,15 +471,28 @@
                       
                       <div id="divEditJawatan" class="hidden">
                           <select id="editInputJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
-                              <!-- Options populate via HTML default or JS -->
                               <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
+                              <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
                               <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
-                              <!-- ... other options ... -->
+                              <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
+                              <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
+                              <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                              <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
+                              <option value="GURU DATA">GURU DATA</option>
+                              <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
+                              <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
+                              <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                              <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                           </select>
                       </div>
 
                       <div id="divEditPenyedia" class="hidden">
-                          <select id="editInputPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
+                          <select id="editInputPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                              <option>LAIN-LAIN</option>
+                              <option>GOOGLE</option>
+                              <option>APPLE</option>
+                              <option>MICROSOFT</option>
+                          </select>
                       </div>
 
                       <input type="text" id="editInputProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase">
@@ -475,7 +512,7 @@
       </div>
   </div>
 
-  <!-- MODAL REKOD PPD (NEW - Restored Missing Feature) -->
+  <!-- MODAL REKOD PPD (NEW) -->
   <div id="modalRekodPPD" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
           <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
@@ -560,7 +597,7 @@
       </div>
   </div>
 
-  <!-- MODAL PENYERAGAMAN DATA (NEW - Restored Missing Feature) -->
+  <!-- MODAL PENYERAGAMAN DATA (NEW) -->
   <div id="modalStandardize" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col">
           <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">

@@ -1,6 +1,7 @@
 /**
- * SMPID USER PORTAL CONTROLLER (TAILWIND EDITION)
- * Logik utama untuk papan pemuka sekolah (User Dashboard).
+ * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
+ * Menguruskan profil sekolah, analisa digital, helpdesk, 
+ * dan modul pencapaian kemenjadian sekolah.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -11,9 +12,13 @@ import { SupportService } from './services/support.service.js';
 import { AchievementService } from './services/achievement.service.js';
 import { APP_CONFIG } from './config/app.config.js';
 
+// --- GLOBAL STATE ---
 let analisaChart = null;
 let userPencapaianList = []; 
 
+/**
+ * Inisialisasi portal apabila DOM sedia.
+ */
 document.addEventListener('DOMContentLoaded', () => {
     initUserPortal();
 });
@@ -22,6 +27,7 @@ function initUserPortal() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const isAdmin = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
 
+    // Semakan keselamatan sesi
     if (!kod && !isAdmin) { 
         window.location.replace('index.html'); 
         return; 
@@ -30,9 +36,12 @@ function initUserPortal() {
     const displayKod = document.getElementById('displayKodSekolah');
     const btnLogout = document.getElementById('btnLogoutMenu');
 
+    // Mod Paparan Admin (Jika admin klik dari dashboard)
     if (isAdmin) {
-        displayKod.innerHTML = `<i class="fas fa-user-shield"></i> ADMIN VIEW: ${kod}`;
-        displayKod.className = "inline-flex items-center gap-2 bg-indigo-600/20 border border-indigo-400 text-white text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-sm";
+        if(displayKod) {
+            displayKod.innerHTML = `<i class="fas fa-user-shield"></i> ADMIN VIEW: ${kod}`;
+            displayKod.className = "inline-flex items-center gap-2 bg-indigo-600/20 border border-indigo-400 text-white text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-sm";
+        }
         
         if(btnLogout) {
             btnLogout.innerHTML = `<i class="fas fa-arrow-left"></i> Kembali ke Dashboard Admin`;
@@ -44,40 +53,46 @@ function initUserPortal() {
         if (btnReset) btnReset.classList.remove('hidden');
 
     } else {
-        displayKod.innerHTML = `<i class="fas fa-school"></i> ${kod}`;
+        if(displayKod) displayKod.innerHTML = `<i class="fas fa-school"></i> ${kod}`;
     }
     
+    // Muat data profil sekolah
     loadProfil(kod);
 }
 
-// --- NAVIGATION LOGIC ---
+// --- 1. NAVIGATION LOGIC ---
+
+/**
+ * Menukar paparan seksyen dalam portal (Single Page App style).
+ */
 window.showSection = function(section) {
-    // Sembunyikan semua seksyen
     const sections = ['menu', 'profil', 'aduan', 'analisa', 'pencapaian'];
     sections.forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if(el) el.classList.add('hidden');
     });
 
-    // Paparkan seksyen yang dipilih dengan animasi
     const targetEl = document.getElementById(`section-${section}`);
     if(targetEl) {
         targetEl.classList.remove('hidden');
-        targetEl.classList.add('animate-fade-up'); // Pastikan CSS animasi wujud dalam HTML
+        targetEl.classList.add('animate-fade-up');
     }
 
-    // Logic khusus setiap seksyen
+    // Trigger pemuatan data khusus mengikut seksyen
     if (section === 'aduan') window.loadTiketUser();
     if (section === 'analisa') loadAnalisaSekolah();
     if (section === 'pencapaian') window.loadPencapaianSekolah();
     
-    // Scroll ke atas
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
+
+// --- 2. PROFILE MANAGEMENT ---
 
 async function loadProfil(kod) {
     try {
         const data = await SchoolService.getByCode(kod);
+        if(!data) return;
+
         document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
         document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
         document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
@@ -86,10 +101,14 @@ async function loadProfil(kod) {
             'gpictNama': data.nama_gpict, 'gpictTel': data.no_telefon_gpict, 'gpictEmel': data.emel_delima_gpict,
             'adminNama': data.nama_admin_delima, 'adminTel': data.no_telefon_admin_delima, 'adminEmel': data.emel_delima_admin_delima
         };
+        
         for (let id in fields) { 
-            if(document.getElementById(id)) document.getElementById(id).value = fields[id] || ""; 
+            const el = document.getElementById(id);
+            if(el) el.value = fields[id] || ""; 
         }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("[Profile] Gagal muat:", err); 
+    }
 }
 
 window.simpanProfil = async function() {
@@ -97,7 +116,15 @@ window.simpanProfil = async function() {
     const emelG = document.getElementById('gpictEmel').value;
     const btnSubmit = document.querySelector('#dataForm button[type="submit"]');
     
-    if (!checkEmailDomain(emelG)) return Swal.fire('Format Salah', 'Sila gunakan emel domain moe-dl.edu.my', 'warning');
+    // Validasi domain emel
+    if (!checkEmailDomain(emelG)) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Format Emel Salah',
+            text: 'Sila gunakan emel rasmi domain @moe-dl.edu.my',
+            confirmButtonColor: '#f59e0b'
+        });
+    }
 
     if(btnSubmit) { btnSubmit.disabled = true; btnSubmit.classList.add('opacity-75'); }
     toggleLoading(true);
@@ -115,28 +142,31 @@ window.simpanProfil = async function() {
         await SchoolService.updateProfile(kod, payload);
         toggleLoading(false);
         if(btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-75'); }
+        
         Swal.fire({
             icon: 'success', 
-            title: 'Disimpan', 
+            title: 'Tersimpan', 
             text: 'Maklumat sekolah berjaya dikemaskini.',
             confirmButtonColor: '#22c55e'
         }).then(() => window.showSection('menu'));
     } catch (err) {
         toggleLoading(false); 
         if(btnSubmit) { btnSubmit.disabled = false; btnSubmit.classList.remove('opacity-75'); }
-        Swal.fire('Ralat', 'Gagal menyimpan data.', 'error');
+        Swal.fire('Ralat', 'Gagal menyimpan profil. Sila cuba lagi.', 'error');
     }
 };
 
 window.salinData = function() {
     if (document.getElementById('checkSama').checked) {
         ['Nama','Tel','Emel'].forEach(suffix => {
-            document.getElementById('admin'+suffix).value = document.getElementById('gpict'+suffix).value;
+            const gpictVal = document.getElementById('gpict'+suffix).value;
+            document.getElementById('admin'+suffix).value = gpictVal;
         });
     }
 };
 
-// --- ANALISA LOGIC ---
+// --- 3. DIGITAL ANALYSIS (DCS/DELIMa) ---
+
 async function loadAnalisaSekolah() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tableBody = document.getElementById('tableAnalisaBody');
@@ -145,10 +175,11 @@ async function loadAnalisaSekolah() {
         const data = await DcsService.getBySchool(kod);
 
         if (!data) {
-            if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-red-400 font-bold">Data analisa belum tersedia.</td></tr>`;
+            if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-400 font-bold italic">Data analisa sekolah belum tersedia.</td></tr>`;
             return;
         }
 
+        // Tentukan data terkini (2025 vs 2024)
         let dcsLatest = (data.dcs_2025 !== null) ? data.dcs_2025 : data.dcs_2024;
         let aktifLatest = (data.peratus_aktif_2025 !== null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
         
@@ -157,7 +188,9 @@ async function loadAnalisaSekolah() {
 
         renderAnalisaTable(data);
         renderDcsChart(data);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("[Analisa] Ralat:", err); 
+    }
 }
 
 function renderAnalisaTable(data) {
@@ -170,14 +203,14 @@ function renderAnalisaTable(data) {
         const aktif = data[`peratus_aktif_${year}`];
         if (dcs !== null || aktif !== null) {
             rows += `
-            <tr class="hover:bg-slate-50 transition">
+            <tr class="hover:bg-slate-50 transition-colors">
                 <td class="px-6 py-4 font-bold text-slate-500">${year}</td>
-                <td class="px-6 py-4 font-bold text-blue-600">${dcs !== null ? dcs.toFixed(2) : '-'}</td>
-                <td class="px-6 py-4 font-bold text-green-600">${aktif !== null ? aktif + '%' : '-'}</td>
+                <td class="px-6 py-4 font-black text-blue-600">${dcs !== null ? dcs.toFixed(2) : '-'}</td>
+                <td class="px-6 py-4 font-black text-green-600">${aktif !== null ? aktif + '%' : '-'}</td>
             </tr>`;
         }
     });
-    tableBody.innerHTML = rows || `<tr><td colspan="3" class="p-6 text-center text-slate-400 italic">Tiada data sejarah.</td></tr>`;
+    tableBody.innerHTML = rows || `<tr><td colspan="3" class="p-6 text-center text-slate-400 italic">Tiada sejarah data ditemui.</td></tr>`;
 }
 
 function renderDcsChart(data) {
@@ -194,34 +227,62 @@ function renderDcsChart(data) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Skor DCS (0-5)', data: dataDcs, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', yAxisID: 'y', tension: 0.3, fill: true },
-                { label: '% Aktif DELIMa', data: dataAktif, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', yAxisID: 'y1', tension: 0.3, borderDash: [5, 5] }
+                { 
+                    label: 'Skor DCS (0-5)', 
+                    data: dataDcs, 
+                    borderColor: '#3b82f6', 
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)', 
+                    yAxisID: 'y', 
+                    tension: 0.4, 
+                    fill: true,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#3b82f6'
+                },
+                { 
+                    label: '% Aktif DELIMa', 
+                    data: dataAktif, 
+                    borderColor: '#10b981', 
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)', 
+                    yAxisID: 'y1', 
+                    tension: 0.4, 
+                    borderDash: [5, 5],
+                    pointRadius: 6,
+                    pointBackgroundColor: '#10b981'
+                }
             ]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } },
-            scales: { y: { min: 0, max: 5, position: 'left' }, y1: { min: 0, max: 100, position: 'right', grid: { drawOnChartArea: false } } }
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { font: { weight: 'bold' } } } },
+            scales: { 
+                y: { min: 0, max: 5, position: 'left', title: { display: true, text: 'Skor DCS' } }, 
+                y1: { min: 0, max: 100, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '% Aktif' } } 
+            }
         }
     });
 }
 
-// --- PENCAPAIAN LOGIC (TAILWIND UI) ---
+// --- 4. ACHIEVEMENT (KEMENJADIAN) MODULE ---
+
+/**
+ * Menukar UI borang mengikut kategori (Murid, Guru, Sekolah).
+ */
 window.setPencapaianType = function(type) {
     document.getElementById('pencapaianKategori').value = type;
     
-    // Update Tab Styles
+    // Kemaskini Visual Tab
     const tabs = ['murid', 'guru', 'sekolah'];
     tabs.forEach(t => {
         const btn = document.getElementById(`tab-p-${t}`);
+        if(!btn) return;
         if(t.toUpperCase() === type) {
-            btn.className = "flex-1 py-2 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition";
+            btn.className = "flex-1 py-2 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-md transition transform scale-105";
         } else {
             btn.className = "flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition";
         }
     });
 
-    // Toggle Input Fields
     const wrapperJenis = document.getElementById('wrapperJenisRekod');
     const divJawatan = document.getElementById('divInputJawatan');
     const inpName = document.getElementById('pInputNama');
@@ -251,6 +312,9 @@ window.setPencapaianType = function(type) {
     window.toggleJenisPencapaian();
 };
 
+/**
+ * Menukar medan input berdasarkan jenis rekod (Pertandingan vs Pensijilan).
+ */
 window.toggleJenisPencapaian = function() {
     const isPensijilan = document.getElementById('radioPensijilan').checked;
     document.getElementById('pInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
@@ -267,71 +331,91 @@ window.toggleJenisPencapaian = function() {
     }
 };
 
+/**
+ * Memuatkan senarai rekod pencapaian sekolah dari database.
+ */
 window.loadPencapaianSekolah = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tbody = document.getElementById('tbodyRekodPencapaian');
     if(!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400 font-medium animate-pulse">Memuatkan...</td></tr>`;
+    
+    tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 font-medium animate-pulse">Memuatkan rekod...</td></tr>`;
 
     try {
         const data = await AchievementService.getBySchool(kod);
         userPencapaianList = data; 
 
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400 italic bg-slate-50">Tiada rekod dijumpai.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 italic bg-slate-50 rounded-xl">Tiada rekod pencapaian ditemui.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = data.map(item => {
             let badgeClass = 'bg-slate-100 text-slate-600';
-            if (item.kategori === 'MURID') badgeClass = 'bg-blue-100 text-blue-700';
-            else if (item.kategori === 'GURU') badgeClass = 'bg-amber-100 text-amber-700';
-            else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-green-100 text-green-700';
+            if (item.kategori === 'MURID') badgeClass = 'bg-blue-100 text-blue-700 border-blue-200';
+            else if (item.kategori === 'GURU') badgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
+            else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-green-100 text-green-700 border-green-200';
 
-            let programLabel = item.nama_pertandingan;
-            if (item.jenis_rekod === 'PENSIJILAN') programLabel = `<span class="bg-amber-50 text-amber-600 text-[10px] px-1 rounded border border-amber-200 mr-1">SIJIL</span> ${item.nama_pertandingan}`;
+            const programLabel = item.jenis_rekod === 'PENSIJILAN' 
+                ? `<span class="bg-amber-50 text-amber-600 text-[9px] px-1 rounded border border-amber-200 mr-1 font-black">SIJIL</span> ${item.nama_pertandingan}`
+                : item.nama_pertandingan;
 
             return `
-            <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
-                <td class="px-6 py-4 text-center">
-                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badgeClass}">${item.kategori}</span>
-                    <div class="text-[10px] text-slate-400 mt-1 font-mono">${item.tahun}</div>
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 group">
+                <td class="px-4 py-4 text-center w-24">
+                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase border ${badgeClass}">${item.kategori}</span>
+                    <div class="text-[10px] text-slate-400 mt-1.5 font-mono font-bold">${item.tahun}</div>
                 </td>
-                <td class="px-6 py-4">
-                    <div class="font-bold text-slate-800 text-sm leading-snug mb-1">${item.nama_peserta}</div>
-                    <div class="text-xs text-teal-600 font-semibold mb-1">${programLabel}</div>
+                <td class="px-4 py-4">
+                    <div class="font-bold text-slate-800 text-sm leading-snug mb-0.5 uppercase">${item.nama_peserta}</div>
+                    <div class="text-xs text-teal-600 font-bold mb-1.5 leading-tight">${programLabel}</div>
                     <div class="flex flex-wrap gap-2">
-                        <span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200">${item.peringkat}</span>
-                        <span class="bg-green-50 text-green-600 text-[10px] px-2 py-0.5 rounded border border-green-100 font-bold">${item.pencapaian}</span>
+                        <span class="bg-white text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200 uppercase font-medium">${item.peringkat}</span>
+                        <span class="bg-green-50 text-green-700 text-[10px] px-2 py-0.5 rounded border border-green-100 font-black uppercase tracking-wider">${item.pencapaian}</span>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-center">
-                    <div class="flex items-center justify-center gap-2">
-                        <button onclick="openEditPencapaianUser('${item.id}')" class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition"><i class="fas fa-edit"></i></button>
-                        <button onclick="padamPencapaian('${item.id}')" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"><i class="fas fa-trash-alt"></i></button>
+                <td class="px-4 py-4 text-center w-28">
+                    <div class="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="openEditPencapaianUser('${item.id}')" class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition shadow-sm" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button onclick="padamPencapaian('${item.id}')" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-500 hover:text-white transition shadow-sm" title="Padam"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </td>
             </tr>`;
         }).join('');
-    } catch (err) { tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-red-500 font-bold">Ralat memuatkan data.</td></tr>`; }
+    } catch (err) { 
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-500 font-bold">Ralat pangkalan data.</td></tr>`; 
+    }
 };
 
+/**
+ * Menyimpan rekod pencapaian baharu.
+ */
 window.simpanPencapaian = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD); 
     const btn = document.querySelector('#formPencapaian button[type="submit"]');
     const kategori = document.getElementById('pencapaianKategori').value;
     const jenisRekod = document.getElementById('pInputJenisRekod').value;
     
-    // Validasi Jawatan
     let jawatan = null;
     if (kategori === 'GURU') {
         jawatan = document.getElementById('pInputJawatan').value;
-        if (!jawatan) return Swal.fire('Ralat', 'Sila pilih jawatan guru.', 'warning');
+        if (!jawatan) return Swal.fire('Ralat Jawatan', 'Sila pilih jawatan guru.', 'warning');
     }
 
     let peringkat = document.getElementById('pInputPeringkat').value;
     let penyedia = document.getElementById('pInputPenyedia').value;
     if (jenisRekod === 'PENSIJILAN') peringkat = 'ANTARABANGSA';
+
+    const nama = document.getElementById('pInputNama').value.trim().toUpperCase();
+    const program = document.getElementById('pInputProgram').value.trim().toUpperCase();
+    const pencapaian = document.getElementById('pInputPencapaian').value.trim().toUpperCase();
+    const link = document.getElementById('pInputLink').value.trim();
+    const tahun = parseInt(document.getElementById('pInputTahun').value);
+
+    if(!nama || !program || !pencapaian || !link || !tahun) {
+        return Swal.fire('Maklumat Tidak Lengkap', 'Sila isi semua ruangan bertanda.', 'warning');
+    }
 
     if(btn) { btn.disabled = true; btn.classList.add('opacity-75'); }
     toggleLoading(true);
@@ -340,12 +424,12 @@ window.simpanPencapaian = async function() {
         const payload = {
             kod_sekolah: kod,
             kategori, 
-            nama_peserta: document.getElementById('pInputNama').value.trim().toUpperCase(), 
-            nama_pertandingan: document.getElementById('pInputProgram').value.trim().toUpperCase(),
+            nama_peserta: nama, 
+            nama_pertandingan: program,
             peringkat,
-            tahun: parseInt(document.getElementById('pInputTahun').value),
-            pencapaian: document.getElementById('pInputPencapaian').value.trim().toUpperCase(),
-            pautan_bukti: document.getElementById('pInputLink').value.trim(),
+            tahun,
+            pencapaian,
+            pautan_bukti: link,
             jenis_rekod: jenisRekod,
             penyedia,
             jawatan
@@ -354,127 +438,26 @@ window.simpanPencapaian = async function() {
         await AchievementService.create(payload);
         toggleLoading(false);
         if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
-        Swal.fire('Berjaya', 'Rekod disimpan.', 'success').then(() => {
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Berjaya Direkod',
+            text: 'Maklumat telah disimpan ke pangkalan data.',
+            confirmButtonColor: '#22c55e'
+        }).then(() => {
             document.getElementById('formPencapaian').reset();
             document.getElementById('pInputTahun').value = '2026';
             window.loadPencapaianSekolah();
         });
     } catch (err) {
-        toggleLoading(false); if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
-        Swal.fire('Ralat', 'Gagal menyimpan rekod.', 'error');
+        toggleLoading(false); 
+        if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
+        Swal.fire('Ralat Sistem', 'Gagal menyimpan rekod. Sila cuba lagi.', 'error');
     }
 };
 
-// --- HELPDESK & OTHER UTILS ---
-window.hantarTiket = async function() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-    const peranan = document.getElementById('tiketPeranan').value;
-    const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
-    const mesej = document.getElementById('tiketMesej').value;
+// --- 5. EDIT MODAL OPERATIONS ---
 
-    if (!peranan) return Swal.fire('Ralat', 'Sila pilih peranan.', 'warning');
-
-    toggleLoading(true);
-    try {
-        await SupportService.createTicket({ kod_sekolah: kod, peranan_pengirim: peranan, tajuk: tajuk, butiran_masalah: mesej });
-        toggleLoading(false);
-        Swal.fire('Berjaya', 'Tiket dihantar. Kami akan semak segera.', 'success').then(() => {
-            document.getElementById('formTiket').reset();
-            window.switchAduanTab('semak');
-            window.loadTiketUser();
-        });
-    } catch (e) { toggleLoading(false); Swal.fire('Ralat', 'Gagal menghantar tiket.', 'error'); }
-};
-
-window.loadTiketUser = async function() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-    const container = document.getElementById('senaraiTiketContainer');
-    try {
-        const data = await SupportService.getBySchool(kod);
-        container.innerHTML = "";
-        if(data.length === 0) { container.innerHTML = `<div class="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">Tiada tiket aduan direkodkan.</div>`; return; }
-        
-        data.forEach(t => {
-            const statusBadge = t.status === 'SELESAI' 
-                ? `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded font-bold">SELESAI</span>` 
-                : `<span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-bold animate-pulse">DALAM PROSES</span>`;
-            
-            const balasan = t.balasan_admin 
-                ? `<div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600 bg-green-50 p-2 rounded border border-green-100"><strong class="text-green-700"><i class="fas fa-check-circle mr-1"></i> Respon Admin:</strong> ${t.balasan_admin}</div>` 
-                : '';
-            
-            container.innerHTML += `
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="text-[10px] text-slate-400 font-bold">${new Date(t.created_at).toLocaleDateString()}</div>
-                    ${statusBadge}
-                </div>
-                <h4 class="font-bold text-slate-800 text-sm mb-1">${t.tajuk}</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">${t.butiran_masalah}</p>
-                ${balasan}
-            </div>`;
-        });
-    } catch (e) { container.innerHTML = `<div class="text-red-500 font-bold text-center py-4">Gagal memuatkan tiket.</div>`; }
-};
-
-window.ubahKataLaluan = async function() {
-    const userId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID);
-    if (!userId) return;
-    const { value: formValues } = await Swal.fire({
-        title: 'Tukar Kata Laluan',
-        html: '<input id="swal-input1" type="password" class="swal2-input" placeholder="Kata Laluan Lama"><input id="swal-input2" type="password" class="swal2-input" placeholder="Kata Laluan Baru (Min 6)">',
-        focusConfirm: false, showCancelButton: true, confirmButtonText: 'Simpan', confirmButtonColor: '#16a34a',
-        preConfirm: () => [document.getElementById('swal-input1').value, document.getElementById('swal-input2').value]
-    });
-    if (formValues) {
-        const [oldPass, newPass] = formValues;
-        if (!oldPass || !newPass || newPass.length < 6) return Swal.fire('Ralat', 'Kata laluan minimum 6 aksara.', 'warning');
-        toggleLoading(true);
-        try {
-            await AuthService.changePassword(userId, oldPass, newPass);
-            toggleLoading(false);
-            Swal.fire('Berjaya', 'Kata laluan ditukar. Sila log masuk semula.', 'success').then(() => keluarSistem());
-        } catch (err) { toggleLoading(false); Swal.fire('Gagal', err.message, 'error'); }
-    }
-};
-
-window.resetDataSekolah = async function() {
-    const kod = document.getElementById('hiddenKodSekolah').value;
-    const { value: password } = await Swal.fire({
-        title: 'Akses Admin Diperlukan',
-        text: 'Masukkan kata laluan khas:',
-        input: 'password',
-        showCancelButton: true,
-        confirmButtonText: 'Reset',
-        confirmButtonColor: '#ef4444'
-    });
-
-    if (password === 'pkgag') { 
-         Swal.fire({
-            title: 'Pasti Reset Data?',
-            text: "Semua data GPICT/Admin akan dipadam. Kod sekolah kekal.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Ya, Reset!'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                toggleLoading(true);
-                try {
-                    await SchoolService.resetData(kod);
-                    toggleLoading(false);
-                    Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => loadProfil(kod));
-                } catch (err) {
-                    toggleLoading(false); Swal.fire('Ralat', 'Gagal reset data.', 'error');
-                }
-            }
-        });
-    } else if (password) {
-        Swal.fire('Akses Ditolak', 'Kata laluan salah.', 'error');
-    }
-};
-
-// --- MODAL UTILS (EDIT) ---
 window.openEditPencapaianUser = function(id) {
     const item = userPencapaianList.find(i => String(i.id) === String(id));
     if (!item) return;
@@ -489,7 +472,7 @@ window.openEditPencapaianUser = function(id) {
     document.getElementById('editUserLink').value = item.pautan_bukti;
     document.getElementById('editUserTahun').value = item.tahun;
 
-    window.toggleEditUserJenis(); // Update UI logic
+    window.toggleEditUserJenis(); 
 
     const divJawatan = document.getElementById('editUserDivJawatan');
     if (item.kategori === 'GURU') {
@@ -509,13 +492,20 @@ window.toggleEditUserJenis = function() {
     const jenis = document.querySelector('input[name="editRadioJenisUser"]:checked').value;
     const divPenyedia = document.getElementById('editUserDivPenyedia');
     const colPeringkat = document.getElementById('editUserColPeringkat');
+    
+    const lblProg = document.getElementById('lblEditUserProgram');
+    const lblPenc = document.getElementById('lblEditUserPencapaian');
 
     if (jenis === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
         colPeringkat.classList.add('hidden'); 
+        lblProg.innerText = "NAMA SIJIL / PROGRAM";
+        lblPenc.innerText = "TAHAP / SKOR";
     } else {
         divPenyedia.classList.add('hidden');
         colPeringkat.classList.remove('hidden'); 
+        lblProg.innerText = "NAMA PERTANDINGAN";
+        lblPenc.innerText = "PENCAPAIAN";
     }
 };
 
@@ -553,24 +543,201 @@ window.updatePencapaianUser = async function() {
         if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
         
         document.getElementById('modalEditPencapaianUser').classList.add('hidden');
-        Swal.fire('Berjaya', 'Rekod dikemaskini.', 'success').then(() => window.loadPencapaianSekolah());
+        Swal.fire({
+            icon: 'success',
+            title: 'Kemaskini Berjaya',
+            timer: 1500,
+            showConfirmButton: false
+        }).then(() => window.loadPencapaianSekolah());
     } catch (e) {
         toggleLoading(false); if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
-        Swal.fire('Ralat', 'Gagal mengemaskini.', 'error');
+        Swal.fire('Gagal', 'Sistem tidak dapat mengemaskini rekod.', 'error');
     }
 };
 
 window.padamPencapaian = async function(id) {
-    Swal.fire({ title: 'Padam Rekod?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444' }).then(async (result) => {
+    Swal.fire({ 
+        title: 'Padam Rekod?', 
+        text: "Tindakan ini tidak boleh dibatalkan semula.",
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
                 await AchievementService.delete(id);
                 toggleLoading(false);
-                Swal.fire('Dipadam', 'Rekod dipadam.', 'success').then(() => window.loadPencapaianSekolah());
+                Swal.fire('Berjaya', 'Rekod telah dipadam.', 'success').then(() => window.loadPencapaianSekolah());
             } catch (e) {
-                toggleLoading(false); Swal.fire('Ralat', 'Gagal memadam.', 'error');
+                toggleLoading(false); 
+                Swal.fire('Ralat', 'Gagal memadam rekod.', 'error');
             }
         }
     });
+};
+
+// --- 6. HELPDESK & TICKETING ---
+
+window.hantarTiket = async function() {
+    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const peranan = document.getElementById('tiketPeranan').value;
+    const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
+    const mesej = document.getElementById('tiketMesej').value;
+
+    if (!peranan) return Swal.fire('Peranan Wajib', 'Sila pilih peranan anda.', 'warning');
+
+    toggleLoading(true);
+    try {
+        await SupportService.createTicket({ 
+            kod_sekolah: kod, 
+            peranan_pengirim: peranan, 
+            tajuk: tajuk, 
+            butiran_masalah: mesej 
+        });
+        toggleLoading(false);
+        Swal.fire('Tiket Dihantar', 'Kami akan menyemak aduan anda secepat mungkin.', 'success').then(() => {
+            document.getElementById('formTiket').reset();
+            // Switch ke tab semak secara automatik (Fungsi switchAduanTab ada dalam HTML user.html)
+            if(window.switchAduanTab) window.switchAduanTab('semak');
+            window.loadTiketUser();
+        });
+    } catch (e) { 
+        toggleLoading(false); 
+        Swal.fire('Ralat', 'Gagal menghantar tiket aduan.', 'error'); 
+    }
+};
+
+window.loadTiketUser = async function() {
+    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const container = document.getElementById('senaraiTiketContainer');
+    if(!container) return;
+
+    try {
+        const data = await SupportService.getBySchool(kod);
+        container.innerHTML = "";
+        
+        if(data.length === 0) { 
+            container.innerHTML = `<div class="p-10 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 font-medium italic">Tiada tiket aduan aktif ditemui.</div>`; 
+            return; 
+        }
+        
+        data.forEach(t => {
+            const statusBadge = t.status === 'SELESAI' 
+                ? `<span class="bg-green-100 text-green-700 text-[10px] px-2.5 py-1 rounded-full font-black border border-green-200">SELESAI</span>` 
+                : `<span class="bg-amber-100 text-amber-700 text-[10px] px-2.5 py-1 rounded-full font-black animate-pulse border border-amber-200">DALAM PROSES</span>`;
+            
+            const balasan = t.balasan_admin 
+                ? `<div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100"><strong class="text-emerald-700 uppercase flex items-center gap-2 mb-1"><i class="fas fa-check-circle"></i> Respon Pentadbir:</strong> ${t.balasan_admin}</div>` 
+                : '';
+            
+            container.innerHTML += `
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="text-[10px] text-slate-400 font-black uppercase tracking-widest">${new Date(t.created_at).toLocaleDateString('ms-MY')}</div>
+                    ${statusBadge}
+                </div>
+                <h4 class="font-bold text-slate-800 text-sm mb-2 uppercase leading-tight">${t.tajuk}</h4>
+                <p class="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl">${t.butiran_masalah}</p>
+                ${balasan}
+            </div>`;
+        });
+    } catch (e) { 
+        container.innerHTML = `<div class="text-red-500 font-bold text-center py-6">Ralat memuatkan sejarah tiket.</div>`; 
+    }
+};
+
+// --- 7. SECURITY & MAINTENANCE ---
+
+window.ubahKataLaluan = async function() {
+    const userId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID);
+    if (!userId) {
+        Swal.fire('Sesi Luput', 'Sila log masuk semula.', 'error');
+        return;
+    }
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Tukar Kata Laluan',
+        html: `
+            <div class="space-y-3">
+                <input id="swal-old-pass" type="password" class="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-brand-500" placeholder="Kata Laluan Lama">
+                <input id="swal-new-pass" type="password" class="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-brand-500" placeholder="Kata Laluan Baharu (Min 6)">
+            </div>
+        `,
+        focusConfirm: false, 
+        showCancelButton: true, 
+        confirmButtonText: 'Simpan Perubahan', 
+        confirmButtonColor: '#16a34a',
+        preConfirm: () => {
+            const oldP = document.getElementById('swal-old-pass').value;
+            const newP = document.getElementById('swal-new-pass').value;
+            if(!oldP || !newP) {
+                Swal.showValidationMessage('Sila isi kedua-dua ruangan.');
+                return false;
+            }
+            if(newP.length < 6) {
+                Swal.showValidationMessage('Kata laluan baharu minima 6 aksara.');
+                return false;
+            }
+            return [oldP, newP];
+        }
+    });
+
+    if (formValues) {
+        const [oldPass, newPass] = formValues;
+        toggleLoading(true);
+        try {
+            await AuthService.changePassword(userId, oldPass, newPass);
+            toggleLoading(false);
+            Swal.fire({
+                icon: 'success',
+                title: 'Berjaya Ditukar',
+                text: 'Sila log masuk semula dengan kata laluan baharu.',
+                confirmButtonColor: '#22c55e'
+            }).then(() => keluarSistem());
+        } catch (err) { 
+            toggleLoading(false); 
+            Swal.fire('Gagal', err.message, 'error'); 
+        }
+    }
+};
+
+window.resetDataSekolah = async function() {
+    const kod = document.getElementById('hiddenKodSekolah').value;
+    const { value: password } = await Swal.fire({
+        title: 'Akses Pentadbir PPD',
+        text: 'Masukkan kata laluan keselamatan untuk reset data:',
+        input: 'password',
+        showCancelButton: true,
+        confirmButtonText: 'SAHKAN RESET',
+        confirmButtonColor: '#ef4444'
+    });
+
+    // Kata laluan rahsia (seperti dalam smpid asli)
+    if (password === 'pkgag') { 
+         Swal.fire({
+            title: 'Sahkan Padam Semua Data?',
+            text: "Data profil GPICT dan Admin DELIMa akan dipadamkan (NULL). Kod sekolah akan kekal wujud.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Padam Semua!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                toggleLoading(true);
+                try {
+                    await SchoolService.resetData(kod);
+                    toggleLoading(false);
+                    Swal.fire('Selesai', 'Data sekolah telah dikosongkan.', 'success').then(() => loadProfil(kod));
+                } catch (err) {
+                    toggleLoading(false); 
+                    Swal.fire('Ralat', 'Gagal memulakan proses reset data.', 'error');
+                }
+            }
+        });
+    } else if (password) {
+        Swal.fire('Akses Ditolak', 'Kata laluan keselamatan tidak sah.', 'error');
+    }
 };

@@ -5,97 +5,147 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Log Masuk Admin</title>
   
-  <meta name="theme-color" content="#198754">
+  <meta name="theme-color" content="#16a34a"> <!-- brand-600 -->
   <link rel="icon" href="icoppdag.png">
   
-  <!-- CSS Bootstrap & FontAwesome -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- TAILWIND CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FONTAWESOME -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   
-  <!-- MODULAR CSS -->
-  <link href="css/core.css" rel="stylesheet">
-  <link href="css/layout.css" rel="stylesheet">
-  <link href="css/components.css" rel="stylesheet">
+  <!-- GOOGLE FONTS -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
+  <!-- KONFIGURASI TAILWIND -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- STYLE TAMBAHAN -->
+  <style>
+    .hidden { display: none !important; }
+  </style>
+
   <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body id="page-login">
+<body id="page-login" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex items-center justify-center py-10 px-4">
 
   <!-- LOADING OVERLAY -->
-  <div id="loadingOverlay" class="hidden">
-    <div class="text-center">
-      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-      <p class="mt-2 fw-bold text-dark">Mengesahkan Akaun...</p>
+  <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+    <div class="text-center text-white">
+      <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
+      <p class="font-bold tracking-wide animate-pulse">Mengesahkan Akaun...</p>
     </div>
   </div>
 
-  <!-- HEADER -->
-  <div class="header-login text-center">
-    <img src="icoppdag.png" alt="Logo PPD" class="mb-4" style="width: 200px; height: auto;">
-    <h2 class="fw-bold px-3"><i class="fas fa-school me-2"></i>Laman Log Masuk Admin</h2>
-    <p class="opacity-75">Khas Untuk Admin Sekolah & PPD Sahaja</p>
-  </div>
+  <!-- LOGIN CONTAINER -->
+  <div class="w-full max-w-md animate-fade-in">
+    
+    <!-- HEADER -->
+    <div class="text-center mb-8">
+        <a href="index.html" class="inline-block mb-6 transform hover:scale-105 transition duration-300">
+            <img src="icoppdag.png" alt="Logo PPD" class="w-24 h-auto drop-shadow-md mx-auto">
+        </a>
+        <h2 class="text-2xl font-bold text-slate-800 mb-1 tracking-tight">Log Masuk Sistem</h2>
+        <p class="text-slate-500 text-sm font-medium">Akses Khas Admin Sekolah & PPD</p>
+    </div>
 
-  <div class="container pb-5" style="margin-top: -2rem;">
-    <div class="row justify-content-center">
-      <div class="col-md-12">
+    <!-- KAD LOG MASUK -->
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+        <div class="p-8">
+            <!-- Tajuk Dinamik (Diisi JS) -->
+            <div class="text-center mb-6">
+                <h5 class="font-bold text-brand-700 text-lg uppercase tracking-wide border-b-2 border-brand-100 pb-2 inline-block" id="loginTitle">
+                    AKSES SISTEM
+                </h5>
+            </div>
 
-        <!-- LOGIN CARD -->
-        <div id="loginCard" class="card p-4 mx-auto shadow-sm" style="max-width: 500px;">
-          <div class="card-body">
-            <!-- Tajuk Dinamik -->
-            <h5 class="card-title text-center mb-4 fw-bold" id="loginTitle">AKSES SISTEM</h5>
-            
-            <!-- Butang Balik Ke Portal Utama (Baru) -->
-            <div class="text-center mb-4">
-                <a href="index.html" class="text-decoration-none small fw-bold text-primary">
-                    <i class="fas fa-arrow-left me-1"></i> Kembali ke Portal Utama
+            <!-- BUTANG BALIK -->
+            <div class="text-center mb-6">
+                <a href="index.html" class="text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors flex items-center justify-center gap-1">
+                    <i class="fas fa-arrow-left"></i> Kembali ke Portal Utama
                 </a>
             </div>
 
-            <!-- Input Emel -->
-            <div class="mb-3">
-              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">EMEL PENGGUNA</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
-                <input type="email" id="inputEmail" class="form-control form-control-lg border-start-0" 
-                       placeholder="nama@moe.gov.my">
-              </div>
+            <!-- INPUT EMEL -->
+            <div class="mb-5">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Emel Pengguna</label>
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-envelope text-slate-400 group-focus-within:text-brand-500 transition-colors"></i>
+                    </div>
+                    <input type="email" id="inputEmail" 
+                           class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all placeholder-slate-400" 
+                           placeholder="nama@moe.gov.my">
+                </div>
             </div>
 
-            <!-- Input Password -->
-            <div class="mb-4">
-              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">KATA LALUAN</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
-                <input type="password" id="inputPassword" class="form-control form-control-lg border-start-0" 
-                       placeholder="••••••••">
-                <button class="btn btn-outline-secondary border-start-0 bg-white" type="button" onclick="togglePass()">
-                    <i class="fas fa-eye text-muted" id="iconEye"></i>
-                </button>
-              </div>
-              <div class="text-end mt-1">
-                  <small class="text-muted" style="font-size: 0.75rem;">Default: ppdag@12345</small>
-              </div>
+            <!-- INPUT KATA LALUAN -->
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Kata Laluan</label>
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-lock text-slate-400 group-focus-within:text-brand-500 transition-colors"></i>
+                    </div>
+                    <input type="password" id="inputPassword" 
+                           class="w-full pl-11 pr-12 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none transition-all placeholder-slate-400" 
+                           placeholder="••••••••">
+                    <button type="button" onclick="togglePass()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-600 cursor-pointer transition-colors focus:outline-none">
+                        <i class="fas fa-eye" id="iconEye"></i>
+                    </button>
+                </div>
+                <div class="text-right mt-2">
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">Default: ppdag@12345</span>
+                </div>
             </div>
 
-            <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
-              <i class="fas fa-sign-in-alt me-2"></i>LOG MASUK
+            <!-- BUTANG LOG MASUK -->
+            <button onclick="prosesLogin()" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-500/30 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                <i class="fas fa-sign-in-alt"></i> LOG MASUK
             </button>
-            
-            <div class="text-center mt-3">
-                <small class="text-muted fst-italic">HAKCIPTA TERPELIHARA USTP PPD AG 2026</small>
-            </div>
-          </div>
-        </div>
 
-      </div>
+        </div>
+        
+        <!-- FOOTER KAD -->
+        <div class="bg-slate-50 p-4 text-center border-t border-slate-100">
+            <p class="text-[10px] text-slate-400 font-medium">
+                &copy; 2026 Unit Sumber Teknologi Pendidikan (USTP) PPDAG
+            </p>
+        </div>
     </div>
+
   </div>
 
-  <!-- MODULAR SCRIPTS (DIKEMASKINI) -->
+  <!-- MODULAR SCRIPTS -->
+  <!-- Nota: js/auth.js tidak perlu diubah kerana logik AuthService adalah agnostik UI -->
   <script type="module" src="js/auth.js"></script>
 
 </body>

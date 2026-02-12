@@ -1,12 +1,12 @@
 /**
- * PUBLIC FORM CONTROLLER
- * Menguruskan logik borang serahan data awam.
+ * PUBLIC FORM CONTROLLER (TAILWIND EDITION)
+ * Menguruskan logik borang serahan data awam dengan integrasi Tailwind CSS.
  * Menggunakan: SchoolService, AchievementService
  */
 
 import { SchoolService } from './services/school.service.js';
 import { AchievementService } from './services/achievement.service.js';
-import { toggleLoading } from './core/helpers.js';
+import { toggleLoading, formatSentenceCase } from './core/helpers.js';
 
 let globalSchoolList = [];
 
@@ -45,7 +45,12 @@ async function initPublicPortal() {
 
     } catch (err) {
         console.error("Public Init Error:", err);
-        Swal.fire("Ralat Sistem", "Gagal memuatkan data sekolah.", "error");
+        Swal.fire({
+            icon: 'error',
+            title: 'Ralat Sistem',
+            text: 'Gagal memuatkan data sekolah. Sila cuba lagi.',
+            confirmButtonColor: '#16a34a'
+        });
     } finally {
         toggleLoading(false);
     }
@@ -92,12 +97,13 @@ function validateAndLockSchool(kod) {
     
     if (school) {
         input.value = `${school.kod_sekolah} - ${school.nama_sekolah}`;
-        input.classList.add('bg-success', 'bg-opacity-10', 'border-success', 'text-success');
+        // Tailwind: Hijau muda untuk status sah
+        input.classList.add('bg-green-50', 'border-green-500', 'text-green-700');
         input.disabled = true; 
 
         finalInput.value = school.kod_sekolah;
-        statusMsg.classList.remove('hidden', 'text-danger');
-        statusMsg.classList.add('text-success');
+        statusMsg.classList.remove('hidden', 'text-red-500');
+        statusMsg.classList.add('text-green-600');
         statusMsg.innerHTML = `<i class="fas fa-check-circle me-1"></i> Sekolah disahkan.`;
         enableForm(); 
 
@@ -107,8 +113,8 @@ function validateAndLockSchool(kod) {
         }
     } else {
         input.value = kod;
-        statusMsg.classList.remove('hidden', 'text-success');
-        statusMsg.classList.add('text-danger');
+        statusMsg.classList.remove('hidden', 'text-green-600');
+        statusMsg.classList.add('text-red-500');
         statusMsg.innerHTML = `<i class="fas fa-times-circle me-1"></i> Kod tidak sah.`;
         if (btnGallery) btnGallery.classList.add('hidden');
         setupManualSearch();
@@ -143,14 +149,15 @@ function disableForm() {
 window.setPublicType = function(type) {
     document.getElementById('pubKategori').value = type;
 
-    // Update Tabs UI
+    // Update Tabs UI (TAILWIND STYLE)
     const buttons = document.querySelectorAll('#publicTabs button');
     buttons.forEach(btn => {
         if (btn.innerText === type) {
-            btn.classList.add('active', 'bg-primary', 'text-white');
-            btn.classList.remove('bg-light', 'text-dark');
+            // Aktif: Hijau Penuh, Teks Putih
+            btn.className = 'flex-1 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 shadow-md transition-all text-center transform scale-105';
         } else {
-            btn.classList.remove('active', 'bg-primary', 'text-white');
+            // Tidak Aktif: Teks Kelabu, Hover Gelap Sikit
+            btn.className = 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all text-center';
         }
     });
 
@@ -163,17 +170,21 @@ window.setPublicType = function(type) {
         wrapperJenis.classList.remove('hidden');
         divJawatan.classList.remove('hidden');
         lblNama.innerText = "NAMA GURU";
-        inpNama.placeholder = "Taip nama penuh guru...";
+        inpNama.placeholder = "TAIP NAMA PENUH GURU...";
         inpNama.readOnly = false;
         inpNama.value = ""; 
+        
+        // Reset radio buttons manually
         document.getElementById('radPubPertandingan').checked = true;
+        document.getElementById('radPubSijil').checked = false;
+        
         window.togglePubJenis();
     } 
     else if (type === 'MURID') {
         wrapperJenis.classList.add('hidden');
         divJawatan.classList.add('hidden');
         lblNama.innerText = "NAMA MURID / KUMPULAN";
-        inpNama.placeholder = "Taip nama penuh murid...";
+        inpNama.placeholder = "TAIP NAMA PENUH MURID...";
         inpNama.readOnly = false;
         inpNama.value = ""; 
         document.getElementById('pubJenisRekod').value = 'PERTANDINGAN';
@@ -183,8 +194,16 @@ window.setPublicType = function(type) {
         wrapperJenis.classList.add('hidden');
         divJawatan.classList.add('hidden');
         lblNama.innerText = "NAMA SEKOLAH";
-        const schoolName = document.getElementById('inputCariSekolah').value.split(' - ')[1] || "";
-        inpNama.value = schoolName; 
+        const searchInput = document.getElementById('inputCariSekolah');
+        // Extract nama sekolah dari format "KOD - NAMA"
+        let schoolName = "";
+        if(searchInput.value.includes(' - ')) {
+             schoolName = searchInput.value.split(' - ')[1];
+        } else {
+             schoolName = searchInput.value;
+        }
+        
+        inpNama.value = schoolName || ""; 
         inpNama.readOnly = true;
         document.getElementById('pubJenisRekod').value = 'PERTANDINGAN';
         window.togglePubJenis();
@@ -196,7 +215,7 @@ window.togglePubJenis = function() {
     const type = document.getElementById('pubKategori').value;
 
     const divPenyedia = document.getElementById('divPubPenyedia');
-    const colPeringkat = document.getElementById('divPubColPeringkat');
+    const colPeringkat = document.getElementById('divPubColPeringkat'); // Ini merujuk kepada ID Div
     
     const lblProgram = document.getElementById('lblPubProgram');
     const inpProgram = document.getElementById('pubProgram');
@@ -210,16 +229,16 @@ window.togglePubJenis = function() {
         divPenyedia.classList.remove('hidden');
         colPeringkat.classList.add('hidden'); 
         lblProgram.innerText = "NAMA SIJIL / PROGRAM";
-        inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
+        inpProgram.placeholder = "CONTOH: GOOGLE CERTIFIED EDUCATOR L1";
         lblPencapaian.innerText = "TAHAP / SKOR";
-        inpPencapaian.placeholder = "Contoh: LULUS / BAND C2";
+        inpPencapaian.placeholder = "CONTOH: LULUS / BAND C2";
     } else {
         divPenyedia.classList.add('hidden');
         colPeringkat.classList.remove('hidden');
         lblProgram.innerText = "NAMA PERTANDINGAN";
-        inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
+        inpProgram.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
         lblPencapaian.innerText = "PENCAPAIAN";
-        inpPencapaian.placeholder = "Contoh: JOHAN / EMAS / PENYERTAAN";
+        inpPencapaian.placeholder = "CONTOH: JOHAN / EMAS / PENYERTAAN";
     }
 };
 
@@ -229,7 +248,15 @@ window.hantarBorangAwam = async function() {
     const kod = document.getElementById('finalKodSekolah').value;
     const btn = document.querySelector('#formPublic button[type="submit"]');
 
-    if (!kod) return Swal.fire('Ralat', 'Sila pilih sekolah dahulu.', 'warning');
+    if (!kod) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Ralat',
+            text: 'Sila pilih dan sahkan sekolah dahulu.',
+            confirmButtonColor: '#fbbf24' // amber-400
+        });
+        return;
+    }
 
     // Kumpul Data
     const kategori = document.getElementById('pubKategori').value;
@@ -257,10 +284,20 @@ window.hantarBorangAwam = async function() {
     }
 
     if (!nama || !program || !pencapaian || !link || !tahun) {
-        return Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat bertanda.', 'warning');
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Maklumat Tidak Lengkap',
+            text: 'Sila isi semua maklumat bertanda.',
+            confirmButtonColor: '#fbbf24'
+        });
     }
 
-    if(btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>MENGHANTAR...`; }
+    // UI Loading State
+    if(btn) { 
+        btn.disabled = true; 
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>MENGHANTAR...`;
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+    }
 
     try {
         const payload = {
@@ -275,18 +312,28 @@ window.hantarBorangAwam = async function() {
 
         Swal.fire({
             icon: 'success',
-            title: 'Berjaya!',
-            text: 'Data telah disimpan.',
-            confirmButtonText: 'OK'
+            title: 'Berjaya Disimpan!',
+            text: 'Data pencapaian telah direkodkan.',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#16a34a'
         }).then(() => {
             window.resetBorang(false);
         });
 
     } catch (err) {
         console.error(err);
-        Swal.fire('Ralat', 'Gagal menghantar data.', 'error');
+        Swal.fire({
+            icon: 'error',
+            title: 'Ralat',
+            text: 'Gagal menghantar data. Sila cuba lagi.',
+            confirmButtonColor: '#ef4444'
+        });
     } finally {
-        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>HANTAR MAKLUMAT`; }
+        if(btn) { 
+            btn.disabled = false; 
+            btn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>HANTAR MAKLUMAT`;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
     }
 };
 
@@ -331,11 +378,11 @@ window.toggleKategoriPPD = function() {
     
     if (isUnit) {
         lbl.innerText = "NAMA UNIT / SEKTOR";
-        inp.placeholder = "Contoh: SEKTOR PEMBELAJARAN";
+        inp.placeholder = "CONTOH: SEKTOR PEMBELAJARAN";
         hiddenCat.value = "PPD";
     } else {
         lbl.innerText = "NAMA PEGAWAI";
-        inp.placeholder = "Taip nama penuh...";
+        inp.placeholder = "TAIP NAMA PENUH...";
         hiddenCat.value = "PEGAWAI";
     }
 };
@@ -343,7 +390,7 @@ window.toggleKategoriPPD = function() {
 window.toggleJenisPencapaianPPD = function() {
     const isPensijilan = document.getElementById('radPpdSijil').checked;
     const divPenyedia = document.getElementById('divPpdPenyedia');
-    const colPeringkat = document.getElementById('divPpdColPeringkat'); // Guna ID Column
+    const colPeringkat = document.getElementById('divPpdColPeringkat');
     
     const lblProgram = document.getElementById('lblPpdProgram');
     const inpProgram = document.getElementById('ppdProgram');
@@ -357,17 +404,17 @@ window.toggleJenisPencapaianPPD = function() {
         colPeringkat.classList.add('hidden'); 
         
         lblProgram.innerText = "NAMA SIJIL / PROGRAM";
-        inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
+        inpProgram.placeholder = "CONTOH: GOOGLE CERTIFIED EDUCATOR L1";
         lblPencapaian.innerText = "TAHAP / SKOR / BAND";
-        inpPencapaian.placeholder = "Contoh: LULUS / BAND C2";
+        inpPencapaian.placeholder = "CONTOH: LULUS / BAND C2";
     } else {
         divPenyedia.classList.add('hidden');
         colPeringkat.classList.remove('hidden');
         
         lblProgram.innerText = "NAMA PERTANDINGAN";
-        inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
+        inpProgram.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
         lblPencapaian.innerText = "PENCAPAIAN";
-        inpPencapaian.placeholder = "Contoh: JOHAN / EMAS / PENYERTAAN";
+        inpPencapaian.placeholder = "CONTOH: JOHAN / EMAS / PENYERTAAN";
     }
 };
 
@@ -393,10 +440,19 @@ window.hantarBorangPPD = async function() {
     }
 
     if (!nama || !program || !pencapaian || !link || !tahun) {
-        return Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat.', 'warning');
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Tidak Lengkap',
+            text: 'Sila isi semua maklumat.',
+            confirmButtonColor: '#a855f7' // purple-500
+        });
     }
 
-    if(btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>MENGHANTAR...`; }
+    if(btn) { 
+        btn.disabled = true; 
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>MENGHANTAR...`;
+        btn.classList.add('opacity-75');
+    }
 
     try {
         const payload = {
@@ -413,16 +469,26 @@ window.hantarBorangPPD = async function() {
             icon: 'success',
             title: 'Rekod PPD Disimpan',
             text: 'Data telah berjaya direkodkan.',
-            confirmButtonText: 'OK'
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#7e22ce' // purple-700
         }).then(() => {
             window.resetBorangPPD();
         });
 
     } catch (err) {
         console.error(err);
-        Swal.fire('Ralat', 'Gagal menghantar data.', 'error');
+        Swal.fire({
+            icon: 'error',
+            title: 'Ralat',
+            text: 'Gagal menghantar data.',
+            confirmButtonColor: '#ef4444'
+        });
     } finally {
-        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-save me-2"></i>SIMPAN REKOD PPD`; }
+        if(btn) { 
+            btn.disabled = false; 
+            btn.innerHTML = `<i class="fas fa-save me-2"></i>SIMPAN REKOD PPD`;
+            btn.classList.remove('opacity-75');
+        }
     }
 };
 

@@ -1,7 +1,6 @@
 /**
- * ADMIN MODULE: SETTINGS (DEV)
+ * ADMIN MODULE: SETTINGS (TAILWIND EDITION)
  * Menguruskan pengguna admin dan reset password sekolah.
- * Kemaskini: Matriks Kuasa SUPER ADMIN vs ADMIN.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -12,7 +11,7 @@ import { APP_CONFIG } from '../config/app.config.js';
 window.loadAdminList = async function() {
     const wrapper = document.getElementById('adminListWrapper');
     if (!wrapper) return;
-    wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
+    wrapper.innerHTML = `<div class="text-center py-10 text-slate-400 font-medium animate-pulse">Memuatkan senarai admin...</div>`;
     
     // Dapatkan info sesi semasa
     const currentUserRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
@@ -24,99 +23,87 @@ window.loadAdminList = async function() {
     try {
         let data = await AuthService.getAllAdmins();
         
-        // --- LOGIK PENAPISAN DATA (VIEW) ---
-        // Jika ADMIN biasa, sembunyikan baris SUPER_ADMIN dari pandangan (Security by obscurity)
-        // atau tunjuk tapi disable action. Di sini kita pilih untuk tunjuk tapi kawal butang.
-        
         if(data.length === 0) { 
-            wrapper.innerHTML = `<div class="alert alert-warning">Tiada data admin dijumpai.</div>`; 
+            wrapper.innerHTML = `<div class="p-4 bg-amber-50 text-amber-700 rounded-xl text-center border border-amber-100">Tiada data admin dijumpai.</div>`; 
             return; 
         }
         
         let html = `
-        <table class="table table-hover table-bordered align-middle mb-0 bg-white">
-            <thead class="bg-light">
-                <tr>
-                    <th class="small text-uppercase text-secondary" style="width: 5%;">#</th>
-                    <th class="small text-uppercase text-secondary">Emel Pengguna</th>
-                    <th class="small text-uppercase text-secondary text-center" style="width: 15%;">Peranan</th>
-                    <th class="small text-uppercase text-secondary text-center" style="width: 25%;">Tindakan</th>
-                </tr>
-            </thead>
-            <tbody>`;
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 font-bold">#</th>
+                        <th class="px-6 py-3 font-bold">Emel Pengguna</th>
+                        <th class="px-6 py-3 font-bold text-center">Peranan</th>
+                        <th class="px-6 py-3 font-bold text-center">Tindakan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">`;
             
         data.forEach((user, index) => {
             const isSelf = (user.id === currentUserId);
             
-            // 1. Badge Peranan
+            // 1. Badge Peranan (Tailwind)
             let roleBadge = '';
-            if (user.role === 'SUPER_ADMIN') roleBadge = `<span class="badge bg-danger">SUPER ADMIN</span>`;
-            else if (user.role === 'ADMIN') roleBadge = `<span class="badge bg-primary">ADMIN</span>`;
-            else roleBadge = `<span class="badge bg-indigo" style="background-color: #4b0082;">UNIT PPD</span>`;
+            if (user.role === 'SUPER_ADMIN') roleBadge = `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">SUPER ADMIN</span>`;
+            else if (user.role === 'ADMIN') roleBadge = `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">ADMIN</span>`;
+            else roleBadge = `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">UNIT PPD</span>`;
 
-            // 2. Logik Butang Tindakan (MATRIX KUASA)
+            // 2. Logik Butang Tindakan
             let actionButtons = '';
 
-            // --- BUTANG PADAM (DELETE) ---
-            // Hanya SUPER_ADMIN boleh padam pengguna lain.
-            // Tidak boleh padam diri sendiri di sini.
-            // Tidak boleh padam SUPER_ADMIN lain (jika ada).
+            // BUTANG PADAM
             if (currentUserRole === 'SUPER_ADMIN' && user.role !== 'SUPER_ADMIN' && !isSelf) {
                 actionButtons += `
-                <button onclick="padamAdmin('${user.id}', '${user.email}')" class="btn btn-sm btn-outline-danger me-1" title="Padam Akaun">
+                <button onclick="padamAdmin('${user.id}', '${user.email}')" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition" title="Padam Akaun">
                     <i class="fas fa-trash-alt"></i>
                 </button>`;
             } 
-            // ADMIN biasa TIDAK BOLEH padam sesiapa berdasarkan arahan.
 
-            // --- BUTANG RESET PASSWORD (FORCE) ---
+            // BUTANG RESET PASSWORD
             let canReset = false;
-
             if (user.role === 'SUPER_ADMIN') {
-                // Hanya boleh reset diri sendiri
                 if (isSelf) canReset = true;
             } else {
-                // Target: ADMIN atau UNIT PPD
-                // Doer: SUPER_ADMIN atau ADMIN
                 if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') {
                     canReset = true;
                 }
             }
 
             if (canReset) {
-                // Jika diri sendiri, panggil fungsi ubah password biasa (lama + baru)
-                // Jika orang lain, panggil fungsi force reset (baru sahaja)
                 const resetFunc = isSelf ? `ubahKataLaluanSendiri()` : `resetUserPass('${user.id}', '${user.email}', '${user.role}')`;
-                const btnColor = isSelf ? 'btn-warning' : 'btn-outline-dark';
+                const btnColor = isSelf ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50';
                 const btnIcon = isSelf ? 'fa-key' : 'fa-unlock-alt';
-                const btnTitle = isSelf ? 'Tukar Password Anda' : 'Reset Password Pengguna Ini';
                 
                 actionButtons += `
-                <button onclick="${resetFunc}" class="btn btn-sm ${btnColor}" title="${btnTitle}">
+                <button onclick="${resetFunc}" class="p-2 rounded-lg transition ${btnColor}" title="Reset Password">
                     <i class="fas ${btnIcon}"></i>
                 </button>`;
             }
 
             // Penanda 'ANDA'
             if (isSelf) {
-                roleBadge += ` <span class="badge bg-light text-dark border ms-1">ANDA</span>`;
+                roleBadge += ` <span class="ml-2 text-[10px] font-bold text-slate-400 border border-slate-200 px-2 py-0.5 rounded bg-slate-50">ANDA</span>`;
             }
 
             html += `
-            <tr>
-                <td class="text-center text-muted small">${index + 1}</td>
-                <td class="fw-bold text-dark small">${user.email}</td>
-                <td class="text-center">${roleBadge}</td>
-                <td class="text-center">
-                    ${actionButtons || '<span class="text-muted small fst-italic">- Tiada Akses -</span>'}
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4 font-mono text-xs text-slate-400 font-bold w-12 text-center">${index + 1}</td>
+                <td class="px-6 py-4 font-semibold text-slate-700">${user.email}</td>
+                <td class="px-6 py-4 text-center">${roleBadge}</td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        ${actionButtons || '<span class="text-[10px] text-slate-300 italic">- Tiada Akses -</span>'}
+                    </div>
                 </td>
             </tr>`;
         });
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
         wrapper.innerHTML = html;
     } catch (e) { 
         console.error(e);
-        wrapper.innerHTML = `<div class="alert alert-danger">Ralat memuatkan senarai admin.</div>`; 
+        wrapper.innerHTML = `<div class="p-4 bg-red-50 text-red-700 rounded-xl text-center font-bold">Ralat memuatkan senarai admin.</div>`; 
     }
 };
 
@@ -129,7 +116,7 @@ window.resetUserPass = async function(targetId, targetEmail, targetRole) {
         inputPlaceholder: 'Kata laluan baru...',
         showCancelButton: true,
         confirmButtonText: 'Simpan',
-        confirmButtonColor: '#198754',
+        confirmButtonColor: '#16a34a',
         cancelButtonText: 'Batal'
     });
 
@@ -153,16 +140,13 @@ function updateRoleDropdown(currentUserRole) {
     const select = document.getElementById('inputNewAdminRole');
     if (!select) return;
 
-    // Reset pilihan
     select.innerHTML = '';
 
-    // Pilihan Standard
     const opts = [
         { val: 'ADMIN', txt: 'ADMIN (Akses Penuh)' },
         { val: 'PPD_UNIT', txt: 'UNIT PPD (Pencapaian Sahaja)' }
     ];
 
-    // Jika SUPER ADMIN, tambah pilihan SUPER ADMIN (Optional: Jika mahu create Super Admin lain)
     if (currentUserRole === 'SUPER_ADMIN') {
         opts.unshift({ val: 'SUPER_ADMIN', txt: 'SUPER ADMIN (Akses Mutlak)' });
     }
@@ -182,7 +166,6 @@ window.tambahAdmin = async function() {
     
     if(!email || !pass) return Swal.fire('Ralat', 'Sila isi emel dan kata laluan.', 'warning');
     
-    // Semakan Keselamatan: Hanya SUPER_ADMIN boleh cipta SUPER_ADMIN
     const currentUserRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     if (role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
         return Swal.fire('Dilarang', 'Anda tidak mempunyai kuasa mencipta Super Admin.', 'error');
@@ -204,7 +187,6 @@ window.tambahAdmin = async function() {
 };
 
 window.padamAdmin = async function(id, email) {
-    // Semakan Keselamatan Tambahan
     const currentUserRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     
     if (currentUserRole !== 'SUPER_ADMIN') {
@@ -216,7 +198,7 @@ window.padamAdmin = async function(id, email) {
         text: `Adakah anda pasti mahu memadam akses untuk ${email}?`, 
         icon: 'warning', 
         showCancelButton: true, 
-        confirmButtonColor: '#d33',
+        confirmButtonColor: '#ef4444',
         confirmButtonText: 'Ya, Padam',
         cancelButtonText: 'Batal'
     }).then(async (r) => {
@@ -241,7 +223,7 @@ window.resetPasswordSekolah = async function(kod) {
         text: `Tetapkan semula kata laluan ${kod} kepada default (ppdag@12345)?`, 
         icon: 'warning', 
         showCancelButton: true,
-        confirmButtonColor: '#d33',
+        confirmButtonColor: '#f59e0b', // amber-500
         confirmButtonText: 'Ya, Reset'
     }).then(async (r) => {
         if(r.isConfirmed) {

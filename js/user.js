@@ -6,6 +6,7 @@
  * - Added text-wrap-safe class.
  * - LOGIC FIX: Auto-set Peringkat ANTARABANGSA untuk Pensijilan Guru.
  * - UI FIX: Tahun dipisahkan dari div Peringkat agar sentiasa kelihatan.
+ * - UI FIX: Penyeragaman label NAMA PESERTA secara dinamik.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -410,12 +411,14 @@ window.setPencapaianType = function(type) {
     const wrapperJenis = document.getElementById('wrapperJenisRekod');
     const divJawatan = document.getElementById('divInputJawatan');
     const inpName = document.getElementById('pInputNama');
+    const lblName = document.getElementById('labelNamaPeserta');
 
     if (type === 'GURU') {
         wrapperJenis.classList.remove('hidden');
         divJawatan.classList.remove('hidden');
         inpName.value = "";
         inpName.readOnly = false;
+        lblName.innerText = "NAMA GURU";
     } else {
         wrapperJenis.classList.add('hidden');
         divJawatan.classList.add('hidden');
@@ -425,9 +428,11 @@ window.setPencapaianType = function(type) {
         if (type === 'SEKOLAH') {
             inpName.value = document.getElementById('dispNamaSekolah').innerText;
             inpName.readOnly = true;
+            lblName.innerText = "NAMA SEKOLAH";
         } else {
             inpName.value = "";
             inpName.readOnly = false;
+            lblName.innerText = "NAMA MURID / KUMPULAN";
         }
     }
     window.toggleJenisPencapaian();

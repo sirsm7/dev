@@ -8,16 +8,9 @@
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- FONTAWESOME -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  
-  <!-- QUILL JS THEME -->
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-  
-  <!-- GOOGLE FONTS -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <script>
@@ -39,20 +32,26 @@
     .tab-active { @apply bg-brand-600 text-white shadow-md transform scale-105; }
     .tab-inactive { @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600; }
     
-    /* Word Cloud Styles */
-    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
-    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md; }
-    .cloud-tag .count { @apply ml-2 bg-slate-100 text-slate-600 px-1.5 rounded-full text-[10px]; }
+    /* Global Table Wrapping Fix */
+    table td, table th {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      vertical-align: middle;
+    }
+
+    /* Word Cloud Styles - Optimized for Admin */
+    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
+    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md transform scale-105; }
+    .cloud-tag .count { @apply ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px]; }
     .cloud-tag.active .count { @apply bg-white/20 text-white; }
 
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 
-  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -61,7 +60,6 @@
 </head>
 <body id="page-admin" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
     <div class="text-center text-white">
       <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
@@ -69,7 +67,6 @@
     </div>
   </div>
 
-  <!-- QUEUE MODAL (Tindakan Pantas) -->
   <div id="queueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4">
       <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden relative">
           <button class="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-2xl" onclick="document.getElementById('queueModal').classList.add('hidden')">&times;</button>
@@ -104,7 +101,6 @@
       </div>
   </div>
 
-  <!-- HEADER -->
   <header class="bg-slate-900 text-white pb-24 pt-10 px-4 relative overflow-hidden">
     <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
     <div class="max-w-7xl mx-auto text-center relative z-10">
@@ -117,10 +113,8 @@
     </div>
   </header>
 
-  <!-- MAIN CONTAINER -->
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
     
-    <!-- NAVIGATION TABS -->
     <div class="flex flex-wrap justify-center gap-2 mb-8 bg-white p-2 rounded-2xl shadow-lg border border-slate-100 max-w-4xl mx-auto">
         <button class="tab-active px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2" id="dashboard-tab" onclick="switchAdminTab('dashboard')"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
         <button class="tab-inactive px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2" id="analisa-tab" onclick="switchAdminTab('analisa')"><i class="fas fa-chart-pie"></i> Analisa</button>
@@ -131,7 +125,6 @@
         <button class="tab-inactive px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2" id="admin-users-tab" onclick="switchAdminTab('admin-users')"><i class="fas fa-users-cog"></i> Akses</button>
     </div>
 
-    <!-- CONTENT AREA -->
     <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
         
         <!-- TAB 1: DASHBOARD -->
@@ -155,11 +148,9 @@
             </div>
 
             <div class="mb-8" id="filterContainer">
-                <!-- Filters rendered by JS -->
             </div>
 
             <div id="schoolGridWrapper" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <!-- Grid rendered by JS -->
             </div>
         </div>
 
@@ -173,7 +164,6 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <!-- DCS Panel -->
                 <div class="bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
                     <h3 class="text-blue-700 font-bold mb-4 border-b border-blue-200 pb-2">Lensa Kualiti: Skor DCS</h3>
                     <div class="flex items-center gap-6 mb-6">
@@ -191,7 +181,6 @@
                     </div>
                 </div>
 
-                <!-- Active Panel -->
                 <div class="bg-green-50/50 rounded-2xl p-6 border border-green-100">
                     <h3 class="text-green-700 font-bold mb-4 border-b border-green-200 pb-2">Lensa Kuantiti: % Aktif</h3>
                     <div class="flex items-center gap-6 mb-6">
@@ -248,7 +237,6 @@
                 </div>
             </div>
 
-            <!-- FILTERS -->
             <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                 <input type="text" id="searchPencapaianInput" class="col-span-2 px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-semibold" placeholder="Cari Nama / Program..." onkeyup="handlePencapaianSearch()">
                 <select id="filterTahunPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="loadMasterPencapaian()"><option>Memuatkan...</option></select>
@@ -263,7 +251,6 @@
                 <button onclick="resetPencapaianFilters()" class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 transition font-bold text-xs"><i class="fas fa-sync-alt mr-1"></i> RESET</button>
             </div>
 
-            <!-- STATS GRID -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6 text-center">
                 <div onclick="filterByKategori('MURID')" class="p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition"><span class="text-[10px] font-bold text-blue-500 uppercase">Murid</span><h4 class="text-xl font-black text-blue-700" id="statTotalMurid">0</h4></div>
                 <div onclick="filterByKategori('GURU')" class="p-3 bg-amber-50 rounded-xl border border-amber-100 cursor-pointer hover:bg-amber-100 transition"><span class="text-[10px] font-bold text-amber-500 uppercase">Guru</span><h4 class="text-xl font-black text-amber-700" id="statTotalGuru">0</h4></div>
@@ -272,13 +259,12 @@
                 <div onclick="filterByKategori('PPD')" class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition"><span class="text-[10px] font-bold text-indigo-500 uppercase">Unit</span><h4 class="text-xl font-black text-indigo-700" id="statTotalUnit">0</h4></div>
             </div>
 
-            <!-- WORD CLOUD JAWATAN (New) -->
-            <div id="jawatanCloudWrapper" class="mb-6 hidden fade-up">
+            <div id="jawatanCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
-                    <h6 class="font-bold text-slate-500 text-xs uppercase"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan</h6>
-                    <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="text-xs text-slate-400 hover:text-slate-600 hidden">Reset</button>
+                    <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Guru</h6>
+                    <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset Tapis</button>
                 </div>
-                <div id="jawatanCloudContainer" class="cloud-container p-4 bg-slate-50 border border-slate-100 rounded-xl"></div>
+                <div id="jawatanCloudContainer" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
 
             <div class="overflow-auto border border-slate-200 rounded-xl max-h-[600px]">
@@ -301,31 +287,29 @@
 
         <!-- TAB 4: GALERI -->
         <div id="tab-gallery" class="hidden p-6 md:p-8">
-            <!-- Content will be rendered by gallery_manager.js using Tailwind logic -->
-            <div class="flex justify-between items-end mb-6 border-b border-slate-100 pb-4">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 border-b border-slate-100 pb-4 gap-4">
                 <div>
                     <h2 class="text-2xl font-bold text-indigo-900" id="galleryHeaderTitle">PPD ALOR GAJAH</h2>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest" id="galleryHeaderSubtitle">Unit Sumber Teknologi Pendidikan</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="galleryHeaderSubtitle">Unit Sumber Teknologi Pendidikan</p>
                 </div>
-                <div class="flex gap-2">
-                    <input type="text" id="gallerySearchInput" class="px-3 py-2 rounded-lg border border-slate-200 text-xs w-40 outline-none focus:border-indigo-500" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
-                    <select id="gallerySchoolSelector" class="px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white outline-none w-40" onchange="loadAdminGalleryGrid(this.value)"><option value="M030">M030</option></select>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <input type="text" id="gallerySearchInput" class="px-3 py-2 rounded-lg border border-slate-200 text-xs grow md:w-40 outline-none focus:border-indigo-500" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
+                    <select id="gallerySchoolSelector" class="px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white outline-none grow md:w-40" onchange="loadAdminGalleryGrid(this.value)"><option value="M030">M030</option></select>
                     <button class="px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition" onclick="resetGallery()"><i class="fas fa-sync-alt text-slate-400"></i></button>
                 </div>
             </div>
             
             <div class="flex justify-between items-center mb-6">
-                <div id="galleryFilterContainer" class="flex gap-2"></div>
-                <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">Total: <span id="galleryTotalCount">0</span></span>
+                <div id="galleryFilterContainer" class="flex flex-wrap gap-2"></div>
+                <span class="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 shadow-sm whitespace-nowrap">Total: <span id="galleryTotalCount">0</span></span>
             </div>
 
-            <!-- WORD CLOUD GALERI (New) -->
-            <div id="galleryCloudWrapper" class="mb-6 hidden fade-up">
+            <div id="galleryCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
-                    <h6 class="font-bold text-slate-500 text-xs uppercase"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan</h6>
-                    <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="text-xs text-slate-400 hover:text-slate-600 hidden">Reset</button>
+                    <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Galeri</h6>
+                    <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset</button>
                 </div>
-                <div id="galleryCloudContainer" class="cloud-container p-4 bg-slate-50 border border-slate-100 rounded-xl"></div>
+                <div id="galleryCloudContainer" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
 
             <div id="adminGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
@@ -410,7 +394,6 @@
     </div>
   </div>
 
-  <!-- MODAL EDIT DCS (Tailwind) -->
   <div id="modalEditDcs" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
           <div class="bg-blue-600 p-4 flex justify-between items-center text-white">
@@ -440,19 +423,15 @@
       </div>
   </div>
 
-  <!-- MODAL EDIT PENCAPAIAN (Tailwind) -->
   <div id="modalEditPencapaian" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-          <!-- Header -->
           <div class="bg-amber-400 p-4 flex justify-between items-center text-slate-900">
               <h3 class="font-bold text-sm">Edit Rekod</h3>
               <button class="btn-close" onclick="document.getElementById('modalEditPencapaian').classList.add('hidden')">&times;</button>
           </div>
-          <!-- Body -->
           <div class="p-6 overflow-y-auto max-h-[80vh]">
               <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
                   <input type="hidden" id="editIdPencapaian">
-                  <!-- Radio Jenis -->
                   <div class="flex justify-center gap-4 mb-6">
                       <label class="flex items-center gap-2 cursor-pointer">
                           <input type="radio" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()" class="accent-amber-500">
@@ -464,7 +443,6 @@
                       </label>
                   </div>
                   
-                  <!-- Inputs (Styled with Tailwind) -->
                   <div class="space-y-4">
                       <input type="text" id="editNamaSekolah" class="w-full p-3 bg-slate-100 rounded-lg text-xs font-bold text-slate-500" readonly>
                       <input type="text" id="editInputNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" placeholder="NAMA PESERTA">
@@ -512,7 +490,6 @@
       </div>
   </div>
 
-  <!-- MODAL REKOD PPD (NEW) -->
   <div id="modalRekodPPD" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
           <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
@@ -526,11 +503,11 @@
                   <div class="grid grid-cols-2 gap-3 mb-4">
                       <label class="cursor-pointer">
                           <input type="radio" name="radKatPPD" id="radPegawai" value="PEGAWAI" class="peer hidden" checked onchange="toggleKategoriPPD()">
-                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all">PEGAWAI</div>
+                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">PEGAWAI</div>
                       </label>
                       <label class="cursor-pointer">
                           <input type="radio" name="radKatPPD" id="radUnit" value="PPD" class="peer hidden" onchange="toggleKategoriPPD()">
-                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all">UNIT / SEKTOR</div>
+                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">UNIT / SEKTOR</div>
                       </label>
                   </div>
 
@@ -548,12 +525,12 @@
                   <div class="space-y-3">
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
-                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold">
+                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm">
                       </div>
                       
                       <div id="divPpdPenyedia" class="hidden">
                           <label class="block text-[10px] font-bold text-amber-600 uppercase mb-1">PENYEDIA</label>
-                          <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm font-bold">
+                          <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm font-bold shadow-sm">
                               <option value="LAIN-LAIN">LAIN-LAIN</option>
                               <option value="GOOGLE">GOOGLE</option>
                               <option value="APPLE">APPLE</option>
@@ -563,41 +540,42 @@
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdProgram">NAMA PROGRAM</label>
-                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold">
+                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm">
                       </div>
 
                       <div class="grid grid-cols-2 gap-3">
                           <div id="divPpdColPeringkat">
                               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
-                              <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold bg-white">
+                              <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold bg-white shadow-sm">
                                   <option value="KEBANGSAAN">KEBANGSAAN</option>
                                   <option value="ANTARABANGSA">ANTARABANGSA</option>
                               </select>
                           </div>
                           <div>
                               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">TAHUN</label>
-                              <input type="number" id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm" value="2026">
+                              <input type="number" id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm shadow-sm" value="2026">
                           </div>
                       </div>
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdPencapaian">PENCAPAIAN</label>
-                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold">
+                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm">
                       </div>
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI</label>
-                          <input type="url" id="ppdInputLink" class="w-full p-3 rounded-lg border border-slate-300 text-sm text-blue-600">
+                          <input type="url" id="ppdInputLink" class="w-full p-3 rounded-lg border border-slate-300 text-sm text-blue-600 shadow-sm">
                       </div>
                   </div>
 
-                  <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition mt-4">SIMPAN REKOD</button>
+                  <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition mt-4 tracking-widest uppercase text-sm">
+                      <i class="fas fa-save mr-2"></i> Simpan Rekod PPD
+                  </button>
               </form>
           </div>
       </div>
   </div>
 
-  <!-- MODAL PENYERAGAMAN DATA (NEW) -->
   <div id="modalStandardize" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col">
           <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
@@ -606,12 +584,12 @@
           </div>
           
           <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0">
-              <input type="text" id="standardizeSearch" class="w-full p-3 rounded-lg border border-slate-300 focus:border-slate-500 outline-none text-sm font-bold" placeholder="Cari Nama Program (Contoh: MSSM)..." oninput="handleStandardizeSearch(this.value)">
+              <input type="text" id="standardizeSearch" class="w-full p-3 rounded-lg border border-slate-300 focus:border-slate-500 outline-none text-sm font-bold shadow-sm" placeholder="Cari Nama Program (Contoh: MSSM)..." oninput="handleStandardizeSearch(this.value)">
           </div>
 
           <div class="overflow-y-auto p-0 grow">
               <table class="w-full text-sm text-left">
-                  <thead class="bg-slate-100 text-slate-500 uppercase text-xs sticky top-0 z-10">
+                  <thead class="bg-slate-100 text-slate-500 uppercase text-xs sticky top-0 z-10 shadow-sm">
                       <tr>
                           <th class="px-6 py-3 font-bold">#</th>
                           <th class="px-6 py-3 font-bold w-1/3">Program Asal</th>
@@ -625,13 +603,11 @@
           </div>
           
           <div class="p-3 bg-slate-50 border-t border-slate-200 shrink-0 text-right">
-              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition">Tutup</button>
+              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition shadow-sm">Tutup</button>
           </div>
       </div>
   </div>
 
-  <!-- SCRIPT MODUL -->
-  <!-- Note: JS logik admin akan dikemaskini seterusnya untuk support class Tailwind -->
   <script type="module" src="js/core/helpers.js"></script>
   <script type="module" src="js/core/db.js"></script>
   <script type="module" src="js/admin/dashboard.js"></script>
@@ -641,25 +617,19 @@
   <script type="module" src="js/admin/gallery_manager.js"></script>
   <script type="module" src="js/admin/settings.js"></script>
   
-  <!-- Main Admin Logic -->
   <script type="module">
       import { AuthService } from './js/services/auth.service.js';
       import { APP_CONFIG } from './js/config/app.config.js';
 
-      // Simple Tab Switcher Logic (Tailwind Compatible)
       window.switchAdminTab = function(tabId) {
-          // Hide all tabs
           document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-          // Show selected tab
           document.getElementById('tab-' + tabId).classList.remove('hidden');
           
-          // Update buttons
           document.querySelectorAll('[id$="-tab"]').forEach(btn => {
               btn.className = "tab-inactive px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2";
           });
           document.getElementById(tabId + '-tab').className = "tab-active px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2";
           
-          // Trigger data loading based on tab
           if(tabId === 'analisa' && window.loadDcsAdmin) window.loadDcsAdmin();
           if(tabId === 'pencapaian' && window.populateTahunFilter) window.populateTahunFilter();
           if(tabId === 'gallery' && window.initAdminGallery) window.initAdminGallery();
@@ -668,16 +638,11 @@
           if(tabId === 'admin-users' && window.loadAdminList) window.loadAdminList();
       };
 
-      // Init on load
       document.addEventListener('DOMContentLoaded', () => {
-          // Check Auth
           const isAuth = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
           if (!isAuth) { window.location.replace('index.html'); return; }
-          
-          // Load Dashboard
           if(window.fetchDashboardData) window.fetchDashboardData();
           
-          // Set User Role Label
           const role = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
           const lbl = document.getElementById('displayUserRole');
           if(lbl) lbl.innerText = role === 'SUPER_ADMIN' ? 'SUPER ADMIN' : (role === 'PPD_UNIT' ? 'UNIT PPD' : 'MOD ADMIN');

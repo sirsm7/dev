@@ -43,6 +43,15 @@
   <style>
     .hidden { display: none !important; }
     .uppercase-input { text-transform: uppercase; }
+    
+    /* Global Table Wrapping Fix */
+    table td, table th {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      vertical-align: middle;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -91,7 +100,6 @@
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                    <!-- KAD MENU -->
                     <button onclick="showSection('profil')" class="group p-4 bg-blue-50 hover:bg-blue-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-blue-100 hover:shadow-lg hover:shadow-blue-500/30">
                         <div class="w-12 h-12 bg-white text-blue-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-blue-600">
                             <i class="fas fa-user-edit"></i>
@@ -168,7 +176,6 @@
             <form id="dataForm" onsubmit="event.preventDefault(); simpanProfil();" class="space-y-6">
                 <input type="hidden" id="hiddenKodSekolah">
                 
-                <!-- GPICT -->
                 <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                     <h3 class="text-sm font-bold text-blue-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-laptop-code"></i> Maklumat GPICT</h3>
                     <div class="space-y-4">
@@ -189,7 +196,6 @@
                     </div>
                 </div>
 
-                <!-- ADMIN DELIMA -->
                 <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-bold text-emerald-700 uppercase flex items-center gap-2"><i class="fas fa-user-shield"></i> Admin DELIMa</h3>
@@ -276,7 +282,6 @@
             <h2 class="text-xl font-bold text-slate-800">Rekod Pencapaian</h2>
         </div>
 
-        <!-- TAB NAVIGASI (TAILWIND) -->
         <div class="flex bg-white p-1 rounded-xl shadow-sm border border-slate-100 mb-6" id="pencapaianTabs">
             <button id="tab-p-murid" class="flex-1 py-2 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition" onclick="setPencapaianType('MURID')">MURID</button>
             <button id="tab-p-guru" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition" onclick="setPencapaianType('GURU')">GURU</button>
@@ -294,7 +299,6 @@
             </label>
         </div>
 
-        <!-- BORANG PENCAPAIAN -->
         <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 mb-8 border-t-4 border-t-teal-500">
             <h3 class="text-sm font-bold text-teal-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-plus-circle"></i> Tambah Rekod Baru</h3>
             <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();" class="space-y-5">
@@ -309,16 +313,29 @@
                 <div id="divInputJawatan" class="hidden">
                     <label class="block text-xs font-bold text-amber-600 uppercase mb-1">Jawatan (Wajib)</label>
                     <select id="pInputJawatan" class="w-full p-3 rounded-xl bg-amber-50 border border-amber-200 text-slate-700 font-bold outline-none">
-                        <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
-                        <!-- Other options handled by JS or default HTML -->
+                        <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
+                        <option value="PENGARAH KV / PGB">PGB (PENGETUA / GURU BESAR)</option>
                         <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
+                        <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
+                        <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
+                        <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                        <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
+                        <option value="GURU DATA">GURU DATA</option>
                         <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
+                        <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
+                        <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                        <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                     </select>
                 </div>
 
                 <div id="divInputPenyedia" class="hidden">
                     <label class="block text-xs font-bold text-amber-600 uppercase mb-1">Penyedia</label>
-                    <select id="pInputPenyedia" class="w-full p-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold outline-none"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
+                    <select id="pInputPenyedia" class="w-full p-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold outline-none">
+                        <option value="LAIN-LAIN" selected>LAIN-LAIN</option>
+                        <option value="GOOGLE">GOOGLE</option>
+                        <option value="APPLE">APPLE</option>
+                        <option value="MICROSOFT">MICROSOFT</option>
+                    </select>
                 </div>
 
                 <div>
@@ -441,12 +458,27 @@
                   <div id="editUserDivJawatan" class="hidden">
                       <select id="editUserJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
                           <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
+                          <option value="PENGARAH KV / PGB">PGB (PENGETUA / GURU BESAR)</option>
                           <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
+                          <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
+                          <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
+                          <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                          <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
+                          <option value="GURU DATA">GURU DATA</option>
+                          <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
+                          <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
+                          <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                          <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                       </select>
                   </div>
 
                   <div id="editUserDivPenyedia" class="hidden">
-                      <select id="editUserPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
+                      <select id="editUserPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                        <option value="LAIN-LAIN">LAIN-LAIN</option>
+                        <option value="GOOGLE">GOOGLE</option>
+                        <option value="APPLE">APPLE</option>
+                        <option value="MICROSOFT">MICROSOFT</option>
+                      </select>
                   </div>
 
                   <input type="text" id="editUserProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" required>
@@ -470,7 +502,6 @@
   <!-- MODULAR JS -->
   <script type="module" src="js/user.js"></script>
   
-  <!-- Inline Script untuk Tab Switching (Tailwind) -->
   <script>
       function switchAduanTab(type) {
           const btnBuat = document.getElementById('tab-buat-aduan');

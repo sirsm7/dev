@@ -1,53 +1,39 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (FULL PRODUCTION VERSION)
- * Menguruskan rekod pencapaian, statistik, ranking sekolah, 
- * word cloud jawatan, dan logik penyeragaman data pukal.
+ * ADMIN MODULE: ACHIEVEMENT (MODULAR & PRECISION)
+ * Menguruskan pangkalan data pencapaian, statistik, dan penapisan silang.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading } from '../core/helpers.js';
 
-// --- GLOBAL STATE ---
 let pencapaianList = [];
 let currentPencapaianFiltered = []; 
-let currentCardFilter = 'ALL';      // Kebangsaan, Antarabangsa, Google, dll
-let currentJawatanFilter = 'ALL';   // Diuruskan oleh Word Cloud
+let currentCardFilter = 'ALL';      
+let currentJawatanFilter = 'ALL';   
 let sortState = { column: 'created_at', direction: 'desc' };
 
-// Cache untuk senarai nama program unik bagi tujuan penyeragaman
 let standardizationList = []; 
 let filteredStandardizationList = [];
 
-// --- 1. INITIALIZATION ---
-
-/**
- * Mengisi dropdown tahun berdasarkan data unik dalam database.
- */
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
     if (!select) return;
     try {
         const years = await AchievementService.getAvailableYears();
-        // Standardized Text
         select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
         years.forEach(y => {
             select.innerHTML += `<option value="${y}">TAHUN ${y}</option>`;
         });
-        // Muat data secara automatik selepas tahun tersedia
         window.loadMasterPencapaian();
     } catch (e) { 
         console.error("[Achievement] Ralat muat tahun:", e); 
     }
 };
 
-/**
- * Mengambil data mentah dari pangkalan data.
- */
 window.loadMasterPencapaian = async function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
     
-    // Papar placeholder loading jika senarai kosong
     if (pencapaianList.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 font-medium animate-pulse">Memuatkan data pangkalan data...</td></tr>`;
     }
@@ -56,29 +42,20 @@ window.loadMasterPencapaian = async function() {
     
     try {
         pencapaianList = await AchievementService.getAll(tahun);
-        // Render jadual utama
         window.renderPencapaianTable();
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500 font-bold">Gagal memuatkan data. Sila periksa sambungan.</td></tr>`;
     }
 };
 
-// --- 2. RENDERING LOGIC ---
-
-/**
- * Fungsi utama untuk menjana baris jadual berdasarkan filter semasa.
- */
 window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     const katFilter = document.getElementById('filterKategoriPencapaian').value;
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
-    // Proses Penapisan (Filtering)
     let data = pencapaianList.filter(i => {
-        // 1. Tapis Kategori (Murid/Guru/PPD)
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
         
-        // 2. Tapis Carian (Sekolah, Nama, Program)
         if(search) {
             let namaSekolah = (i.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
                 (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
@@ -86,10 +63,8 @@ window.renderPencapaianTable = function() {
             if (!searchTarget.includes(search)) return false;
         }
         
-        // 3. Tapis Jawatan (Word Cloud)
         if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
 
-        // 4. Tapis Kad Statistik (Logic dari smpid)
         if(currentCardFilter === 'KEBANGSAAN' && i.peringkat !== 'KEBANGSAAN') return false;
         if(currentCardFilter === 'ANTARABANGSA' && !['ANTARABANGSA'].includes(i.peringkat) && i.jenis_rekod !== 'PENSIJILAN') return false;
         if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter) && i.penyedia !== currentCardFilter) return false;
@@ -98,12 +73,9 @@ window.renderPencapaianTable = function() {
         return true;
     });
 
-    // Kemaskini elemen visual yang bergantung kepada data tapis
     updateStatsUI(data); 
     updateWordCloudUI(data);
-    renderTopContributorsUI(data);
 
-    // Proses Susunan (Sorting)
     data.sort((a,b) => {
         let valA = a[sortState.column] || '';
         let valB = b[sortState.column] || '';
@@ -118,7 +90,6 @@ window.renderPencapaianTable = function() {
         return;
     }
 
-    // Penjanaan HTML baris demi baris
     tbody.innerHTML = data.map(i => {
         let namaSekolah = i.kod_sekolah;
         if(i.kod_sekolah === 'M030') namaSekolah = `<span class="text-indigo-600 font-bold">PPD ALOR GAJAH</span>`;
@@ -139,24 +110,24 @@ window.renderPencapaianTable = function() {
         return `
         <tr class="hover:bg-slate-50 transition-colors group border-b border-slate-100 last:border-0">
             <td class="px-6 py-4 font-mono text-xs font-bold text-slate-400 w-24">${i.kod_sekolah}</td>
-            <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64">
-                <div class="truncate max-w-[200px]" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</div>
+            <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64 whitespace-normal">
+                ${namaSekolah}
             </td>
             <td class="px-6 py-4 text-center w-24">
                 <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span>
             </td>
-            <td class="px-6 py-4">
+            <td class="px-6 py-4 whitespace-normal">
                 <div class="font-bold text-slate-800 text-sm mb-0.5">${i.nama_peserta}</div>
                 ${i.jawatan ? `<span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">${i.jawatan}</span>` : ''}
             </td>
-            <td class="px-6 py-4">
+            <td class="px-6 py-4 whitespace-normal">
                 <div class="flex items-start gap-1">
                     ${isSijil ? `<span class="text-[9px] font-bold bg-amber-500 text-white px-1 rounded shadow-sm">SIJIL</span>` : ''}
                     <span class="text-xs font-semibold text-slate-600 leading-snug">${i.nama_pertandingan}</span>
                 </div>
                 <div class="text-[10px] text-slate-400 mt-1 uppercase">${i.peringkat}</div>
             </td>
-            <td class="px-6 py-4 text-center font-black text-brand-600 text-xs w-32">${i.pencapaian}</td>
+            <td class="px-6 py-4 text-center font-black text-brand-600 text-xs w-32 whitespace-normal">${i.pencapaian}</td>
             <td class="px-6 py-4 text-center w-32">
                 <div class="flex items-center justify-center gap-1">
                     <a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a>
@@ -168,48 +139,24 @@ window.renderPencapaianTable = function() {
     }).join('');
 };
 
-// --- 3. VISUAL ENHANCEMENT LOGIC ---
-
-/**
- * Mengemaskini kaunter pada kad statistik utama.
- */
 function updateStatsUI(data) {
     const setTxt = (id, count) => {
         const el = document.getElementById(id);
         if(el) el.innerText = count;
     };
     
-    // Kategori
     setTxt('statTotalMurid', data.filter(i => i.kategori === 'MURID').length);
     setTxt('statTotalGuru', data.filter(i => i.kategori === 'GURU').length);
     setTxt('statTotalSekolah', data.filter(i => i.kategori === 'SEKOLAH').length);
     setTxt('statTotalPegawai', data.filter(i => i.kategori === 'PEGAWAI').length);
     setTxt('statTotalUnit', data.filter(i => i.kategori === 'PPD').length);
-
-    // Pencapaian Utama (Logic smpid)
-    const keb = document.getElementById('statKebangsaan');
-    if(keb) keb.innerText = data.filter(i => i.peringkat === 'KEBANGSAAN').length;
-
-    const ant = document.getElementById('statAntarabangsa');
-    if(ant) ant.innerText = data.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length;
-
-    // Tech Brands
-    const pensijilan = data.filter(i => i.jenis_rekod === 'PENSIJILAN');
-    setTxt('statGoogle', pensijilan.filter(i => i.penyedia === 'GOOGLE').length);
-    setTxt('statApple', pensijilan.filter(i => i.penyedia === 'APPLE').length);
-    setTxt('statMicrosoft', pensijilan.filter(i => i.penyedia === 'MICROSOFT').length);
-    setTxt('statLain', pensijilan.filter(i => i.penyedia === 'LAIN-LAIN').length);
 }
 
-/**
- * Menjana Word Cloud jawatan guru secara dinamik.
- */
 function updateWordCloudUI(data) {
     const container = document.getElementById('jawatanCloudContainer');
     const wrapper = document.getElementById('jawatanCloudWrapper');
     if (!container) return;
 
-    // Hanya ambil guru yang mempunyai jawatan
     const guruData = data.filter(i => i.kategori === 'GURU' && i.jawatan);
     
     if(guruData.length === 0) {
@@ -231,76 +178,28 @@ function updateWordCloudUI(data) {
 
     container.innerHTML = sorted.map(([j, c]) => {
         const isActive = currentJawatanFilter === j;
-        // Penentuan saiz berdasarkan kekerapan (Tailwind style)
         let sizeClass = "text-[10px]";
-        if(c > 5) sizeClass = "text-[12px] font-bold";
-        if(c > 10) sizeClass = "text-[14px] font-black";
+        if(c > 2) sizeClass = "text-[11px] font-bold";
+        if(c > 5) sizeClass = "text-[12px] font-black";
 
         return `
             <div onclick="filterPencapaianByJawatan('${j}')" 
                  class="inline-flex items-center px-3 py-1 rounded-full border cursor-pointer transition-all m-1 shadow-sm
-                        ${isActive ? 'bg-indigo-600 text-white border-indigo-600 scale-105 shadow-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}">
+                        ${isActive ? 'bg-indigo-600 text-white border-indigo-600 scale-105 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}">
                 <span class="${sizeClass}">${j}</span>
-                <span class="ml-2 bg-slate-100 text-slate-500 px-1.5 rounded-full text-[9px] font-bold ${isActive ? 'bg-white/20 text-white' : ''}">${c}</span>
+                <span class="ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px] font-bold ${isActive ? 'bg-white/20 text-white' : ''}">${c}</span>
             </div>
         `;
     }).join('');
 }
 
-/**
- * Menjana senarai 5 sekolah penyumbang terbanyak (Ranking).
- */
-function renderTopContributorsUI(data) {
-    const table = document.getElementById('tableTopContributors');
-    if(!table) return;
-
-    const schoolCounts = {};
-    data.forEach(i => {
-        if(i.kod_sekolah !== 'M030') {
-            schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
-        }
-    });
-    
-    const sorted = Object.entries(schoolCounts).sort(([,a], [,b]) => b - a).slice(0, 5);
-    
-    if(sorted.length === 0) {
-        table.innerHTML = `<tr><td class="p-4 text-center text-slate-400 text-xs italic">Tiada data sekolah penyumbang.</td></tr>`;
-        return;
-    }
-    
-    table.innerHTML = sorted.map(([kod, count], idx) => {
-        let nama = kod;
-        if(window.globalDashboardData) {
-            const s = window.globalDashboardData.find(x => x.kod_sekolah === kod);
-            if(s) nama = s.nama_sekolah;
-        }
-        
-        let rankColor = "bg-slate-100 text-slate-500";
-        if(idx === 0) rankColor = "bg-amber-400 text-white shadow-sm";
-        if(idx === 1) rankColor = "bg-slate-300 text-white shadow-sm";
-        if(idx === 2) rankColor = "bg-orange-400 text-white shadow-sm";
-
-        return `
-        <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer" onclick="filterBySchool('${kod}')">
-            <td class="p-3 w-10">
-                <div class="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${rankColor}">${idx + 1}</div>
-            </td>
-            <td class="p-3">
-                <div class="text-xs font-bold text-slate-700 truncate max-w-[150px]" title="${nama}">${nama}</div>
-                <div class="text-[9px] font-mono text-slate-400">${kod}</div>
-            </td>
-            <td class="p-3 text-right">
-                <span class="text-xs font-black text-indigo-600">${count}</span>
-            </td>
-        </tr>`;
-    }).join('');
-}
-
-// --- 4. INTERACTION FUNCTIONS ---
-
 window.filterByKategori = function(k) { 
     const el = document.getElementById('filterKategoriPencapaian');
-    if(el) { el.value = k; currentJawatanFilter = 'ALL'; window.renderPencapaianTable(); }
+    if(el) { 
+        el.value = k; 
+        currentJawatanFilter = 'ALL'; 
+        window.renderPencapaianTable(); 
+    }
 };
 
 window.filterPencapaianByJawatan = function(j) {
@@ -310,16 +209,6 @@ window.filterPencapaianByJawatan = function(j) {
         if(currentJawatanFilter !== 'ALL') btn.classList.remove('hidden');
         else btn.classList.add('hidden');
     }
-    window.renderPencapaianTable();
-};
-
-window.filterByCard = function(c) {
-    currentCardFilter = (currentCardFilter === c) ? 'ALL' : c;
-    window.renderPencapaianTable();
-};
-
-window.filterBySchool = function(kod) {
-    document.getElementById('searchPencapaianInput').value = kod;
     window.renderPencapaianTable();
 };
 
@@ -337,17 +226,8 @@ window.resetPencapaianFilters = function() {
     currentCardFilter = 'ALL';
     currentJawatanFilter = 'ALL';
     window.loadMasterPencapaian();
-    Swal.fire({ 
-        icon: 'success', 
-        title: 'Reset Selesai', 
-        timer: 1000, 
-        showConfirmButton: false,
-        toast: true,
-        position: 'top-end'
-    });
+    Swal.fire({ icon: 'success', title: 'Reset Selesai', timer: 1000, showConfirmButton: false, toast: true, position: 'top-end' });
 };
-
-// --- 5. CRUD & MODAL OPERATIONS ---
 
 window.openModalPPD = function() {
     document.getElementById('modalRekodPPD').classList.remove('hidden');
@@ -559,11 +439,6 @@ window.hapusPencapaianAdmin = async function(id) {
     });
 };
 
-// --- 6. STANDARDIZATION LOGIC (LONG REFACTOR) ---
-
-/**
- * Mengumpul statistik kekerapan nama program untuk dibersihkan.
- */
 window.refreshStandardizeUI = function() {
     const counts = {};
     standardizationList = [];
@@ -664,13 +539,9 @@ window.executeStandardization = function(oldName, inputId) {
             try {
                 await AchievementService.batchUpdateProgramName(oldName, newName);
                 toggleLoading(false);
-                
                 await Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
-                
-                // Refresh data utama dan UI modal
                 await window.loadMasterPencapaian(); 
                 window.refreshStandardizeUI(); 
-                
             } catch (e) {
                 toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
@@ -678,8 +549,6 @@ window.executeStandardization = function(oldName, inputId) {
         }
     });
 };
-
-// --- 7. EXPORT LOGIC ---
 
 window.eksportPencapaian = function() {
     if (!currentPencapaianFiltered || currentPencapaianFiltered.length === 0) {

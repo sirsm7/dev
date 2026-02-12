@@ -8,13 +8,8 @@
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- FONTAWESOME -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  
-  <!-- GOOGLE FONTS -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <script>
@@ -43,29 +38,27 @@
   <style>
     .hidden { display: none !important; }
     
-    /* Word Cloud Styles */
-    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
-    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md transform scale-105; }
-    .cloud-tag .count-badge { @apply ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px]; }
-    .cloud-tag.active .count-badge { @apply bg-white/20 text-white; }
-
-    /* Masonry-like Card Styles */
     .card-gallery { @apply bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full; }
     .gallery-thumb-container { @apply relative aspect-video bg-slate-100 overflow-hidden flex-shrink-0; }
     .gallery-thumb { @apply absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-110; }
     
+    /* Global Table Wrapping Fix */
+    table td, table th {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
   </style>
 
-  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
     <div class="text-center text-white">
       <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
@@ -73,7 +66,6 @@
     </div>
   </div>
 
-  <!-- HEADER HERO -->
   <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-28 pt-10 px-4 shadow-xl relative overflow-hidden">
     <div class="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
     
@@ -94,14 +86,11 @@
     </div>
   </header>
 
-  <!-- MAIN CONTAINER -->
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
     
-    <!-- STATS & FILTER CARD -->
     <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 mb-8 animate-fade-up">
         <div class="flex flex-col lg:flex-row justify-between items-center gap-8">
             
-            <!-- Statistical Overview -->
             <div class="flex flex-wrap justify-center md:justify-start items-center gap-6 md:gap-10">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-lg">
@@ -131,7 +120,6 @@
                 </div>
             </div>
 
-            <!-- Category Filters -->
             <div class="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full lg:w-auto">
                 <button onclick="filterGallery('SEMUA', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest">SEMUA</button>
                 <button onclick="filterGallery('MURID', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">MURID</button>
@@ -142,7 +130,6 @@
         </div>
     </div>
 
-    <!-- JAWATAN WORD CLOUD -->
     <div id="jawatanCloudWrapper" class="mb-8 hidden animate-fade-up">
         <div class="flex justify-between items-center mb-3 px-2">
             <h6 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -153,13 +140,10 @@
             </button>
         </div>
         <div id="jawatanCloudContainer" class="p-4 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-wrap justify-center">
-            <!-- JS Injected Content -->
         </div>
     </div>
 
-    <!-- GALLERY GRID -->
     <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-        <!-- Placeholder Loading State -->
         <div class="col-span-full py-20 text-center">
             <i class="fas fa-circle-notch fa-spin fa-2x text-slate-200 mb-4"></i>
             <p class="text-slate-400 font-bold italic">Sedang menyusun papan pencapaian...</p>
@@ -174,11 +158,9 @@
       </div>
   </footer>
 
-  <!-- MODULAR JS -->
   <script type="module" src="js/gallery.js"></script>
 
   <script>
-      // Helper untuk gaya butang filter Tailwind
       window.updateFilterUI = function(btn) {
           const btns = document.querySelectorAll('.btn-filter');
           btns.forEach(b => {
@@ -187,7 +169,6 @@
           btn.className = "btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest transform scale-105";
       };
 
-      // Wrap asal filterGallery untuk masukkan UI update
       const originalFilterGallery = window.filterGallery;
       window.filterGallery = function(type, btn) {
           if(btn) window.updateFilterUI(btn);

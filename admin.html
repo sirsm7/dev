@@ -417,8 +417,6 @@
   </div>
 
   <!-- MODAL EDIT PENCAPAIAN (Tailwind) -->
-  <!-- Note: Anda perlu menambah modal lain (Rekod PPD, Edit Pencapaian) dengan struktur serupa -->
-  <!-- Saya ringkaskan di sini, tetapi logik JS akan memanggil ID yang sama -->
   <div id="modalEditPencapaian" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
           <!-- Header -->
@@ -473,6 +471,124 @@
 
                   <button type="submit" class="w-full mt-6 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow transition">SIMPAN PERUBAHAN</button>
               </form>
+          </div>
+      </div>
+  </div>
+
+  <!-- MODAL REKOD PPD (NEW - Restored Missing Feature) -->
+  <div id="modalRekodPPD" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
+      <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+          <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-sm">Rekod Unit PPD</h3>
+              <button onclick="document.getElementById('modalRekodPPD').classList.add('hidden')" class="hover:text-indigo-200 text-lg">&times;</button>
+          </div>
+          <div class="p-6 overflow-y-auto max-h-[80vh]">
+              <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();" class="space-y-4">
+                  <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
+                  
+                  <div class="grid grid-cols-2 gap-3 mb-4">
+                      <label class="cursor-pointer">
+                          <input type="radio" name="radKatPPD" id="radPegawai" value="PEGAWAI" class="peer hidden" checked onchange="toggleKategoriPPD()">
+                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all">PEGAWAI</div>
+                      </label>
+                      <label class="cursor-pointer">
+                          <input type="radio" name="radKatPPD" id="radUnit" value="PPD" class="peer hidden" onchange="toggleKategoriPPD()">
+                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all">UNIT / SEKTOR</div>
+                      </label>
+                  </div>
+
+                  <div class="flex justify-center gap-4 mb-4">
+                      <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()" class="accent-indigo-600">
+                          <span class="text-xs font-bold">PERTANDINGAN</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()" class="accent-indigo-600">
+                          <span class="text-xs font-bold">PENSIJILAN</span>
+                      </label>
+                  </div>
+
+                  <div class="space-y-3">
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
+                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold">
+                      </div>
+                      
+                      <div id="divPpdPenyedia" class="hidden">
+                          <label class="block text-[10px] font-bold text-amber-600 uppercase mb-1">PENYEDIA</label>
+                          <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm font-bold">
+                              <option value="LAIN-LAIN">LAIN-LAIN</option>
+                              <option value="GOOGLE">GOOGLE</option>
+                              <option value="APPLE">APPLE</option>
+                              <option value="MICROSOFT">MICROSOFT</option>
+                          </select>
+                      </div>
+
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdProgram">NAMA PROGRAM</label>
+                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold">
+                      </div>
+
+                      <div class="grid grid-cols-2 gap-3">
+                          <div id="divPpdColPeringkat">
+                              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
+                              <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold bg-white">
+                                  <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                  <option value="ANTARABANGSA">ANTARABANGSA</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">TAHUN</label>
+                              <input type="number" id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm" value="2026">
+                          </div>
+                      </div>
+
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdPencapaian">PENCAPAIAN</label>
+                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold">
+                      </div>
+
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI</label>
+                          <input type="url" id="ppdInputLink" class="w-full p-3 rounded-lg border border-slate-300 text-sm text-blue-600">
+                      </div>
+                  </div>
+
+                  <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition mt-4">SIMPAN REKOD</button>
+              </form>
+          </div>
+      </div>
+  </div>
+
+  <!-- MODAL PENYERAGAMAN DATA (NEW - Restored Missing Feature) -->
+  <div id="modalStandardize" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
+      <div class="bg-white w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+          <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
+              <h3 class="font-bold text-sm">Penyeragaman Data Induk</h3>
+              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="hover:text-slate-300 text-lg">&times;</button>
+          </div>
+          
+          <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0">
+              <input type="text" id="standardizeSearch" class="w-full p-3 rounded-lg border border-slate-300 focus:border-slate-500 outline-none text-sm font-bold" placeholder="Cari Nama Program (Contoh: MSSM)..." oninput="handleStandardizeSearch(this.value)">
+          </div>
+
+          <div class="overflow-y-auto p-0 grow">
+              <table class="w-full text-sm text-left">
+                  <thead class="bg-slate-100 text-slate-500 uppercase text-xs sticky top-0 z-10">
+                      <tr>
+                          <th class="px-6 py-3 font-bold">#</th>
+                          <th class="px-6 py-3 font-bold w-1/3">Program Asal</th>
+                          <th class="px-6 py-3 font-bold text-center">Kekerapan</th>
+                          <th class="px-6 py-3 font-bold w-1/3">Nama Baru</th>
+                          <th class="px-6 py-3 font-bold text-center">Aksi</th>
+                      </tr>
+                  </thead>
+                  <tbody id="tbodyStandardize" class="divide-y divide-slate-100"></tbody>
+              </table>
+          </div>
+          
+          <div class="p-3 bg-slate-50 border-t border-slate-200 shrink-0 text-right">
+              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition">Tutup</button>
           </div>
       </div>
   </div>

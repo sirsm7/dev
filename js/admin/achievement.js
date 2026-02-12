@@ -1,6 +1,10 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (TAILWIND EDITION)
- * Menguruskan rekod pencapaian dengan kawalan integriti data dan UI Tailwind.
+ * ADMIN MODULE: ACHIEVEMENT (FIXED MODAL BACKDROP ISSUE)
+ * Menguruskan rekod pencapaian dengan kawalan integriti data.
+ * * FIX LOG:
+ * - Fixed: Isu skrin kelabu (backdrop stuck) bila tekan Simpan dalam modal Seragamkan.
+ * - Logic: Mengasingkan logik 'Refresh Data UI' dari 'Buka Modal'.
+ * - FIX COLLISION: Rename filterByJawatan to filterPencapaianByJawatan.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -34,6 +38,8 @@ window.loadMasterPencapaian = async function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
     
+    // Jangan tunjuk loading spinner jika data sudah ada (untuk elak flash masa refresh background)
+    // Hanya tunjuk jika list kosong
     if (pencapaianList.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 font-medium animate-pulse">Memuatkan data pencapaian...</td></tr>`;
     }
@@ -181,13 +187,113 @@ window.handleSort = function(col) {
 
 window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
 
-// --- MODAL & CRUD LOGIC (TAILWIND MODALS) ---
+// --- MODAL & CRUD LOGIC ---
 
+// PPD Modal (Restored)
 window.openModalPPD = function() {
-    // Anda perlu menambah modal Rekod PPD dalam admin.html jika belum ada
-    // Untuk demo ini, kita anggap modal ID 'modalEditPencapaian' boleh diguna semula atau ada modal khusus
-    // Gunakan classList.remove('hidden') untuk Tailwind
-    Swal.fire('Info', 'Sila pastikan Modal Rekod PPD telah ditambah ke dalam admin.html', 'info');
+    document.getElementById('modalRekodPPD').classList.remove('hidden');
+};
+
+window.toggleKategoriPPD = function() {
+    const isUnit = document.getElementById('radUnit').checked;
+    const lbl = document.getElementById('lblPpdNamaPeserta');
+    const inp = document.getElementById('ppdInputNama');
+    if (isUnit) {
+        lbl.innerText = "NAMA UNIT / SEKTOR";
+        inp.placeholder = "CONTOH: SEKTOR PEMBELAJARAN";
+    } else {
+        lbl.innerText = "NAMA PEGAWAI";
+        inp.placeholder = "TAIP NAMA PENUH...";
+    }
+};
+
+window.toggleJenisPencapaianPPD = function() {
+    const isPensijilan = document.getElementById('radPpdPensijilan').checked;
+    document.getElementById('ppdInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
+    
+    const divPenyedia = document.getElementById('divPpdPenyedia');
+    const colPeringkat = document.getElementById('divPpdColPeringkat');
+    
+    if (isPensijilan) {
+        divPenyedia.classList.remove('hidden');
+        colPeringkat.classList.add('hidden');
+    } else {
+        divPenyedia.classList.add('hidden');
+        colPeringkat.classList.remove('hidden');
+    }
+    
+    const lblProg = document.getElementById('lblPpdProgram');
+    const inpProg = document.getElementById('ppdInputProgram');
+    const lblPenc = document.getElementById('lblPpdPencapaian');
+    const inpPenc = document.getElementById('ppdInputPencapaian');
+    
+    if (isPensijilan) {
+        lblProg.innerText = "NAMA SIJIL / PROGRAM";
+        inpProg.placeholder = "CONTOH: GOOGLE CERTIFIED EDUCATOR L1";
+        lblPenc.innerText = "TAHAP / SKOR / BAND";
+        inpPenc.placeholder = "CONTOH: LULUS / BAND C2";
+    } else {
+        lblProg.innerText = "NAMA PERTANDINGAN";
+        inpProg.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
+        lblPenc.innerText = "PENCAPAIAN";
+        inpPenc.placeholder = "CONTOH: JOHAN / EMAS";
+    }
+};
+
+window.simpanPencapaianPPD = async function() {
+    const radKategori = document.querySelector('input[name="radKatPPD"]:checked').value;
+    const jenisRekod = document.getElementById('ppdInputJenisRekod').value;
+    const nama = document.getElementById('ppdInputNama').value.trim().toUpperCase();
+    
+    let peringkat = 'KEBANGSAAN';
+    let penyedia = 'LAIN-LAIN';
+    
+    const tahun = parseInt(document.getElementById('ppdInputTahun').value);
+
+    if (jenisRekod === 'PENSIJILAN') {
+        penyedia = document.getElementById('ppdInputPenyedia').value;
+        peringkat = 'ANTARABANGSA';
+    } else {
+        peringkat = document.getElementById('ppdInputPeringkat').value;
+    }
+
+    const program = document.getElementById('ppdInputProgram').value.trim().toUpperCase();
+    const pencapaian = document.getElementById('ppdInputPencapaian').value.trim().toUpperCase();
+    const link = document.getElementById('ppdInputLink').value.trim();
+
+    if (!nama || !program || !pencapaian || !link || !tahun) {
+        Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat.', 'warning');
+        return;
+    }
+
+    toggleLoading(true);
+
+    try {
+        const payload = {
+            kod_sekolah: 'M030',
+            kategori: radKategori,
+            nama_peserta: nama,
+            nama_pertandingan: program,
+            peringkat: peringkat,
+            tahun: tahun,
+            pencapaian: pencapaian,
+            pautan_bukti: link,
+            jenis_rekod: jenisRekod,
+            penyedia: penyedia
+        };
+
+        await AchievementService.create(payload);
+        
+        toggleLoading(false);
+        document.getElementById('modalRekodPPD').classList.add('hidden');
+        document.getElementById('formPencapaianPPD').reset();
+        document.getElementById('ppdInputTahun').value = '2026';
+        
+        Swal.fire('Berjaya', 'Rekod PPD Disimpan.', 'success').then(() => window.loadMasterPencapaian());
+    } catch(e) {
+        toggleLoading(false);
+        Swal.fire('Ralat', 'Gagal simpan rekod.', 'error');
+    }
 };
 
 // Fungsi Edit (Tailwind Modal)
@@ -352,4 +458,115 @@ window.eksportPencapaian = function() {
     link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
     link.download = `Laporan_Pencapaian_SMPID_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
+};
+
+// --- DATA STANDARDIZATION LOGIC (Restored) ---
+
+window.refreshStandardizeUI = function() {
+    const counts = {};
+    standardizationList = [];
+    filteredStandardizationList = [];
+
+    pencapaianList.forEach(item => {
+        const name = item.nama_pertandingan || "TIADA NAMA";
+        counts[name] = (counts[name] || 0) + 1;
+    });
+
+    Object.keys(counts).sort().forEach(name => {
+        standardizationList.push({ name: name, count: counts[name] });
+    });
+
+    filteredStandardizationList = standardizationList;
+    
+    const searchVal = document.getElementById('standardizeSearch').value;
+    if (searchVal) {
+        handleStandardizeSearch(searchVal);
+    } else {
+        renderStandardizeTable(filteredStandardizationList);
+    }
+}
+
+window.openStandardizeModal = function() {
+    document.getElementById('standardizeSearch').value = '';
+    window.refreshStandardizeUI();
+    document.getElementById('modalStandardize').classList.remove('hidden');
+};
+
+window.renderStandardizeTable = function(list) {
+    const tbody = document.getElementById('tbodyStandardize');
+    if (!tbody) return;
+    
+    if(list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-slate-400">Tiada padanan carian.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map((item, index) => {
+        const safeId = index; 
+        const safeName = item.name.replace(/'/g, "\\'"); 
+
+        return `
+            <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <td class="text-center font-bold text-xs text-slate-400 p-3">${index + 1}</td>
+                <td class="font-bold text-slate-800 text-xs w-1/3 p-3 leading-snug">${item.name}</td>
+                <td class="text-center p-3"><span class="bg-slate-200 text-slate-600 px-2 py-1 rounded-full text-[10px] font-bold">${item.count}</span></td>
+                <td class="p-3 w-1/3">
+                    <input type="text" id="std-input-${safeId}" 
+                           class="w-full px-2 py-1.5 rounded border border-indigo-200 text-indigo-700 font-bold text-xs uppercase-input focus:border-indigo-500 outline-none bg-indigo-50/50" 
+                           placeholder="Tulis nama baru..." 
+                           value="${item.name.replace(/"/g, '&quot;')}"
+                           oninput="this.value = this.value.toUpperCase()">
+                </td>
+                <td class="text-center p-3">
+                    <button onclick="executeStandardization('${safeName}', 'std-input-${safeId}')" class="px-3 py-1.5 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold shadow-sm transition">
+                        <i class="fas fa-save me-1"></i> SIMPAN
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.handleStandardizeSearch = function(val) {
+    const term = val.toUpperCase().trim();
+    if (!term) {
+        filteredStandardizationList = standardizationList;
+    } else {
+        filteredStandardizationList = standardizationList.filter(item => item.name.toUpperCase().includes(term));
+    }
+    renderStandardizeTable(filteredStandardizationList);
+};
+
+window.executeStandardization = function(oldName, inputId) {
+    const newName = document.getElementById(inputId).value.trim().toUpperCase();
+    
+    if (!newName) return Swal.fire('Ralat', 'Nama baru tidak boleh kosong.', 'warning');
+    if (newName === oldName) return Swal.fire('Tiada Perubahan', 'Nama baru sama dengan nama asal.', 'info');
+
+    Swal.fire({
+        title: 'Sahkan Penyeragaman?',
+        html: `Anda akan menukar <b>"${oldName}"</b> kepada <br><b class="text-emerald-600">"${newName}"</b><br>untuk semua rekod yang berkaitan.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981', // emerald-500
+        confirmButtonText: 'Ya, Seragamkan!',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            try {
+                await AchievementService.batchUpdateProgramName(oldName, newName);
+                toggleLoading(false);
+                
+                await Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
+                
+                await window.loadMasterPencapaian(); 
+                window.refreshStandardizeUI(); 
+                
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
+            }
+        }
+    });
 };

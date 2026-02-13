@@ -53,7 +53,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body id="page-landing" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
   <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
@@ -99,7 +99,6 @@
         <!-- KAD DINAMIK (Muncul bila sekolah dipilih) -->
         <div id="schoolCardContainer" class="hidden">
             <!-- Diisi oleh JavaScript (landing.js) -->
-            <!-- Nota: Kita perlu update landing.js nanti untuk render class Tailwind, bukan Bootstrap -->
         </div>
 
         <!-- NOTA KAKI / PANDUAN RINGKAS (Default View) -->
@@ -121,7 +120,6 @@
   </div>
 
   <!-- MODULAR JAVASCRIPT -->
-  <!-- Note: Kita perlu pastikan JS ini render HTML string menggunakan class Tailwind -->
   <script type="module" src="js/landing.js"></script>
 
 </body>

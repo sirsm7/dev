@@ -1,6 +1,6 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION)
- * Menguruskan senarai sekolah, filter, dan status data.
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - VISUAL UPDATE)
+ * Menguruskan senarai sekolah, filter berwarna, dan status data.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -35,7 +35,7 @@ window.fetchDashboardData = async function() {
     }
 };
 
-// --- FILTER LOGIC (TAILWIND UI) ---
+// --- FILTER LOGIC (COLORFUL UI) ---
 function renderFilters() {
     const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
     let opts = `<option value="ALL">SEMUA JENIS</option>`;
@@ -43,28 +43,39 @@ function renderFilters() {
     
     const container = document.getElementById('filterContainer');
     if(container) {
-        // Tailwind: Flex container dengan gap
+        // Update: Warna Warni Mengikut Status (Parity dengan SMPID Live)
         container.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
           <div class="flex flex-wrap gap-2 justify-center md:justify-start">
-            <button onclick="setFilter('ALL')" id="badgeAll" class="filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2">
-                Semua <span id="cntAll" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
+            
+            <!-- Butang SEMUA (Kelabu/Default) -->
+            <button onclick="setFilter('ALL')" id="badgeAll" class="filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200">
+                Semua <span id="cntAll" class="bg-white text-slate-600 px-2 py-0.5 rounded-full text-[10px] shadow-sm">0</span>
             </button>
-            <button onclick="setFilter('LENGKAP')" id="badgeLengkap" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border border-slate-200 text-slate-500 hover:text-green-600 hover:border-green-200 bg-white transition-all flex items-center gap-2">
-                Lengkap <span id="cntLengkap" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+
+            <!-- Butang LENGKAP (Hijau) -->
+            <button onclick="setFilter('LENGKAP')" id="badgeLengkap" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                Lengkap <span id="cntLengkap" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
-            <button onclick="setFilter('BELUM')" id="badgeBelum" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 bg-white transition-all flex items-center gap-2">
-                Belum <span id="cntBelum" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+
+            <!-- Butang BELUM (Merah) -->
+            <button onclick="setFilter('BELUM')" id="badgeBelum" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50">
+                Belum <span id="cntBelum" class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
-            <button onclick="setFilter('SAMA')" id="badgeSama" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border border-slate-200 text-slate-500 hover:text-purple-600 hover:border-purple-200 bg-white transition-all flex items-center gap-2">
-                Sama <span id="cntSama" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+
+            <!-- Butang SAMA (Ungu) -->
+            <button onclick="setFilter('SAMA')" id="badgeSama" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50">
+                Sama <span id="cntSama" class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
-            <button onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border border-slate-200 text-slate-500 hover:text-orange-600 hover:border-orange-200 bg-white transition-all flex items-center gap-2">
-                Berbeza <span id="cntBerbeza" class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+
+            <!-- Butang BERBEZA (Oren/Amber) -->
+            <button onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50">
+                Berbeza <span id="cntBerbeza" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
+
           </div>
           <div class="w-full md:w-auto">
-            <select class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500" onchange="setType(this.value)">${opts}</select>
+            <select class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
           </div>
         </div>`;
     }
@@ -92,19 +103,32 @@ window.runFilter = function() {
 };
 
 function updateBadgeCounts() {
-    // Reset visual style
+    // 1. Reset Semua Button ke state 'Inactive' (Tapi kekalkan warna asas border/text)
+    // Kita reset kelas 'active-shadow' atau 'ring' sahaja
     document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border border-slate-200 text-slate-500 hover:bg-slate-50 bg-white transition-all flex items-center gap-2";
+        btn.classList.remove('ring-2', 'ring-offset-1', 'shadow-md', 'scale-105');
+        // Reset background jika ia adalah butang aktif sebelum ini
+        if(btn.id === 'badgeAll') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200";
+        if(btn.id === 'badgeLengkap') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50";
+        if(btn.id === 'badgeBelum') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50";
+        if(btn.id === 'badgeSama') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50";
+        if(btn.id === 'badgeBerbeza') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50";
     });
 
-    // Set Active Style (Tailwind)
+    // 2. Set Active Style (Solid Background & Shadow)
     const map = { 'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza' };
     const activeId = map[activeStatus];
     if (activeId) {
         const btn = document.getElementById(activeId);
         if (btn) {
-            btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border border-brand-500 text-white bg-brand-600 shadow-md transition-all flex items-center gap-2 transform scale-105";
-            // Update internal badge color for contrast
+            // Tambah kelas aktif yang Solid
+            if(activeStatus === 'ALL') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-600 text-white border-slate-600 shadow-md scale-105";
+            if(activeStatus === 'LENGKAP') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-emerald-500 text-white border-emerald-500 shadow-md scale-105";
+            if(activeStatus === 'BELUM') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-red-500 text-white border-red-500 shadow-md scale-105";
+            if(activeStatus === 'SAMA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-purple-500 text-white border-purple-500 shadow-md scale-105";
+            if(activeStatus === 'BERBEZA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-amber-500 text-white border-amber-500 shadow-md scale-105";
+            
+            // Update badge dalaman menjadi putih lutsinar
             const span = btn.querySelector('span');
             if(span) span.className = "bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]";
         }
@@ -135,18 +159,16 @@ function renderGrid(data) {
         return; 
     }
 
-    // Grouping logic kekal sama
     const groups = data.reduce((acc, i) => { (acc[i.jenis] = acc[i.jenis] || []).push(i); return acc; }, {});
 
     Object.keys(groups).sort().forEach(jenis => {
         const items = groups[jenis];
         
-        // Tailwind Section Header
         let html = `<div class="col-span-full mt-6 mb-2 border-b border-slate-200 pb-2"><h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div> ${jenis} (${items.length})</h3></div>`;
         
         items.forEach(s => {
             const statusBadge = s.is_lengkap 
-                ? `<span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full border border-green-200"><i class="fas fa-check"></i> LENGKAP</span>` 
+                ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-200"><i class="fas fa-check"></i> LENGKAP</span>` 
                 : `<span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-200"><i class="fas fa-times"></i> BELUM</span>`;
             
             const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
@@ -162,9 +184,9 @@ function renderGrid(data) {
                 return btns;
             };
 
-            // KAD SEKOLAH (Tailwind Card)
+            // HTML KAD SEKOLAH (Tailwind)
             html += `
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col" onclick="viewSchoolProfile('${s.kod_sekolah}')">
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-full" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 <div class="p-5 flex-grow">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -172,14 +194,15 @@ function renderGrid(data) {
                         </div>
                         ${statusBadge}
                     </div>
-                    <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-brand-600 transition mb-1">${s.nama_sekolah}</h4>
+                    <!-- UPDATE: Allow Text Wrap -->
+                    <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-brand-600 transition mb-1 whitespace-normal">${s.nama_sekolah}</h4>
+                    
                     <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="text-[10px] font-bold text-amber-500 hover:text-amber-600 flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
                         <i class="fas fa-key"></i> Reset Password
                     </button>
                 </div>
                 
-                <!-- Status Bar Bawah -->
-                <div class="bg-slate-50 border-t border-slate-100 p-3 grid grid-cols-2 divide-x divide-slate-200">
+                <div class="bg-slate-50 border-t border-slate-100 p-3 grid grid-cols-2 divide-x divide-slate-200 mt-auto">
                     <div class="px-2 flex justify-between items-center">
                         <span class="text-[10px] font-bold text-slate-400 uppercase">GPICT</span>
                         ${renderActions(linkG, s.telegram_id_gpict)}

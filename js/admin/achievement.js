@@ -1,7 +1,6 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (TAILWIND ENHANCED)
+ * ADMIN MODULE: ACHIEVEMENT (TAILWIND ENHANCED - VISUAL UPDATE)
  * Menguruskan pangkalan data pencapaian, statistik, dan penapisan silang.
- * Update: Menambah logik filter Sekolah & Jenis Rekod (Parity with Production).
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -310,7 +309,7 @@ function renderTopSchools(data) {
             if(s) nama = s.nama_sekolah;
         }
         
-        // Klik pada row top school akan set filter sekolah
+        // UPDATE: Removed line-clamp for full text wrap
         return `
         <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 cursor-pointer group" 
             onclick="document.getElementById('filterSekolahPencapaian').value='${kod}'; window.renderPencapaianTable();">
@@ -319,7 +318,7 @@ function renderTopSchools(data) {
                     <div class="flex items-center gap-3">
                         <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 flex items-center justify-center text-[10px] font-black transition-colors">${idx + 1}</div>
                         <div>
-                            <div class="text-xs font-bold text-slate-700 leading-tight line-clamp-1 w-32" title="${nama}">${nama}</div>
+                            <div class="text-xs font-bold text-slate-700 leading-tight whitespace-normal" title="${nama}">${nama}</div>
                             <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
                         </div>
                     </div>

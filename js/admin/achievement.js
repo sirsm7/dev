@@ -15,6 +15,27 @@ let sortState = { column: 'created_at', direction: 'desc' };
 let standardizationList = []; 
 let filteredStandardizationList = [];
 
+// --- GLOBAL EXPORTS (Supaya boleh dipanggil dari HTML) ---
+window.filterByCard = function(c) { 
+    currentCardFilter = (currentCardFilter === c) ? 'ALL' : c; 
+    
+    // Visual Update for Cards (Tailwind)
+    const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
+    cards.forEach(card => {
+        const el = document.getElementById(`card-${card}`);
+        if(el) {
+            if(card === currentCardFilter) {
+                // Add active styles (Shadow & Scale)
+                el.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-300', 'shadow-xl', 'scale-[1.02]');
+            } else {
+                el.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-300', 'shadow-xl', 'scale-[1.02]');
+            }
+        }
+    });
+
+    window.renderPencapaianTable(); 
+};
+
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
     if (!select) return;
@@ -65,16 +86,27 @@ window.renderPencapaianTable = function() {
         
         if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
 
+        // --- NEW CARD FILTER LOGIC ---
         if(currentCardFilter === 'KEBANGSAAN' && i.peringkat !== 'KEBANGSAAN') return false;
         if(currentCardFilter === 'ANTARABANGSA' && !['ANTARABANGSA'].includes(i.peringkat) && i.jenis_rekod !== 'PENSIJILAN') return false;
-        if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter) && i.penyedia !== currentCardFilter) return false;
-        if(currentCardFilter === 'LAIN-LAIN' && (i.jenis_rekod !== 'PENSIJILAN' || i.penyedia !== 'LAIN-LAIN')) return false;
+        
+        if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter)) {
+             if (i.jenis_rekod !== 'PENSIJILAN') return false; 
+             if (i.penyedia !== currentCardFilter) return false;
+        }
+        
+        if(currentCardFilter === 'LAIN-LAIN') {
+             if (i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'LAIN-LAIN') return true;
+             return false;
+        }
         
         return true;
     });
 
     updateStatsUI(data); 
+    updateAdvancedStats(data); // NEW
     updateWordCloudUI(data);
+    renderTopSchools(data);    // NEW
 
     data.sort((a,b) => {
         let valA = a[sortState.column] || '';
@@ -152,6 +184,72 @@ function updateStatsUI(data) {
     setTxt('statTotalUnit', data.filter(i => i.kategori === 'PPD').length);
 }
 
+// NEW: Advanced Stats for Cards
+function updateAdvancedStats(data) {
+    const setTxt = (id, count) => {
+        const el = document.getElementById(id);
+        if(el) el.innerText = count;
+    };
+
+    setTxt('statKebangsaan', data.filter(i => i.peringkat === 'KEBANGSAAN').length);
+    setTxt('statAntarabangsa', data.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length);
+
+    const certs = data.filter(i => i.jenis_rekod === 'PENSIJILAN');
+    setTxt('statGoogle', certs.filter(i => i.penyedia === 'GOOGLE').length);
+    setTxt('statApple', certs.filter(i => i.penyedia === 'APPLE').length);
+    setTxt('statMicrosoft', certs.filter(i => i.penyedia === 'MICROSOFT').length);
+    setTxt('statLain', certs.filter(i => i.penyedia === 'LAIN-LAIN').length);
+}
+
+// NEW: Render Top Schools Sidebar
+function renderTopSchools(data) {
+    const table = document.getElementById('tableTopContributors');
+    const badge = document.getElementById('totalRecordsBadge');
+    if(!table) return;
+
+    if(badge) badge.innerText = `${data.length} Rekod`;
+
+    const schoolCounts = {};
+    data.forEach(i => {
+        if(i.kod_sekolah !== 'M030') {
+            schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
+        }
+    });
+
+    const sorted = Object.entries(schoolCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 5);
+
+    if(sorted.length === 0) {
+        table.innerHTML = `<tr><td class="p-4 text-center text-slate-400 text-xs italic">Tiada data sekolah.</td></tr>`;
+        return;
+    }
+
+    table.innerHTML = sorted.map(([kod, count], idx) => {
+        let nama = kod;
+        if(window.globalDashboardData) {
+            const s = window.globalDashboardData.find(x => x.kod_sekolah === kod);
+            if(s) nama = s.nama_sekolah;
+        }
+        
+        return `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 cursor-pointer" onclick="document.getElementById('searchPencapaianInput').value='${kod}'; handlePencapaianSearch();">
+            <td class="p-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-black">${idx + 1}</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-700 leading-tight line-clamp-1 w-32" title="${nama}">${nama}</div>
+                            <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">${count}</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
 function updateWordCloudUI(data) {
     const container = document.getElementById('jawatanCloudContainer');
     const wrapper = document.getElementById('jawatanCloudWrapper');
@@ -225,6 +323,14 @@ window.resetPencapaianFilters = function() {
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
     currentCardFilter = 'ALL';
     currentJawatanFilter = 'ALL';
+    
+    // Reset visual card filters
+    const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
+    cards.forEach(card => {
+        const el = document.getElementById(`card-${card}`);
+        if(el) el.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-300', 'shadow-xl', 'scale-[1.02]');
+    });
+
     window.loadMasterPencapaian();
     Swal.fire({ icon: 'success', title: 'Reset Selesai', timer: 1000, showConfirmButton: false, toast: true, position: 'top-end' });
 };

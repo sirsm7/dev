@@ -2,6 +2,8 @@
  * ADMIN MODULE: GALLERY MANAGER (FULL PRODUCTION VERSION)
  * Menguruskan paparan galeri admin, penapisan kategori, 
  * carian sekolah, dan logik Word Cloud jawatan guru.
+ * * UPDATE V1.1: Pembaikan isu teks terpotong (truncated).
+ * Menukarkan truncate/line-clamp kepada whitespace-normal (wrap).
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -350,6 +352,7 @@ function renderAdminCards(filterType) {
 
 /**
  * Menjana HTML bagi sekeping kad galeri dengan pengecaman thumbnail pintar.
+ * FIX: Menukar 'truncate' dan 'line-clamp' kepada 'whitespace-normal' untuk menyokong teks wrap.
  */
 function createAdminCardHTML(item) {
     const link = item.pautan_bukti || "";
@@ -417,11 +420,11 @@ function createAdminCardHTML(item) {
                 <div class="w-2 h-2 rounded-full ${textClass.replace('text', 'bg')}"></div>
                 <span class="text-[10px] font-black uppercase tracking-wider ${textClass}">${item.kategori}</span>
             </div>
-            <h6 class="font-bold text-slate-800 text-xs leading-snug mb-1 line-clamp-2" title="${item.nama_pertandingan}">${item.nama_pertandingan}</h6>
-            <p class="text-[10px] text-slate-400 font-bold mb-3 truncate">${item.nama_peserta}</p>
+            <h6 class="font-bold text-slate-800 text-xs leading-snug mb-1 whitespace-normal break-words" title="${item.nama_pertandingan}">${item.nama_pertandingan}</h6>
+            <p class="text-[10px] text-slate-400 font-bold mb-3 whitespace-normal break-words">${item.nama_peserta}</p>
             
             <div class="mt-auto pt-3 border-t border-slate-50 flex justify-between items-center">
-                <span class="text-[10px] font-black ${textClass} bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase truncate max-w-[120px]">
+                <span class="text-[10px] font-black ${textClass} bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase whitespace-normal break-words">
                     ${item.pencapaian}
                 </span>
                 <i class="fas fa-external-link-alt text-slate-300 text-[9px]"></i>

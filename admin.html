@@ -103,7 +103,7 @@
       </div>
   </div>
 
-  <!-- HEADER COMPACT (UPDATE) -->
+  <!-- HEADER COMPACT (UPDATE: KELUAR BUTTON INJECTED) -->
   <header class="bg-slate-900 text-white pb-24 pt-6 px-4 relative overflow-hidden shadow-lg">
     <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
     <div class="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -114,17 +114,21 @@
                 <p class="text-slate-400 text-xs font-medium">Pengurusan Data & Komunikasi Digital</p>
             </div>
         </div>
-        <div>
+        <div class="flex items-center gap-3">
             <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-white backdrop-blur-sm">
                 <i class="fas fa-user-shield text-brand-400"></i> <span id="displayUserRole">MOD ADMIN</span>
             </span>
+            <!-- Tombol Keluar Global Baru -->
+            <button onclick="keluarSistem()" class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/30 transition-all backdrop-blur-sm">
+                <i class="fas fa-sign-out-alt"></i> Keluar
+            </button>
         </div>
     </div>
   </header>
 
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
     
-    <!-- NAVIGATION TABS (UPDATE) -->
+    <!-- NAVIGATION TABS -->
     <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border border-slate-100 max-w-5xl mx-auto overflow-x-auto">
         <button class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard')"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
         <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa')"><i class="fas fa-chart-pie"></i> Analisa</button>
@@ -137,7 +141,7 @@
 
     <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
         
-        <!-- TAB 1: DASHBOARD -->
+        <!-- TAB 1: DASHBOARD (UPDATE: KELUAR BUTTON REMOVED) -->
         <div id="tab-dashboard" class="p-6 md:p-8">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-100 pb-6">
                 <div>
@@ -148,7 +152,7 @@
                     <button onclick="mulaTindakanPantas()" class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fab fa-whatsapp"></i> Tindakan Pantas</button>
                     <button onclick="janaSenaraiTelegram()" class="px-4 py-2 rounded-lg bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fab fa-telegram-plane"></i> Copy List</button>
                     <button onclick="eksportDataTapis()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fas fa-file-export"></i> Eksport</button>
-                    <button onclick="keluarSistem()" class="px-4 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+                    <!-- Tombol Keluar Lama Dibuang Dari Sini -->
                 </div>
             </div>
 
@@ -234,7 +238,7 @@
             </div>
         </div>
 
-        <!-- TAB 3: PENCAPAIAN (KEMENJADIAN) - UPDATED -->
+        <!-- TAB 3: PENCAPAIAN (KEMENJADIAN) -->
         <div id="tab-pencapaian" class="hidden p-6 md:p-8">
             <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <div>
@@ -248,21 +252,15 @@
                 </div>
             </div>
 
-            <!-- UNIFIED FILTER DECK (Tailwind) -->
+            <!-- UNIFIED FILTER DECK -->
             <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                
-                <!-- Search Input -->
                 <div class="col-span-1 lg:col-span-2 relative">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" id="searchPencapaianInput" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-semibold" placeholder="Cari Nama / Program..." onkeyup="handlePencapaianSearch()">
                 </div>
-
-                <!-- Filter Tahun -->
                 <select id="filterTahunPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="loadMasterPencapaian()">
                     <option disabled>Memuatkan...</option>
                 </select>
-
-                <!-- Filter Kategori -->
                 <select id="filterKategoriPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="renderPencapaianTable()">
                     <option value="ALL">SEMUA KATEGORI</option>
                     <option value="MURID">MURID</option>
@@ -271,20 +269,14 @@
                     <option value="PEGAWAI">PEGAWAI PPD</option>
                     <option value="PPD">UNIT PPD</option>
                 </select>
-
-                <!-- Filter Jenis Rekod -->
                 <select id="filterJenisPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="renderPencapaianTable()">
                     <option value="ALL">SEMUA JENIS</option>
                     <option value="PERTANDINGAN">PERTANDINGAN</option>
                     <option value="PENSIJILAN">PENSIJILAN</option>
                 </select>
-
-                <!-- Filter Sekolah (NEW) -->
                 <select id="filterSekolahPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none col-span-1 lg:col-span-2" onchange="renderPencapaianTable()">
                     <option value="ALL">SEMUA SEKOLAH</option>
                 </select>
-
-                <!-- Reset Button -->
                 <button onclick="resetPencapaianFilters()" class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 transition font-bold text-xs flex items-center justify-center">
                     <i class="fas fa-sync-alt mr-1"></i> RESET
                 </button>
@@ -298,11 +290,8 @@
                 <div onclick="filterByKategori('PPD')" class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition"><span class="text-[10px] font-bold text-indigo-500 uppercase">Unit</span><h4 class="text-xl font-black text-indigo-700" id="statTotalUnit">0</h4></div>
             </div>
 
-            <!-- New Dashboard Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <!-- Left: Stats -->
                 <div class="lg:col-span-2 space-y-4">
-                    <!-- Levels -->
                     <div class="grid grid-cols-2 gap-4">
                         <div onclick="filterByCard('KEBANGSAAN')" id="card-KEBANGSAAN" class="bg-purple-600 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group">
                             <div class="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -mr-6 -mt-6 blur-2xl group-hover:bg-white/20 transition"></div>
@@ -315,7 +304,6 @@
                             <p class="text-xs font-bold text-orange-200 uppercase tracking-wider">Antarabangsa / Sijil</p>
                         </div>
                     </div>
-                    <!-- Platforms -->
                     <div class="grid grid-cols-4 gap-3">
                         <div onclick="filterByCard('GOOGLE')" id="card-GOOGLE" class="bg-white border border-red-100 p-3 rounded-xl cursor-pointer hover:bg-red-50 hover:border-red-300 transition text-center group">
                             <i class="fab fa-google text-red-500 text-xl mb-2 group-hover:scale-110 transition"></i>
@@ -340,7 +328,6 @@
                     </div>
                 </div>
 
-                <!-- Right: Top 5 Schools -->
                 <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col shadow-sm">
                     <div class="bg-slate-900 px-4 py-3 flex justify-between items-center">
                         <h4 class="text-xs font-bold text-white uppercase tracking-wider">Top 5 Sekolah</h4>
@@ -552,7 +539,7 @@
                               <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
                               <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
                               <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
-                              <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                              <option value="GPK PENDIDIKAS KHAS">GPK PENDIDIKAN KHAS</option>
                               <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
                               <option value="GURU DATA">GURU DATA</option>
                               <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>

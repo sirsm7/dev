@@ -118,7 +118,7 @@
             <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-white backdrop-blur-sm">
                 <i class="fas fa-user-shield text-brand-400"></i> <span id="displayUserRole">MOD ADMIN</span>
             </span>
-            <!-- Tombol Keluar Global Baru -->
+            <!-- Tombol Keluar Global -->
             <button onclick="keluarSistem()" class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/30 transition-all backdrop-blur-sm">
                 <i class="fas fa-sign-out-alt"></i> Keluar
             </button>
@@ -128,20 +128,20 @@
 
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
     
-    <!-- NAVIGATION TABS -->
+    <!-- NAVIGATION TABS (UPDATE: CONVERTED TO ANCHOR TAGS FOR RIGHT-CLICK SUPPORT) -->
     <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border border-slate-100 max-w-5xl mx-auto overflow-x-auto">
-        <button class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard')"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
-        <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa')"><i class="fas fa-chart-pie"></i> Analisa</button>
-        <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian')"><i class="fas fa-trophy"></i> Kemenjadian</button>
-        <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery')"><i class="fas fa-images"></i> Galeri</button>
-        <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email')"><i class="fas fa-paper-plane"></i> Blaster</button>
-        <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk')"><i class="fas fa-headset"></i> Aduan</button>
-        <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users')"><i class="fas fa-users-cog"></i> Akses</button>
+        <a href="#dashboard" class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="#analisa" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
+        <a href="#pencapaian" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
+        <a href="#gallery" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
+        <a href="#email" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
+        <a href="#helpdesk" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
+        <a href="#admin-users" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
     </div>
 
     <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
         
-        <!-- TAB 1: DASHBOARD (UPDATE: KELUAR BUTTON REMOVED) -->
+        <!-- TAB 1: DASHBOARD -->
         <div id="tab-dashboard" class="p-6 md:p-8">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-100 pb-6">
                 <div>
@@ -152,7 +152,6 @@
                     <button onclick="mulaTindakanPantas()" class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fab fa-whatsapp"></i> Tindakan Pantas</button>
                     <button onclick="janaSenaraiTelegram()" class="px-4 py-2 rounded-lg bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fab fa-telegram-plane"></i> Copy List</button>
                     <button onclick="eksportDataTapis()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fas fa-file-export"></i> Eksport</button>
-                    <!-- Tombol Keluar Lama Dibuang Dari Sini -->
                 </div>
             </div>
 
@@ -539,7 +538,7 @@
                               <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
                               <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
                               <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
-                              <option value="GPK PENDIDIKAS KHAS">GPK PENDIDIKAN KHAS</option>
+                              <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
                               <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
                               <option value="GURU DATA">GURU DATA</option>
                               <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
@@ -706,7 +705,14 @@
       import { AuthService } from './js/services/auth.service.js';
       import { APP_CONFIG } from './js/config/app.config.js';
 
-      window.switchAdminTab = function(tabId) {
+      window.switchAdminTab = function(tabId, event) {
+          // Prevent page jump only if event is provided (regular click)
+          if (event) {
+              event.preventDefault();
+              // Update hash without jumping
+              history.pushState(null, null, '#' + tabId);
+          }
+          
           document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
           document.getElementById('tab-' + tabId).classList.remove('hidden');
           
@@ -715,6 +721,7 @@
           });
           document.getElementById(tabId + '-tab').className = "tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
           
+          // Lazy load module data based on tab
           if(tabId === 'analisa' && window.loadDcsAdmin) window.loadDcsAdmin();
           if(tabId === 'pencapaian' && window.populateTahunFilter) window.populateTahunFilter();
           if(tabId === 'gallery' && window.initAdminGallery) window.initAdminGallery();
@@ -723,9 +730,20 @@
           if(tabId === 'admin-users' && window.loadAdminList) window.loadAdminList();
       };
 
+      // Listen for hash changes to support browser back/forward buttons
+      window.addEventListener('hashchange', () => {
+          const hash = window.location.hash.replace('#', '') || 'dashboard';
+          window.switchAdminTab(hash);
+      });
+
       document.addEventListener('DOMContentLoaded', () => {
           const isAuth = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
           if (!isAuth) { window.location.replace('index.html'); return; }
+          
+          // Check initial hash for routing
+          const initialTab = window.location.hash.replace('#', '') || 'dashboard';
+          window.switchAdminTab(initialTab);
+
           if(window.fetchDashboardData) window.fetchDashboardData();
           
           const role = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);

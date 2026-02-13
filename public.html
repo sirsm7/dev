@@ -86,7 +86,7 @@
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors"></i>
                 <input list="listSekolah" id="inputCariSekolah" 
                        class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none font-bold text-slate-700 placeholder-slate-300 transition-all uppercase shadow-sm" 
-                       placeholder="Contoh: MBA0001">
+                       placeholder="CONTOH: MBA0001">
             </div>
             <datalist id="listSekolah"></datalist>
             <input type="hidden" id="finalKodSekolah">
@@ -147,7 +147,7 @@
                 </div>
 
                 <div id="divPubJawatan" class="hidden">
-                    <label class="block text-[10px] font-black text-orange-600 uppercase mb-2 ml-1">Jawatan Utama</label>
+                    <label class="block text-[10px] font-black text-orange-600 uppercase mb-2 ml-1">JAWATAN (WAJIB)</label>
                     <div class="relative">
                         <select id="pubJawatan" class="w-full p-4 rounded-2xl bg-orange-50 border-2 border-orange-100 text-slate-700 font-bold focus:border-orange-400 outline-none appearance-none">
                             <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
@@ -168,12 +168,12 @@
                 </div>
 
                 <div>
-                    <label id="lblPubNama" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nama Penuh Peserta</label>
-                    <input type="text" id="pubNama" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: ALI BIN AHMAD" oninput="this.value = this.value.toUpperCase()" required>
+                    <label id="lblPubNama" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">NAMA MURID / KUMPULAN</label>
+                    <input type="text" id="pubNama" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none uppercase-input font-bold text-slate-700" placeholder="TAIP NAMA PENUH..." oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div id="divPubPenyedia" class="hidden">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Penyedia Sijil</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">PENYEDIA / JENAMA</label>
                     <div class="relative">
                         <select id="pubPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
                             <option value="LAIN-LAIN" selected>LAIN-LAIN / TIADA</option>
@@ -186,13 +186,13 @@
                 </div>
 
                 <div>
-                    <label id="lblPubProgram" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nama Program / Pertandingan</label>
+                    <label id="lblPubProgram" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">NAMA PERTANDINGAN</label>
                     <input type="text" id="pubProgram" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div id="divPubColPeringkat">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Peringkat Tertinggi</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">PERINGKAT TERTINGGI</label>
                         <div class="relative">
                             <select id="pubPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
                                 <option value="KEBANGSAAN">KEBANGSAAN</option>
@@ -202,18 +202,18 @@
                         </div>
                     </div>
                     <div id="divPubColTahun">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Tahun Acara</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">TAHUN ACARA</label>
                         <input type="number" id="pubTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-black text-center text-brand-600" value="2026" min="2023" required>
                     </div>
                 </div>
 
                 <div>
-                    <label id="lblPubPencapaian" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Keputusan / Pencapaian</label>
+                    <label id="lblPubPencapaian" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">KEPUTUSAN / PENCAPAIAN</label>
                     <input type="text" id="pubPencapaian" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: JOHAN / EMAS / LULUS" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div class="bg-blue-50/50 p-6 rounded-3xl border border-blue-100">
-                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1">Pautan Bukti (Google Drive)</label>
+                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1">PAUTAN BUKTI (GOOGLE DRIVE)</label>
                     <div class="relative">
                         <i class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-blue-300"></i>
                         <input type="url" id="pubLink" class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-blue-100 focus:border-blue-500 outline-none text-blue-700 font-medium bg-white" placeholder="https://drive.google.com/..." required>
@@ -265,38 +265,38 @@
                 </div>
 
                 <div>
-                    <label id="lblPpdNama" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Identiti Pegawai</label>
+                    <label id="lblPpdNama" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">NAMA PEGAWAI</label>
                     <input type="text" id="ppdNama" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 focus:ring-4 focus:ring-ppd-500/5 outline-none uppercase-input font-bold text-slate-700" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div id="divPpdPenyedia" class="hidden">
-                    <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Penyedia</label>
+                    <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">PENYEDIA / JENAMA</label>
                     <select id="ppdPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
                 </div>
 
                 <div>
-                    <label id="lblPpdProgram" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Nama Program</label>
+                    <label id="lblPpdProgram" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">NAMA PROGRAM</label>
                     <input type="text" id="ppdProgram" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none uppercase-input font-bold text-slate-700" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div id="divPpdColPeringkat">
-                        <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Peringkat</label>
+                        <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">PERINGKAT</label>
                         <select id="ppdPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select>
                     </div>
                     <div id="divPpdColTahun">
-                        <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Tahun</label>
+                        <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">TAHUN</label>
                         <input type="number" id="ppdTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 text-center font-black text-ppd-700" value="2026" required>
                     </div>
                 </div>
 
                 <div>
-                    <label id="lblPpdPencapaian" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Pencapaian</label>
+                    <label id="lblPpdPencapaian" class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">PENCAPAIAN</label>
                     <input type="text" id="ppdPencapaian" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none uppercase-input font-bold text-slate-700" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">Pautan Bukti</label>
+                    <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">PAUTAN BUKTI</label>
                     <input type="url" id="ppdLink" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none text-blue-600 font-bold" placeholder="https://..." required>
                 </div>
 

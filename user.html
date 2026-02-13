@@ -177,19 +177,19 @@
                 <input type="hidden" id="hiddenKodSekolah">
                 
                 <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    <h3 class="text-sm font-bold text-blue-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-laptop-code"></i> Maklumat GPICT</h3>
+                    <h3 class="text-sm font-bold text-blue-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-laptop-code"></i> MAKLUMAT GPICT</h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-blue-500 uppercase mb-1">Nama Penuh</label>
+                            <label class="block text-xs font-bold text-blue-500 uppercase mb-1">NAMA PENUH</label>
                             <input type="text" id="gpictNama" class="w-full p-3 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-blue-500 uppercase mb-1">No Telefon</label>
+                                <label class="block text-xs font-bold text-blue-500 uppercase mb-1">NO TELEFON</label>
                                 <input type="tel" id="gpictTel" class="w-full p-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none" required oninput="autoFormatPhone(this)">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-blue-500 uppercase mb-1">Emel DELIMa</label>
+                                <label class="block text-xs font-bold text-blue-500 uppercase mb-1">EMEL DELIMA</label>
                                 <input type="email" id="gpictEmel" class="w-full p-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none" required>
                             </div>
                         </div>
@@ -198,24 +198,24 @@
 
                 <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-bold text-emerald-700 uppercase flex items-center gap-2"><i class="fas fa-user-shield"></i> Admin DELIMa</h3>
+                        <h3 class="text-sm font-bold text-emerald-700 uppercase flex items-center gap-2"><i class="fas fa-user-shield"></i> ADMIN DELIMA</h3>
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" id="checkSama" onchange="salinData()" class="w-4 h-4 accent-emerald-500">
-                            <span class="text-xs font-bold text-emerald-600">Sama?</span>
+                            <span class="text-xs font-bold text-emerald-600">SAMA?</span>
                         </label>
                     </div>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">Nama Penuh</label>
+                            <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">NAMA PENUH</label>
                             <input type="text" id="adminNama" class="w-full p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">No Telefon</label>
+                                <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">NO TELEFON</label>
                                 <input type="tel" id="adminTel" class="w-full p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 outline-none" required oninput="autoFormatPhone(this)">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">Emel DELIMa</label>
+                                <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">EMEL DELIMA</label>
                                 <input type="email" id="adminEmel" class="w-full p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 outline-none" required>
                             </div>
                         </div>
@@ -288,7 +288,7 @@
             <button id="tab-p-sekolah" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition" onclick="setPencapaianType('SEKOLAH')">SEKOLAH</button>
         </div>
 
-        <div id="wrapperJenisRekod" class="flex justify-center gap-4 mb-6">
+        <div id="wrapperJenisRekod" class="flex justify-center gap-4 mb-6 hidden">
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="radioJenis" id="radioPertandingan" class="accent-teal-600" checked onchange="toggleJenisPencapaian()">
                 <span class="text-xs font-bold">PERTANDINGAN</span>
@@ -300,18 +300,18 @@
         </div>
 
         <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 mb-8 border-t-4 border-t-teal-500">
-            <h3 class="text-sm font-bold text-teal-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-plus-circle"></i> Tambah Rekod Baru</h3>
+            <h3 class="text-sm font-bold text-teal-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-plus-circle"></i> ISI MAKLUMAT PENCAPAIAN</h3>
             <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();" class="space-y-5">
                 <input type="hidden" id="pencapaianKategori" value="MURID">
                 <input type="hidden" id="pInputJenisRekod" value="PERTANDINGAN">
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="labelNamaPeserta">Nama Murid / Kumpulan</label>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="labelNamaPeserta">NAMA MURID / KUMPULAN</label>
                     <input type="text" id="pInputNama" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
                 </div>
 
                 <div id="divInputJawatan" class="hidden">
-                    <label class="block text-xs font-bold text-amber-600 uppercase mb-1">Jawatan (Wajib)</label>
+                    <label class="block text-xs font-bold text-amber-600 uppercase mb-1">JAWATAN (WAJIB)</label>
                     <select id="pInputJawatan" class="w-full p-3 rounded-xl bg-amber-50 border border-amber-200 text-slate-700 font-bold outline-none">
                         <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
                         <option value="PENGARAH KV / PGB">PGB (PENGETUA / GURU BESAR)</option>
@@ -329,38 +329,38 @@
                 </div>
 
                 <div id="divInputPenyedia" class="hidden">
-                    <label class="block text-xs font-bold text-amber-600 uppercase mb-1">Penyedia</label>
+                    <label class="block text-xs font-bold text-amber-600 uppercase mb-1">PENYEDIA / JENAMA</label>
                     <select id="pInputPenyedia" class="w-full p-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold outline-none">
-                        <option value="LAIN-LAIN" selected>LAIN-LAIN</option>
-                        <option value="GOOGLE">GOOGLE</option>
-                        <option value="APPLE">APPLE</option>
-                        <option value="MICROSOFT">MICROSOFT</option>
+                        <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
+                        <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                        <option value="APPLE">APPLE EDUCATION</option>
+                        <option value="MICROSOFT">MICROSOFT EDUCATION</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblProgram">Nama Pertandingan</label>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblProgram">NAMA PERTANDINGAN</label>
                     <input type="text" id="pInputProgram" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div id="divColPeringkat">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Peringkat</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PERINGKAT TERTINGGI</label>
                         <select id="pInputPeringkat" class="w-full p-3 rounded-xl bg-white border border-slate-300 outline-none"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select>
                     </div>
                     <div id="divColTahun">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tahun</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">TAHUN ACARA</label>
                         <input type="number" id="pInputTahun" class="w-full p-3 rounded-xl border border-slate-300 text-center font-bold" value="2026" required>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblPencapaian">Pencapaian</label>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblPencapaian">KEPUTUSAN / PENCAPAIAN</label>
                     <input type="text" id="pInputPencapaian" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Pautan Bukti</label>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI (GOOGLE DRIVE)</label>
                     <input type="url" id="pInputLink" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none text-blue-600" required placeholder="https://drive.google.com/...">
                 </div>
 
@@ -372,13 +372,13 @@
 
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-xs font-bold text-slate-500 uppercase">Senarai Rekod Terdahulu</h3>
+                <h3 class="text-xs font-bold text-slate-500 uppercase">SENARAI REKOD TERDAHULU</h3>
                 <button onclick="loadPencapaianSekolah()" class="text-xs bg-white border border-slate-200 px-3 py-1 rounded hover:bg-slate-50 transition"><i class="fas fa-sync-alt"></i></button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                        <tr><th class="px-6 py-3 font-bold text-center">Jenis</th><th class="px-6 py-3 font-bold">Butiran</th><th class="px-6 py-3 font-bold text-center">Aksi</th></tr>
+                        <tr><th class="px-6 py-3 font-bold text-center">KATEGORI</th><th class="px-6 py-3 font-bold">BUTIRAN PERTANDINGAN</th><th class="px-6 py-3 font-bold text-center">TINDAKAN</th></tr>
                     </thead>
                     <tbody id="tbodyRekodPencapaian" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan...</td></tr></tbody>
                 </table>
@@ -402,7 +402,7 @@
             <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8">
                 <form id="formTiket" onsubmit="event.preventDefault(); hantarTiket();" class="space-y-5">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Peranan Anda</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PERANAN ANDA</label>
                         <select id="tiketPeranan" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none" required>
                             <option value="" disabled selected>- Sila Pilih -</option>
                             <option value="GPICT">GPICT</option>
@@ -410,11 +410,11 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tajuk Masalah</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">TAJUK MASALAH</label>
                         <input type="text" id="tiketTajuk" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Butiran Masalah</label>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">BUTIRAN MASALAH</label>
                         <textarea id="tiketMesej" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 outline-none h-32" required></textarea>
                     </div>
                     <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition">HANTAR TIKET</button>
@@ -455,13 +455,13 @@
 
                   <!-- Nama Peserta -->
                   <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Peserta / Sekolah</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">NAMA PESERTA / SEKOLAH</label>
                       <input type="text" id="editUserNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" required>
                   </div>
                   
                   <!-- Jawatan (Hidden) -->
                   <div id="editUserDivJawatan" class="hidden">
-                      <label class="block text-xs font-bold text-amber-600 uppercase mb-1">Jawatan</label>
+                      <label class="block text-xs font-bold text-amber-600 uppercase mb-1">JAWATAN (WAJIB)</label>
                       <select id="editUserJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
                           <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
                           <option value="PENGARAH KV / PGB">PGB (PENGETUA / GURU BESAR)</option>
@@ -480,45 +480,45 @@
 
                   <!-- Penyedia (Hidden) -->
                   <div id="editUserDivPenyedia" class="hidden">
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Penyedia</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PENYEDIA / JENAMA</label>
                       <select id="editUserPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
-                        <option value="LAIN-LAIN">LAIN-LAIN</option>
-                        <option value="GOOGLE">GOOGLE</option>
-                        <option value="APPLE">APPLE</option>
-                        <option value="MICROSOFT">MICROSOFT</option>
+                        <option value="LAIN-LAIN">LAIN-LAIN (AWS/CISCO/DLL)</option>
+                        <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                        <option value="APPLE">APPLE EDUCATION</option>
+                        <option value="MICROSOFT">MICROSOFT EDUCATION</option>
                       </select>
                   </div>
 
                   <!-- Program -->
                   <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserProgram">Nama Program</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserProgram">NAMA PROGRAM</label>
                       <input type="text" id="editUserProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" required>
                   </div>
                   
                   <!-- Peringkat & Tahun -->
                   <div class="grid grid-cols-2 gap-4">
                       <div id="editUserColPeringkat">
-                          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Peringkat</label>
+                          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
                           <select id="editUserPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
                               <option value="KEBANGSAAN">KEBANGSAAN</option>
                               <option value="ANTARABANGSA">ANTARABANGSA</option>
                           </select>
                       </div>
                       <div id="editUserColTahun">
-                          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tahun</label>
+                          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">TAHUN</label>
                           <input type="number" id="editUserTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-center font-bold" required>
                       </div>
                   </div>
 
                   <!-- Pencapaian -->
                   <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserPencapaian">Pencapaian</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserPencapaian">KEPUTUSAN / PENCAPAIAN</label>
                       <input type="text" id="editUserPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" required>
                   </div>
 
                   <!-- Link -->
                   <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Pautan Bukti</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI (GOOGLE DRIVE)</label>
                       <input type="url" id="editUserLink" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-blue-600" required>
                   </div>
 

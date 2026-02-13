@@ -193,7 +193,7 @@ window.setPublicType = function(type) {
     if (type === 'GURU') {
         if(wrapperJenis) wrapperJenis.classList.remove('hidden');
         if(divJawatan) divJawatan.classList.remove('hidden');
-        if(lblNama) lblNama.innerText = "NAMA PENUH GURU";
+        if(lblNama) lblNama.innerText = "NAMA GURU";
         if(inpNama) {
             inpNama.placeholder = "TAIP NAMA PENUH GURU...";
             inpNama.readOnly = false;
@@ -268,7 +268,7 @@ window.togglePubJenis = function() {
         if(colPeringkat) colPeringkat.classList.remove('hidden');
         if(lblProgram) lblProgram.innerText = "NAMA PERTANDINGAN";
         if(inpProgram) inpProgram.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
-        if(lblPencapaian) lblPencapaian.innerText = "PENCAPAIAN";
+        if(lblPencapaian) lblPencapaian.innerText = "KEPUTUSAN / PENCAPAIAN";
         if(inpPencapaian) inpPencapaian.placeholder = "CONTOH: JOHAN / EMAS / PENYERTAAN";
     }
 };

@@ -50,6 +50,8 @@
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    .uppercase-input { text-transform: uppercase; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -541,7 +543,7 @@
                   
                   <div class="space-y-4">
                       <input type="text" id="editNamaSekolah" class="w-full p-3 bg-slate-100 rounded-lg text-xs font-bold text-slate-500" readonly>
-                      <input type="text" id="editInputNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" placeholder="NAMA PESERTA">
+                      <input type="text" id="editInputNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" placeholder="NAMA PESERTA" oninput="this.value = this.value.toUpperCase()">
                       
                       <div id="divEditJawatan" class="hidden">
                           <select id="editInputJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
@@ -569,14 +571,14 @@
                           </select>
                       </div>
 
-                      <input type="text" id="editInputProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase">
+                      <input type="text" id="editInputProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
                       
                       <div class="grid grid-cols-2 gap-4">
                           <div id="divEditColPeringkat"><select id="editInputPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select></div>
                           <div><input type="number" id="editInputTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-center font-bold"></div>
                       </div>
 
-                      <input type="text" id="editInputPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase">
+                      <input type="text" id="editInputPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
                       <input type="url" id="editInputLink" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-blue-600">
                   </div>
 
@@ -621,7 +623,7 @@
                   <div class="space-y-3">
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
-                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm">
+                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
                       </div>
                       
                       <div id="divPpdPenyedia" class="hidden">
@@ -636,7 +638,7 @@
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdProgram">NAMA PROGRAM</label>
-                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm">
+                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
                       </div>
 
                       <div class="grid grid-cols-2 gap-3">
@@ -655,7 +657,7 @@
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdPencapaian">PENCAPAIAN</label>
-                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm">
+                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
                       </div>
 
                       <div>

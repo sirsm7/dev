@@ -2,6 +2,7 @@
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
  * Menguruskan profil sekolah, analisa digital, helpdesk, 
  * dan modul pencapaian kemenjadian sekolah.
+ * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -24,8 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initUserPortal() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-    const isAdmin = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
+    // UPDATE: Ambil dari localStorage supaya sesi kekal apabila buka tab baharu
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const isAdmin = localStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
 
     // Semakan keselamatan sesi
     if (!kod && !isAdmin) { 
@@ -65,7 +67,14 @@ function initUserPortal() {
 /**
  * Menukar paparan seksyen dalam portal (Single Page App style).
  */
-window.showSection = function(section) {
+window.showSection = function(section, event) {
+    // Jika dipanggil dari event (klik link), prevent default jump
+    if (event && event.preventDefault) {
+        event.preventDefault();
+        // Update hash tanpa jump
+        history.pushState(null, null, '#' + section);
+    }
+
     const sections = ['menu', 'profil', 'aduan', 'analisa', 'pencapaian'];
     sections.forEach(s => {
         const el = document.getElementById(`section-${s}`);
@@ -81,20 +90,20 @@ window.showSection = function(section) {
     // Trigger pemuatan data khusus mengikut seksyen
     const welcomeText = document.getElementById('welcomeText');
     
-    if (section === 'menu') welcomeText.innerText = "MENU UTAMA";
-    if (section === 'profil') welcomeText.innerText = "PROFIL SEKOLAH";
+    if (section === 'menu') if(welcomeText) welcomeText.innerText = "MENU UTAMA";
+    if (section === 'profil') if(welcomeText) welcomeText.innerText = "PROFIL SEKOLAH";
 
     if (section === 'aduan') {
         window.loadTiketUser();
-        welcomeText.innerText = "HELPDESK";
+        if(welcomeText) welcomeText.innerText = "HELPDESK";
     }
     if (section === 'analisa') {
         loadAnalisaSekolah();
-        welcomeText.innerText = "ANALISA DIGITAL";
+        if(welcomeText) welcomeText.innerText = "ANALISA DIGITAL";
     }
     if (section === 'pencapaian') {
         window.loadPencapaianSekolah();
-        welcomeText.innerText = "REKOD PENCAPAIAN";
+        if(welcomeText) welcomeText.innerText = "REKOD PENCAPAIAN";
     }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -103,6 +112,7 @@ window.showSection = function(section) {
 // --- 2. PROFILE MANAGEMENT ---
 
 async function loadProfil(kod) {
+    if (!kod) return;
     try {
         const data = await SchoolService.getByCode(kod);
         if(!data) return;
@@ -182,7 +192,8 @@ window.salinData = function() {
 // --- 3. DIGITAL ANALYSIS (DCS/DELIMa) ---
 
 async function loadAnalisaSekolah() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    // UPDATE: Ambil dari localStorage
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tableBody = document.getElementById('tableAnalisaBody');
 
     try {
@@ -349,7 +360,8 @@ window.toggleJenisPencapaian = function() {
  * Memuatkan senarai rekod pencapaian sekolah dari database.
  */
 window.loadPencapaianSekolah = async function() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    // UPDATE: Ambil dari localStorage
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tbody = document.getElementById('tbodyRekodPencapaian');
     if(!tbody) return;
     
@@ -381,8 +393,8 @@ window.loadPencapaianSekolah = async function() {
                     <div class="text-[10px] text-slate-400 mt-1.5 font-mono font-bold">${item.tahun}</div>
                 </td>
                 <td class="px-4 py-4">
-                    <div class="font-bold text-slate-800 text-sm leading-snug mb-0.5 uppercase text-wrap-safe">${item.nama_peserta}</div>
-                    <div class="text-xs text-teal-600 font-bold mb-1.5 leading-tight text-wrap-safe">${programLabel}</div>
+                    <div class="font-bold text-slate-800 text-sm leading-snug mb-0.5 uppercase whitespace-normal break-words">${item.nama_peserta}</div>
+                    <div class="text-xs text-teal-600 font-bold mb-1.5 leading-tight whitespace-normal break-words">${programLabel}</div>
                     <div class="flex flex-wrap gap-2">
                         <span class="bg-white text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200 uppercase font-medium">${item.peringkat}</span>
                         <span class="bg-green-50 text-green-700 text-[10px] px-2 py-0.5 rounded border border-green-100 font-black uppercase tracking-wider">${item.pencapaian}</span>
@@ -406,7 +418,8 @@ window.loadPencapaianSekolah = async function() {
  * Menyimpan rekod pencapaian baharu.
  */
 window.simpanPencapaian = async function() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD); 
+    // UPDATE: Ambil dari localStorage
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD); 
     const btn = document.querySelector('#formPencapaian button[type="submit"]');
     const kategori = document.getElementById('pencapaianKategori').value;
     const jenisRekod = document.getElementById('pInputJenisRekod').value;
@@ -470,7 +483,7 @@ window.simpanPencapaian = async function() {
     }
 };
 
-// --- 5. EDIT MODAL OPERATIONS (NEW) ---
+// --- 5. EDIT MODAL OPERATIONS ---
 
 window.openEditPencapaianUser = function(id) {
     const item = userPencapaianList.find(i => String(i.id) === String(id));
@@ -513,13 +526,13 @@ window.toggleEditUserJenis = function() {
     if (jenis === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
         colPeringkat.classList.add('hidden'); 
-        lblProg.innerText = "NAMA SIJIL / PROGRAM";
-        lblPenc.innerText = "TAHAP / SKOR";
+        if(lblProg) lblProg.innerText = "NAMA SIJIL / PROGRAM";
+        if(lblPenc) lblPenc.innerText = "TAHAP / SKOR";
     } else {
         divPenyedia.classList.add('hidden');
         colPeringkat.classList.remove('hidden'); 
-        lblProg.innerText = "NAMA PERTANDINGAN";
-        lblPenc.innerText = "PENCAPAIAN";
+        if(lblProg) lblProg.innerText = "NAMA PERTANDINGAN";
+        if(lblPenc) lblPenc.innerText = "PENCAPAIAN";
     }
 };
 
@@ -596,7 +609,8 @@ window.padamPencapaian = async function(id) {
 // --- 6. HELPDESK & TICKETING ---
 
 window.hantarTiket = async function() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    // UPDATE: Ambil dari localStorage
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const peranan = document.getElementById('tiketPeranan').value;
     const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
     const mesej = document.getElementById('tiketMesej').value;
@@ -614,7 +628,6 @@ window.hantarTiket = async function() {
         toggleLoading(false);
         Swal.fire('Tiket Dihantar', 'Kami akan menyemak aduan anda secepat mungkin.', 'success').then(() => {
             document.getElementById('formTiket').reset();
-            // Switch ke tab semak secara automatik (Fungsi switchAduanTab ada dalam HTML user.html)
             if(window.switchAduanTab) window.switchAduanTab('semak');
             window.loadTiketUser();
         });
@@ -625,7 +638,8 @@ window.hantarTiket = async function() {
 };
 
 window.loadTiketUser = async function() {
-    const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    // UPDATE: Ambil dari localStorage
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const container = document.getElementById('senaraiTiketContainer');
     if(!container) return;
 
@@ -666,7 +680,8 @@ window.loadTiketUser = async function() {
 // --- 7. SECURITY & MAINTENANCE ---
 
 window.ubahKataLaluan = async function() {
-    const userId = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ID);
+    // UPDATE: Ambil dari localStorage
+    const userId = localStorage.getItem(APP_CONFIG.SESSION.USER_ID);
     if (!userId) {
         Swal.fire('Sesi Luput', 'Sila log masuk semula.', 'error');
         return;
@@ -729,7 +744,6 @@ window.resetDataSekolah = async function() {
         confirmButtonColor: '#ef4444'
     });
 
-    // Kata laluan rahsia (seperti dalam smpid asli)
     if (password === 'pkgag') { 
          Swal.fire({
             title: 'Sahkan Padam Semua Data?',

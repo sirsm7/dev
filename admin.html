@@ -103,7 +103,7 @@
       </div>
   </div>
 
-  <!-- HEADER COMPACT (UPDATE: KELUAR BUTTON INJECTED) -->
+  <!-- HEADER COMPACT -->
   <header class="bg-slate-900 text-white pb-24 pt-6 px-4 relative overflow-hidden shadow-lg">
     <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
     <div class="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -128,7 +128,7 @@
 
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
     
-    <!-- NAVIGATION TABS (UPDATE: CONVERTED TO ANCHOR TAGS FOR RIGHT-CLICK SUPPORT) -->
+    <!-- NAVIGATION TABS -->
     <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border border-slate-100 max-w-5xl mx-auto overflow-x-auto">
         <a href="#dashboard" class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
         <a href="#analisa" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
@@ -706,20 +706,21 @@
       import { APP_CONFIG } from './js/config/app.config.js';
 
       window.switchAdminTab = function(tabId, event) {
-          // Prevent page jump only if event is provided (regular click)
+          // Prevent default only if event is provided (regular click)
           if (event) {
               event.preventDefault();
-              // Update hash without jumping
               history.pushState(null, null, '#' + tabId);
           }
           
           document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-          document.getElementById('tab-' + tabId).classList.remove('hidden');
+          const targetTab = document.getElementById('tab-' + tabId);
+          if (targetTab) targetTab.classList.remove('hidden');
           
           document.querySelectorAll('[id$="-tab"]').forEach(btn => {
               btn.className = "tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
           });
-          document.getElementById(tabId + '-tab').className = "tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+          const activeBtn = document.getElementById(tabId + '-tab');
+          if (activeBtn) activeBtn.className = "tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
           
           // Lazy load module data based on tab
           if(tabId === 'analisa' && window.loadDcsAdmin) window.loadDcsAdmin();
@@ -730,14 +731,15 @@
           if(tabId === 'admin-users' && window.loadAdminList) window.loadAdminList();
       };
 
-      // Listen for hash changes to support browser back/forward buttons
+      // Listen for hash changes
       window.addEventListener('hashchange', () => {
           const hash = window.location.hash.replace('#', '') || 'dashboard';
           window.switchAdminTab(hash);
       });
 
       document.addEventListener('DOMContentLoaded', () => {
-          const isAuth = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
+          // UPDATE: Check localStorage instead of sessionStorage
+          const isAuth = localStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
           if (!isAuth) { window.location.replace('index.html'); return; }
           
           // Check initial hash for routing
@@ -746,7 +748,8 @@
 
           if(window.fetchDashboardData) window.fetchDashboardData();
           
-          const role = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+          // UPDATE: Check localStorage instead of sessionStorage
+          const role = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
           const lbl = document.getElementById('displayUserRole');
           if(lbl) lbl.innerText = role === 'SUPER_ADMIN' ? 'SUPER ADMIN' : (role === 'PPD_UNIT' ? 'UNIT PPD' : 'MOD ADMIN');
       });

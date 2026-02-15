@@ -1,10 +1,9 @@
 /**
  * ADMIN MODULE: SETTINGS (STRICT RBAC EDITION)
  * Menguruskan pangkalan data pengguna pentadbir dan kawalan akses sistem.
- * --- UPDATE V1.2 (POWER MATRIX) ---
- * Logic: Implementasi Matriks Kuasa SUPER ADMIN vs ADMIN vs UNIT PPD.
- * Migration: Konsistensi penggunaan localStorage merentas portal.
- * UI: Tailwind CSS Integration.
+ * --- UPDATE V1.3 (SUPER ADMIN ONLY ADD) ---
+ * Logic: Hanya SUPER ADMIN boleh melihat borang tambah pengguna dan mendaftar admin baharu.
+ * UI: Kawalan paparan 'addUserFormContainer' berdasarkan peranan pengguna.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -14,7 +13,7 @@ import { APP_CONFIG } from '../config/app.config.js';
 // --- 1. PENGURUSAN PENGGUNA (ADMIN LIST) ---
 
 /**
- * Memuatkan senarai semua akaun pentadbir dengan kawalan butang tindakan.
+ * Memuatkan senarai semua akaun pentadbir dengan kawalan akses yang ketat.
  */
 window.loadAdminList = async function() {
     const wrapper = document.getElementById('adminListWrapper');
@@ -26,11 +25,21 @@ window.loadAdminList = async function() {
             <p class="font-bold animate-pulse text-xs uppercase tracking-widest">Menyemak Kebenaran Akses...</p>
         </div>`;
     
-    // Dapatkan maklumat sesi dari localStorage
+    // 1. Dapatkan maklumat sesi dari localStorage
     const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const currentUserId = localStorage.getItem(APP_CONFIG.SESSION.USER_ID);
     
-    // Kemaskini Dropdown Pilihan Role untuk Tambah Admin (Berdasarkan siapa yang menambah)
+    // 2. KAWALAN BORANG TAMBAH PENGGUNA (Hanya Super Admin)
+    const addUserForm = document.getElementById('addUserFormContainer');
+    if (addUserForm) {
+        if (currentUserRole === 'SUPER_ADMIN') {
+            addUserForm.classList.remove('hidden'); // Papar jika Super Admin
+        } else {
+            addUserForm.classList.add('hidden'); // Sembunyi jika Admin/Unit PPD
+        }
+    }
+
+    // 3. Kemaskini Dropdown Pilihan Role (Hirarki Lantikan)
     updateRoleDropdown(currentUserRole);
 
     try {
@@ -61,7 +70,7 @@ window.loadAdminList = async function() {
         data.forEach((user, index) => {
             const isSelf = (user.id === currentUserId);
             
-            // 1. Badge Peranan (Tailwind Styling)
+            // Badge Peranan
             let roleBadge = '';
             if (user.role === 'SUPER_ADMIN') {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-red-100 text-red-700 border border-red-200 shadow-sm">SUPER ADMIN</span>`;
@@ -71,11 +80,10 @@ window.loadAdminList = async function() {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm">UNIT PPD</span>`;
             }
 
-            // 2. Logik Butang Tindakan (STRICT POWER MATRIX)
+            // Logik Butang Tindakan
             let actionButtons = '';
 
-            // A. BUTANG PADAM (DELETE)
-            // HUKUM: Hanya SUPER_ADMIN boleh PADAM user. User ADMIN tidak boleh padam sesiapa.
+            // A. PADAM (Hanya SUPER_ADMIN boleh padam akaun lain)
             if (currentUserRole === 'SUPER_ADMIN' && user.role !== 'SUPER_ADMIN' && !isSelf) {
                 actionButtons += `
                 <button onclick="padamAdmin('${user.id}', '${user.email}')" 
@@ -85,12 +93,7 @@ window.loadAdminList = async function() {
                 </button>`;
             } 
 
-            // B. BUTANG FORCE RESET PASSWORD
-            // HUKUM:
-            // - Super Admin boleh reset sesiapa (kecuali Super Admin lain).
-            // - Admin boleh reset Admin & Unit PPD.
-            // - Tiada siapa boleh reset Super Admin melalui panel ini (kecuali tuan badan sendiri).
-            
+            // B. RESET PASSWORD (Hirarki Kuasa)
             let canForceReset = false;
             if (user.role !== 'SUPER_ADMIN') {
                 if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') {
@@ -107,7 +110,7 @@ window.loadAdminList = async function() {
                 </button>`;
             }
 
-            // C. BUTANG KEY (UNTUK DIRI SENDIRI)
+            // C. TUKAR PASSWORD SENDIRI
             if (isSelf) {
                 actionButtons += `
                 <button onclick="ubahKataLaluanSendiri()" 
@@ -138,6 +141,48 @@ window.loadAdminList = async function() {
     } catch (e) { 
         console.error("[Settings] Ralat Senarai Admin:", e);
         wrapper.innerHTML = `<div class="p-8 bg-red-50 text-red-600 rounded-2xl text-center font-bold border border-red-100">Gagal Memuatkan Senarai Pengguna</div>`; 
+    }
+};
+
+/**
+ * Menambah akaun pentadbir baharu (HAD: Hanya SUPER ADMIN).
+ */
+window.tambahAdmin = async function() {
+    const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    
+    // Sekatan Keselamatan: Hanya SUPER ADMIN dibenarkan
+    if (currentUserRole !== 'SUPER_ADMIN') {
+        return Swal.fire({
+            icon: 'error',
+            title: 'Akses Dihalang',
+            text: 'Maaf, hanya Super Admin yang mempunyai kebenaran untuk menambah pengguna sistem baharu.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
+
+    const email = document.getElementById('inputNewAdminEmail').value.trim();
+    const role = document.getElementById('inputNewAdminRole').value;
+    const pass = document.getElementById('inputNewAdminPass').value.trim();
+    
+    if(!email || !pass) return Swal.fire('Data Tidak Lengkap', 'Sila isi emel dan kata laluan.', 'warning');
+
+    toggleLoading(true);
+    try {
+        await AuthService.createAdmin(email, pass, role);
+        toggleLoading(false);
+        Swal.fire({
+            icon: 'success',
+            title: 'Berjaya Ditambah',
+            text: `Akaun ${role} telah diaktifkan secara sah.`,
+            confirmButtonColor: '#1e293b'
+        }).then(() => {
+            document.getElementById('inputNewAdminEmail').value = '';
+            document.getElementById('inputNewAdminPass').value = '';
+            window.loadAdminList();
+        });
+    } catch(e) {
+        toggleLoading(false);
+        Swal.fire('Ralat Pendaftaran', 'Pastikan emel unik dan format kata laluan betul.', 'error');
     }
 };
 
@@ -211,42 +256,6 @@ function updateRoleDropdown(currentUserRole) {
         select.appendChild(option);
     });
 }
-
-/**
- * Menambah akaun pentadbir baharu.
- */
-window.tambahAdmin = async function() {
-    const email = document.getElementById('inputNewAdminEmail').value.trim();
-    const role = document.getElementById('inputNewAdminRole').value;
-    const pass = document.getElementById('inputNewAdminPass').value.trim();
-    
-    if(!email || !pass) return Swal.fire('Data Tidak Lengkap', 'Sila isi emel dan kata laluan.', 'warning');
-    
-    // Semakan akhir logic hirarki (Server-side & Client-side validation)
-    const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-    if (role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
-        return Swal.fire('Akses Ditolak', 'Hanya Super Admin dibenarkan melantik peranan ini.', 'error');
-    }
-
-    toggleLoading(true);
-    try {
-        await AuthService.createAdmin(email, pass, role);
-        toggleLoading(false);
-        Swal.fire({
-            icon: 'success',
-            title: 'Berjaya Ditambah',
-            text: `Akaun ${role} telah diaktifkan.`,
-            confirmButtonColor: '#1e293b'
-        }).then(() => {
-            document.getElementById('inputNewAdminEmail').value = '';
-            document.getElementById('inputNewAdminPass').value = '';
-            window.loadAdminList();
-        });
-    } catch(e) {
-        toggleLoading(false);
-        Swal.fire('Ralat Pendaftaran', 'Pastikan emel unik dan format kata laluan betul.', 'error');
-    }
-};
 
 /**
  * Memadam akaun admin secara kekal (Hanya SUPER ADMIN).

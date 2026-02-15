@@ -1,7 +1,9 @@
 /**
  * ADMIN MODULE: MAIN CONTROLLER
- * Fungsi: Menguruskan logik permulaan admin, keselamatan, dan peranan.
- * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
+ * Fungsi: Menguruskan logik permulaan admin, keselamatan, dan peranan (RBAC).
+ * --- UPDATE V1.2 (STRICT SECURITY) ---
+ * Implementation: Strict Access Control untuk UNIT PPD (Kalis Hash Bypass).
+ * Migration: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -38,34 +40,59 @@ async function initAdminPanel() {
         setupAdminView(displayRole);
     }
 
-    // 3. Listener Tab Global (Jika diperlukan tambahan)
-    // Nota: Sebahagian besar logik tab kini dikendalikan oleh switchAdminTab di admin.html
+    // 3. Listener Tab Global
+    // Nota: Logik pertukaran tab visual dikendalikan oleh switchAdminTab di admin.html
 }
 
 /**
- * Konfigurasi paparan untuk peranan UNIT PPD
+ * KONFIGURASI STRICT MODE: UNIT PPD
+ * Mengawal akses fizikal tab dan menyekat cubaan bypass melalui URL Hash (#hash).
  */
 function setupUnitView(displayRole) {
     if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
     
-    // Sembunyikan Tab & Fungsi yang tidak relevan (Strict Mode)
-    const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
-    tabsToHide.forEach(id => {
-        const el = document.getElementById(id);
+    // Senarai tab yang dilarang untuk Unit PPD
+    const forbiddenTabs = ['dashboard', 'analisa', 'email', 'helpdesk', 'admin-users'];
+    
+    // 1. Sembunyikan Navigasi (Surgical CSS Injection)
+    forbiddenTabs.forEach(id => {
+        const el = document.getElementById(id + '-tab');
         if(el) {
-            // Sembunyikan elemen <a> itu sendiri
+            // Kita buang terus dari aliran dokumen (Strict)
             el.classList.add('hidden');
         }
     });
 
-    // Auto-Redirect ke Tab Pencapaian (Jika pengguna berada di root admin.html)
-    if (window.location.hash === '' || window.location.hash === '#dashboard') {
-        if (window.switchAdminTab) {
-            window.switchAdminTab('pencapaian');
+    // 2. Logic Gatekeeper: Cegah pencerobohan melalui manual URL Hash
+    const enforceStrictAccess = () => {
+        const currentHash = window.location.hash.replace('#', '') || 'dashboard';
+        
+        if (forbiddenTabs.includes(currentHash)) {
+            console.error(`[Security] Pencerobohan dikesan. Akses ke #${currentHash} disekat untuk peranan UNIT PPD.`);
+            
+            // Paksa redirect ke zon selamat (Pencapaian)
+            window.location.hash = 'pencapaian';
+            
+            // Beri notifikasi amaran jika perlu
+            Swal.fire({
+                icon: 'error',
+                title: 'Akses Disekat',
+                text: 'Anda tidak mempunyai kebenaran untuk melihat modul ini.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
         }
-    }
+    };
 
-    // Muat data asas (Tahun) untuk dropdown pencapaian
+    // Semakan pada waktu muat halaman (Initial Load)
+    enforceStrictAccess();
+
+    // Semakan berterusan pada setiap kali URL Hash berubah
+    window.addEventListener('hashchange', enforceStrictAccess);
+
+    // 3. Muat data permitted (Achievement)
     if(window.populateTahunFilter) window.populateTahunFilter();
 }
 
@@ -74,7 +101,7 @@ function setupUnitView(displayRole) {
  */
 function setupAdminView(displayRole) {
     if(displayRole) displayRole.innerHTML = "MOD ADMIN";
-    // Data dashboard akan dimuatkan secara automatik melalui switchAdminTab('dashboard') dalam admin.html
+    // Admin biasa mempunyai akses ke semua tab kecuali kebolehan memadam user (dikawal di settings.js)
 }
 
 /**
@@ -83,8 +110,8 @@ function setupAdminView(displayRole) {
 function setupSuperAdminView(displayRole) {
     if(displayRole) {
         displayRole.innerHTML = "SUPER ADMIN";
-        // Visual khas untuk kuasa mutlak
+        // Visual khas: Merah & Bold untuk Kuasa Mutlak
         displayRole.classList.remove('text-brand-400');
-        displayRole.classList.add('text-red-400', 'font-black'); 
+        displayRole.classList.add('text-red-500', 'font-black'); 
     }
 }

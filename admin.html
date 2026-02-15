@@ -692,8 +692,12 @@
       </div>
   </div>
 
+  <!-- CORE SCRIPTS -->
   <script type="module" src="js/core/helpers.js"></script>
   <script type="module" src="js/core/db.js"></script>
+  
+  <!-- ADMIN MODULES -->
+  <script type="module" src="js/admin/main.js"></script> <!-- MODAL ACCESS CONTROL -->
   <script type="module" src="js/admin/dashboard.js"></script>
   <script type="module" src="js/admin/analysis.js"></script>
   <script type="module" src="js/admin/achievement.js"></script>
@@ -738,7 +742,7 @@
       });
 
       document.addEventListener('DOMContentLoaded', () => {
-          // UPDATE: Check localStorage instead of sessionStorage
+          // Check localStorage instead of sessionStorage
           const isAuth = localStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
           if (!isAuth) { window.location.replace('index.html'); return; }
           
@@ -748,7 +752,7 @@
 
           if(window.fetchDashboardData) window.fetchDashboardData();
           
-          // UPDATE: Check localStorage instead of sessionStorage
+          // Update: Role display sync
           const role = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
           const lbl = document.getElementById('displayUserRole');
           if(lbl) lbl.innerText = role === 'SUPER_ADMIN' ? 'SUPER ADMIN' : (role === 'PPD_UNIT' ? 'UNIT PPD' : 'MOD ADMIN');

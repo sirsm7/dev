@@ -2,7 +2,9 @@
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
  * Menguruskan profil sekolah, analisa digital, helpdesk, 
  * dan modul pencapaian kemenjadian sekolah.
- * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
+ * * --- UPDATE V1.2 ---
+ * Integration: DROPDOWN_DATA standardisation from js/config/dropdowns.js
+ * Migration: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -12,6 +14,7 @@ import { DcsService } from './services/dcs.service.js';
 import { SupportService } from './services/support.service.js';
 import { AchievementService } from './services/achievement.service.js';
 import { APP_CONFIG } from './config/app.config.js';
+import { populateDropdown } from './config/dropdowns.js';
 
 // --- GLOBAL STATE ---
 let analisaChart = null;
@@ -35,6 +38,11 @@ function initUserPortal() {
         return; 
     }
     
+    // Standardisasi Dropdown Form Utama (Surgical Injection)
+    populateDropdown('pInputJawatan', 'JAWATAN', 'GURU AKADEMIK BIASA');
+    populateDropdown('pInputPeringkat', 'PERINGKAT', 'KEBANGSAAN');
+    populateDropdown('pInputPenyedia', 'PENYEDIA', 'LAIN-LAIN');
+
     const displayKod = document.getElementById('displayKodSekolah');
     const btnLogout = document.getElementById('btnLogoutMenu');
 
@@ -489,6 +497,11 @@ window.openEditPencapaianUser = function(id) {
     const item = userPencapaianList.find(i => String(i.id) === String(id));
     if (!item) return;
 
+    // Standardisasi Dropdown Modal Edit (Surgical Injection)
+    populateDropdown('editUserJawatan', 'JAWATAN', item.jawatan);
+    populateDropdown('editUserPeringkat', 'PERINGKAT', item.peringkat);
+    populateDropdown('editUserPenyedia', 'PENYEDIA', item.penyedia);
+
     document.getElementById('editUserId').value = item.id;
     if (item.jenis_rekod === 'PENSIJILAN') document.getElementById('editRadioPensijilanUser').checked = true;
     else document.getElementById('editRadioPertandinganUser').checked = true;
@@ -504,13 +517,10 @@ window.openEditPencapaianUser = function(id) {
     const divJawatan = document.getElementById('editUserDivJawatan');
     if (item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
-        document.getElementById('editUserJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
+        // Pemilihan sudah dikendalikan oleh populateDropdown di atas
     } else {
         divJawatan.classList.add('hidden');
     }
-
-    if (item.jenis_rekod === 'PENSIJILAN') document.getElementById('editUserPenyedia').value = item.penyedia || 'LAIN-LAIN';
-    else document.getElementById('editUserPeringkat').value = item.peringkat || 'KEBANGSAAN';
 
     document.getElementById('modalEditPencapaianUser').classList.remove('hidden');
 };

@@ -1,7 +1,9 @@
 /**
  * ADMIN MODULE: ACHIEVEMENT (FIXED MODAL BACKDROP ISSUE)
  * Menguruskan rekod pencapaian dengan kawalan integriti data.
- * * FIX LOG:
+ * --- UPDATE V1.2 ---
+ * Integration: DROPDOWN_DATA standardisation from js/config/dropdowns.js
+ * FIX LOG:
  * - Fixed: Isu skrin kelabu (backdrop stuck) bila tekan Simpan dalam modal Seragamkan.
  * - Logic: Mengasingkan logik 'Refresh Data UI' dari 'Buka Modal'.
  * - FIX COLLISION: Rename filterByJawatan to filterPencapaianByJawatan.
@@ -12,6 +14,7 @@
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading } from '../core/helpers.js';
+import { populateDropdown } from '../config/dropdowns.js';
 
 let pencapaianList = [];
 let currentPencapaianFiltered = []; 
@@ -373,6 +376,11 @@ window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
 window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
     if(!item) return;
+
+    // Standardisasi Dropdown Modal Edit Admin (Surgical Injection)
+    populateDropdown('editInputJawatan', 'JAWATAN', item.jawatan);
+    populateDropdown('editInputPeringkat', 'PERINGKAT', item.peringkat);
+    populateDropdown('editInputPenyedia', 'PENYEDIA', item.penyedia);
     
     document.getElementById('editIdPencapaian').value = id;
     document.getElementById('editNamaSekolah').value = item.kod_sekolah;
@@ -391,15 +399,8 @@ window.openEditPencapaian = function(id) {
     const divJawatan = document.getElementById('divEditJawatan');
     if(item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
-        document.getElementById('editInputJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
     } else {
         divJawatan.classList.add('hidden');
-    }
-    
-    if (item.jenis_rekod === 'PENSIJILAN') {
-        document.getElementById('editInputPenyedia').value = item.penyedia || 'LAIN-LAIN';
-    } else {
-        document.getElementById('editInputPeringkat').value = item.peringkat;
     }
     
     window.toggleEditJenis();
@@ -412,8 +413,6 @@ window.toggleEditJenis = function() {
     
     const divPenyedia = document.getElementById('divEditPenyedia');
     const colPeringkat = document.getElementById('divEditColPeringkat');
-    // REMOVED: lblProgram & lblPencapaian updates as they were causing issues or not needed for Admin view based on user request.
-    // Kept simple show/hide logic.
 
     if (jenis === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
@@ -484,7 +483,13 @@ window.hapusPencapaianAdmin = async function(id) {
 };
 
 // PPD (M030) Functions
-window.openModalPPD = function() { document.getElementById('modalRekodPPD').classList.remove('hidden'); };
+window.openModalPPD = function() { 
+    // Standardisasi Dropdown Modal PPD (Surgical Injection)
+    populateDropdown('ppdInputPeringkat', 'PERINGKAT', 'KEBANGSAAN');
+    populateDropdown('ppdInputPenyedia', 'PENYEDIA', 'LAIN-LAIN');
+
+    document.getElementById('modalRekodPPD').classList.remove('hidden'); 
+};
 
 window.toggleKategoriPPD = function() {
     const isUnit = document.getElementById('radUnit').checked;

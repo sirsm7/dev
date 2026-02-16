@@ -134,6 +134,7 @@
         <a href="#analisa" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
         <a href="#pencapaian" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
         <a href="#gallery" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
+        <a href="#tempahan" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
         <a href="#email" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
         <a href="#helpdesk" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
         <a href="#admin-users" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
@@ -415,7 +416,12 @@
             <div id="adminGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
         </div>
 
-        <!-- TAB 5: EMAIL BLASTER -->
+        <!-- TAB 5: TEMPAHAN BIMBINGAN & BENGKEL -->
+        <div id="tab-tempahan" class="hidden">
+            <!-- Content Injected by booking_manager.js -->
+        </div>
+
+        <!-- TAB 6: EMAIL BLASTER -->
         <div id="tab-email" class="hidden p-6 md:p-8">
             <h2 class="text-xl font-bold text-slate-800 mb-4">Email Blaster</h2>
             <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 mb-6">
@@ -453,7 +459,7 @@
             </div>
         </div>
 
-        <!-- TAB 6: HELPDESK -->
+        <!-- TAB 7: HELPDESK -->
         <div id="tab-helpdesk" class="hidden p-6 md:p-8">
             <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                 <h2 class="text-xl font-bold text-red-600">Pusat Aduan</h2>
@@ -466,7 +472,7 @@
             <div id="adminTiketWrapper" class="space-y-4"></div>
         </div>
 
-        <!-- TAB 7: ADMIN USERS -->
+        <!-- TAB 8: ADMIN USERS -->
         <div id="tab-admin-users" class="hidden p-6 md:p-8">
             <h2 class="text-xl font-bold text-slate-800 mb-6">Pengurusan Akses Admin</h2>
             <div id="addUserFormContainer" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
@@ -716,6 +722,7 @@
   <script type="module" src="js/admin/achievement.js"></script>
   <script type="module" src="js/admin/communication.js"></script>
   <script type="module" src="js/admin/gallery_manager.js"></script>
+  <script type="module" src="js/admin/booking_manager.js"></script> <!-- MODULE BARU BIMBINGAN & BENGKEL -->
   <script type="module" src="js/admin/settings.js"></script>
 
 </body>

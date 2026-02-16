@@ -1,9 +1,22 @@
 /**
  * js/config/dropdowns.js
  * PUSAT DATA DROPDOWN SMPID (PPD ALOR GAJAH)
- * Fungsi: Membekalkan senarai jawatan, peringkat, dan penyedia secara konsisten
+ * Fungsi: Membekalkan senarai jawatan, peringkat, penyedia, dan tahun secara konsisten
  * merentas semua modul (Public, User, Admin).
+ * --- UPDATE V1.3 ---
+ * Penambahan: Kategori TAHUN (Dinamik: 2020 - Tahun Semasa).
  */
+
+// Fungsi pembantu untuk menjana senarai tahun secara dinamik
+const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const startYear = 2020;
+    const years = [];
+    for (let y = currentYear; y >= startYear; y--) {
+        years.push({ val: y.toString(), txt: y.toString() });
+    }
+    return years;
+};
 
 export const DROPDOWN_DATA = {
     // Senarai Jawatan Guru Standard KPM/PPDAG
@@ -34,13 +47,16 @@ export const DROPDOWN_DATA = {
         { val: "GOOGLE", txt: "GOOGLE FOR EDUCATION" },
         { val: "APPLE", txt: "APPLE EDUCATION" },
         { val: "MICROSOFT", txt: "MICROSOFT EDUCATION" }
-    ]
+    ],
+
+    // Senarai Tahun (Dinamik)
+    TAHUN: generateYears()
 };
 
 /**
  * Mengisi elemen <select> secara dinamik berdasarkan kategori data.
  * @param {string} elementId - ID elemen select dalam DOM.
- * @param {string} category - Kunci data (JAWATAN, PERINGKAT, atau PENYEDIA).
+ * @param {string} category - Kunci data (JAWATAN, PERINGKAT, PENYEDIA, atau TAHUN).
  * @param {string} defaultValue - (Opsional) Nilai yang perlu dipilih secara automatik.
  */
 export function populateDropdown(elementId, category, defaultValue = null) {
@@ -59,8 +75,8 @@ export function populateDropdown(elementId, category, defaultValue = null) {
     // Bersihkan kandungan select sedia ada
     select.innerHTML = '';
 
-    // Tambah pilihan placeholder jika perlu (untuk kes input kosong)
-    if (!defaultValue) {
+    // Tambah pilihan placeholder jika perlu (untuk kes selain TAHUN atau jika tiada default)
+    if (!defaultValue && category !== 'TAHUN') {
         const placeholder = document.createElement('option');
         placeholder.value = "";
         placeholder.disabled = true;
@@ -75,7 +91,7 @@ export function populateDropdown(elementId, category, defaultValue = null) {
         opt.value = item.val;
         opt.innerText = item.txt;
         
-        // Logik pemilihan automatik (biasanya untuk modal Edit)
+        // Logik pemilihan automatik (biasanya untuk modal Edit atau penetapan tahun semasa)
         if (defaultValue && String(item.val) === String(defaultValue)) {
             opt.selected = true;
         }

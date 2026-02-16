@@ -2,8 +2,9 @@
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
  * Menguruskan profil sekolah, analisa digital, helpdesk, 
  * dan modul pencapaian kemenjadian sekolah.
- * * --- UPDATE V1.2 ---
- * Integration: DROPDOWN_DATA standardisation from js/config/dropdowns.js
+ * * --- UPDATE V1.3 ---
+ * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
+ * Penambahan: Dropdown TAHUN (Dinamik 2020 - Semasa).
  * Migration: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
  */
 
@@ -39,9 +40,12 @@ function initUserPortal() {
     }
     
     // Standardisasi Dropdown Form Utama (Surgical Injection)
+    const currentYear = new Date().getFullYear().toString();
+    
     populateDropdown('pInputJawatan', 'JAWATAN', 'GURU AKADEMIK BIASA');
     populateDropdown('pInputPeringkat', 'PERINGKAT', 'KEBANGSAAN');
     populateDropdown('pInputPenyedia', 'PENYEDIA', 'LAIN-LAIN');
+    populateDropdown('pInputTahun', 'TAHUN', currentYear); // Suntikan Dropdown Tahun
 
     const displayKod = document.getElementById('displayKodSekolah');
     const btnLogout = document.getElementById('btnLogoutMenu');
@@ -481,7 +485,9 @@ window.simpanPencapaian = async function() {
             confirmButtonColor: '#22c55e'
         }).then(() => {
             document.getElementById('formPencapaian').reset();
-            document.getElementById('pInputTahun').value = '2026';
+            // Reset dropdown tahun ke semasa
+            const currentYear = new Date().getFullYear().toString();
+            document.getElementById('pInputTahun').value = currentYear;
             window.loadPencapaianSekolah();
         });
     } catch (err) {
@@ -501,6 +507,7 @@ window.openEditPencapaianUser = function(id) {
     populateDropdown('editUserJawatan', 'JAWATAN', item.jawatan);
     populateDropdown('editUserPeringkat', 'PERINGKAT', item.peringkat);
     populateDropdown('editUserPenyedia', 'PENYEDIA', item.penyedia);
+    populateDropdown('editUserTahun', 'TAHUN', item.tahun); // Suntikan Dropdown Tahun Edit
 
     document.getElementById('editUserId').value = item.id;
     if (item.jenis_rekod === 'PENSIJILAN') document.getElementById('editRadioPensijilanUser').checked = true;
@@ -510,14 +517,13 @@ window.openEditPencapaianUser = function(id) {
     document.getElementById('editUserProgram').value = item.nama_pertandingan;
     document.getElementById('editUserPencapaian').value = item.pencapaian;
     document.getElementById('editUserLink').value = item.pautan_bukti;
-    document.getElementById('editUserTahun').value = item.tahun;
+    // Nilai tahun di-set oleh populateDropdown di atas
 
     window.toggleEditUserJenis(); 
 
     const divJawatan = document.getElementById('editUserDivJawatan');
     if (item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
-        // Pemilihan sudah dikendalikan oleh populateDropdown di atas
     } else {
         divJawatan.classList.add('hidden');
     }

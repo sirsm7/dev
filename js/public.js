@@ -2,8 +2,9 @@
  * PUBLIC FORM MODULE (FULL PRODUCTION VERSION)
  * Menguruskan logik borang serahan data awam, pengesahan sekolah,
  * penapisan kategori, dan integrasi mod PPD (M030).
- * --- UPDATE V1.2 ---
- * Integration: DROPDOWN_DATA standardisation from js/config/dropdowns.js
+ * --- UPDATE V1.3 ---
+ * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
+ * Penambahan: Dropdown TAHUN (Dinamik 2020 - Semasa).
  */
 
 import { SchoolService } from './services/school.service.js';
@@ -42,13 +43,17 @@ async function initPublicPortal() {
 
         // 2. Standardisasi Dropdown (Surgical Injection)
         // Mengisi semua dropdown menggunakan data berpusat dari dropdowns.js
+        const currentYear = new Date().getFullYear().toString();
+        
         populateDropdown('pubJawatan', 'JAWATAN', 'GURU AKADEMIK BIASA');
         populateDropdown('pubPeringkat', 'PERINGKAT', 'KEBANGSAAN');
         populateDropdown('pubPenyedia', 'PENYEDIA', 'LAIN-LAIN');
+        populateDropdown('pubTahun', 'TAHUN', currentYear); // Dropdown Tahun Baru
         
         // PPD Dropdowns (M030)
         populateDropdown('ppdPeringkat', 'PERINGKAT', 'KEBANGSAAN');
         populateDropdown('ppdPenyedia', 'PENYEDIA', 'LAIN-LAIN');
+        populateDropdown('ppdTahun', 'TAHUN', currentYear); // Dropdown Tahun PPD Baru
 
         // 3. Semak Parameter URL (Auto-lock sekolah)
         const urlParams = new URLSearchParams(window.location.search);

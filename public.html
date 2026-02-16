@@ -150,18 +150,7 @@
                     <label class="block text-[10px] font-black text-orange-600 uppercase mb-2 ml-1">JAWATAN (WAJIB)</label>
                     <div class="relative">
                         <select id="pubJawatan" class="w-full p-4 rounded-2xl bg-orange-50 border-2 border-orange-100 text-slate-700 font-bold focus:border-orange-400 outline-none appearance-none">
-                            <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
-                            <option value="PENGARAH KV / PGB">PENGETUA / GURU BESAR</option>
-                            <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
-                            <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
-                            <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
-                            <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
-                            <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
-                            <option value="GURU DATA">GURU DATA</option>
-                            <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
-                            <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
-                            <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
+                            <!-- Populated by JS -->
                         </select>
                         <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none"></i>
                     </div>
@@ -176,10 +165,7 @@
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">PENYEDIA / JENAMA</label>
                     <div class="relative">
                         <select id="pubPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
-                            <option value="LAIN-LAIN" selected>LAIN-LAIN / TIADA</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                            <!-- Populated by JS -->
                         </select>
                         <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                     </div>
@@ -195,15 +181,19 @@
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">PERINGKAT TERTINGGI</label>
                         <div class="relative">
                             <select id="pubPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
-                                <option value="KEBANGSAAN">KEBANGSAAN</option>
-                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                                <!-- Populated by JS -->
                             </select>
                             <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                         </div>
                     </div>
                     <div id="divPubColTahun">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">TAHUN ACARA</label>
-                        <input type="number" id="pubTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-black text-center text-brand-600" value="2026" min="2023" required>
+                        <div class="relative">
+                            <select id="pubTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-black text-center text-brand-600 appearance-none bg-white" required>
+                                <!-- Populated by JS -->
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                        </div>
                     </div>
                 </div>
 
@@ -271,7 +261,12 @@
 
                 <div id="divPpdPenyedia" class="hidden">
                     <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">PENYEDIA / JENAMA</label>
-                    <select id="ppdPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none"><option>LAIN-LAIN</option><option>GOOGLE</option><option>APPLE</option><option>MICROSOFT</option></select>
+                    <div class="relative">
+                        <select id="ppdPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none appearance-none">
+                            <!-- Populated by JS -->
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                    </div>
                 </div>
 
                 <div>
@@ -282,11 +277,21 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div id="divPpdColPeringkat">
                         <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">PERINGKAT</label>
-                        <select id="ppdPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select>
+                        <div class="relative">
+                            <select id="ppdPeringkat" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-ppd-500 outline-none appearance-none">
+                                <!-- Populated by JS -->
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                        </div>
                     </div>
                     <div id="divPpdColTahun">
                         <label class="block text-[10px] font-black text-ppd-900 uppercase mb-2 ml-1">TAHUN</label>
-                        <input type="number" id="ppdTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 text-center font-black text-ppd-700" value="2026" required>
+                        <div class="relative">
+                            <select id="ppdTahun" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-ppd-500 outline-none font-black text-center text-ppd-700 appearance-none bg-white" required>
+                                <!-- Populated by JS -->
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                        </div>
                     </div>
                 </div>
 

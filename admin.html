@@ -96,7 +96,7 @@
                     <i class="fas fa-chevron-left mr-1"></i> Sebelum
                 </button>
                 <button class="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="nextQueue()">
-                    Seterusnya <i class="fas fa-chevron-right ml-1"></i>
+                    Seterusnya <i class="fas fa-chevron-right mr-1"></i>
                 </button>
               </div>
           </div>
@@ -284,7 +284,7 @@
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6 text-center">
                 <div onclick="filterByKategori('MURID')" class="p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition"><span class="text-[10px] font-bold text-blue-500 uppercase">Murid</span><h4 class="text-xl font-black text-blue-700" id="statTotalMurid">0</h4></div>
                 <div onclick="filterByKategori('GURU')" class="p-3 bg-amber-50 rounded-xl border border-amber-100 cursor-pointer hover:bg-amber-100 transition"><span class="text-[10px] font-bold text-amber-500 uppercase">Guru</span><h4 class="text-xl font-black text-amber-700" id="statTotalGuru">0</h4></div>
-                <div onclick="filterByKategori('SEKOLAH')" class="p-3 bg-green-50 rounded-xl border border-green-100 cursor-pointer hover:bg-green-100 transition"><span class="text-[10px] font-bold text-green-500 uppercase">Sekolah</span><h4 class="text-xl font-black text-green-700" id="statTotalSekolah">0</h4></div>
+                <div onclick="filterByKategori('SEKOLAH')" class="p-3 bg-green-50 rounded-xl border border-green-100 cursor-pointer hover:bg-green-100 transition"><span class="text-[10px] font-bold text-green-100 uppercase">Sekolah</span><h4 class="text-xl font-black text-green-700" id="statTotalSekolah">0</h4></div>
                 <div onclick="filterByKategori('PEGAWAI')" class="p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition"><span class="text-[10px] font-bold text-slate-500 uppercase">Pegawai</span><h4 class="text-xl font-black text-slate-700" id="statTotalPegawai">0</h4></div>
                 <div onclick="filterByKategori('PPD')" class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition"><span class="text-[10px] font-bold text-indigo-500 uppercase">Unit</span><h4 class="text-xl font-black text-indigo-700" id="statTotalUnit">0</h4></div>
             </div>
@@ -533,35 +533,32 @@
                       
                       <div id="divEditJawatan" class="hidden">
                           <select id="editInputJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
-                              <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
-                              <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
-                              <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
-                              <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
-                              <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
-                              <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
-                              <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
-                              <option value="GURU DATA">GURU DATA</option>
-                              <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
-                              <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-                              <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
-                              <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
+                              <!-- Populated by JS -->
                           </select>
                       </div>
 
                       <div id="divEditPenyedia" class="hidden">
                           <select id="editInputPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
-                              <option>LAIN-LAIN</option>
-                              <option>GOOGLE</option>
-                              <option>APPLE</option>
-                              <option>MICROSOFT</option>
+                              <!-- Populated by JS -->
                           </select>
                       </div>
 
                       <input type="text" id="editInputProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
                       
                       <div class="grid grid-cols-2 gap-4">
-                          <div id="divEditColPeringkat"><select id="editInputPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm"><option>KEBANGSAAN</option><option>ANTARABANGSA</option></select></div>
-                          <div><input type="number" id="editInputTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-center font-bold"></div>
+                          <div id="divEditColPeringkat">
+                              <select id="editInputPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                                  <!-- Populated by JS -->
+                              </select>
+                          </div>
+                          <div>
+                              <div class="relative">
+                                  <select id="editInputTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-center font-bold appearance-none bg-white">
+                                      <!-- Populated by JS -->
+                                  </select>
+                                  <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                              </div>
+                          </div>
                       </div>
 
                       <input type="text" id="editInputPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
@@ -615,10 +612,7 @@
                       <div id="divPpdPenyedia" class="hidden">
                           <label class="block text-[10px] font-bold text-amber-600 uppercase mb-1">PENYEDIA</label>
                           <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm font-bold shadow-sm">
-                              <option value="LAIN-LAIN">LAIN-LAIN</option>
-                              <option value="GOOGLE">GOOGLE</option>
-                              <option value="APPLE">APPLE</option>
-                              <option value="MICROSOFT">MICROSOFT</option>
+                              <!-- Populated by JS -->
                           </select>
                       </div>
 
@@ -631,13 +625,17 @@
                           <div id="divPpdColPeringkat">
                               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
                               <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold bg-white shadow-sm">
-                                  <option value="KEBANGSAAN">KEBANGSAAN</option>
-                                  <option value="ANTARABANGSA">ANTARABANGSA</option>
+                                  <!-- Populated by JS -->
                               </select>
                           </div>
                           <div>
                               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">TAHUN</label>
-                              <input type="number" id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm shadow-sm" value="2026">
+                              <div class="relative">
+                                  <select id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm shadow-sm appearance-none bg-white">
+                                      <!-- Populated by JS -->
+                                  </select>
+                                  <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                              </div>
                           </div>
                       </div>
 

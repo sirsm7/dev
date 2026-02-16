@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMPID - Tempahan Bimbingan & Bengkel</title>
+    
+    <!-- AUTH GUARD: Keselamatan Modul -->
+    <script type="module" src="../../js/core/auth.guard.js"></script>
+
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" href="../../icoppdag.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        emerald: { 50: '#ecfdf5', 500: '#10b981', 600: '#059669' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .hidden { display: none !important; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .day-header { @apply text-center text-[10px] font-black text-slate-400 uppercase py-2; }
+        
+        /* State Styles */
+        .tile { @apply min-h-[70px] p-2 rounded-xl border border-slate-100 bg-white flex flex-col justify-between transition-all duration-200 relative overflow-hidden; }
+        .tile-other { @apply bg-slate-50 opacity-30 pointer-events-none; }
+        .tile-closed { @apply bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed; }
+        .tile-open { @apply border-emerald-100 hover:border-emerald-500 hover:shadow-md cursor-pointer; }
+        .tile-open .date-num { @apply text-emerald-600 font-bold; }
+        .tile-partial { @apply border-amber-200 bg-amber-50 cursor-pointer hover:shadow-md; }
+        .tile-partial .date-num { @apply text-amber-600 font-bold; }
+        .tile-booked { @apply border-red-100 bg-red-50 cursor-not-allowed opacity-80; }
+        .tile-booked .date-num { @apply text-red-500 font-bold; }
+        .tile-locked { @apply border-purple-200 bg-purple-50 cursor-not-allowed; }
+        .tile-locked .date-num { @apply text-purple-600 font-bold; }
+        
+        .active-selection { @apply ring-4 ring-brand-500 ring-offset-2 scale-[1.02] z-10 !border-brand-500; }
+        
+        .slot-pill { @apply text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter; }
+        .slot-pagi { @apply bg-blue-100 text-blue-700; }
+        .slot-petang { @apply bg-orange-100 text-orange-700; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <div id="loadingOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm hidden">
+        <div class="text-center text-white">
+            <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
+            <p class="font-bold tracking-wide animate-pulse">Menghantar Tempahan...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="../../icoppdag.png" alt="Logo" class="h-10 w-auto">
+                <div>
+                    <h1 class="font-black text-slate-900 leading-none tracking-tight">TEMPAHAN BB</h1>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Bimbingan & Bengkel USTP</p>
+                </div>
+            </div>
+            <a href="../../user.html" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 transition flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> <span class="hidden sm:inline">Kembali ke Portal</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-6xl">
+        <div class="flex flex-col lg:flex-row gap-8">
+            
+            <!-- Left Column: Calendar -->
+            <div class="lg:w-2/3">
+                <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div class="flex items-center gap-4">
+                            <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full hover:bg-white hover:shadow transition flex items-center justify-center text-slate-400 hover:text-brand-600"><i class="fas fa-chevron-left"></i></button>
+                            <h2 id="monthDisplay" class="text-lg font-black text-slate-800 min-w-[150px] text-center uppercase tracking-tighter">FEBRUARI 2026</h2>
+                            <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full hover:bg-white hover:shadow transition flex items-center justify-center text-slate-400 hover:text-brand-600"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="hidden sm:flex gap-2">
+                            <span class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-emerald-500"></div> BUKA</span>
+                            <span class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-amber-500"></div> SEBAHAGIAN</span>
+                            <span class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-red-500"></div> PENUH</span>
+                        </div>
+                    </div>
+                    <div class="p-4 md:p-6">
+                        <div class="calendar-grid mb-2">
+                            <div class="day-header">Aha</div>
+                            <div class="day-header">Isn</div>
+                            <div class="day-header">Sel</div>
+                            <div class="day-header">Rab</div>
+                            <div class="day-header">Kha</div>
+                            <div class="day-header">Jum</div>
+                            <div class="day-header">Sab</div>
+                        </div>
+                        <div id="calendarBody" class="calendar-grid">
+                            <!-- JS Injection -->
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 p-4 border-t border-blue-100">
+                        <p class="text-[10px] font-bold text-blue-700 leading-relaxed">
+                            <i class="fas fa-info-circle mr-1"></i> NOTA: Slot dibuka hanya pada hari <strong>Selasa, Rabu, Khamis dan Sabtu</strong>. Tempahan perlu dibuat sekurang-kurangnya 3 hari sebelum tarikh bimbingan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Form -->
+            <div class="lg:w-1/3">
+                <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-8 sticky top-24">
+                    <h3 class="font-black text-slate-800 text-xl mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center text-lg"><i class="fas fa-edit"></i></div>
+                        Maklumat Tempahan
+                    </h3>
+
+                    <form id="bookingForm" onsubmit="event.preventDefault(); handleBookingSubmit();" class="space-y-5">
+                        <!-- Date Info (ReadOnly) -->
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tarikh Dipilih</label>
+                            <input type="text" id="displayDate" readonly class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 font-bold text-slate-700 outline-none" placeholder="Sila klik pada kalendar">
+                            <input type="hidden" id="rawDate">
+                        </div>
+
+                        <!-- Slot Selection -->
+                        <div id="slotWrapper" class="hidden animate-fade-up">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Sila Pilih Slot</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label id="labelPagi" class="cursor-pointer">
+                                    <input type="radio" name="inputMasa" value="Pagi" class="peer hidden">
+                                    <div class="p-3 rounded-xl border-2 border-slate-100 text-center text-xs font-black text-slate-400 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-all uppercase peer-disabled:opacity-30 peer-disabled:grayscale peer-disabled:cursor-not-allowed">Pagi</div>
+                                </label>
+                                <label id="labelPetang" class="cursor-pointer">
+                                    <input type="radio" name="inputMasa" value="Petang" class="peer hidden">
+                                    <div class="p-3 rounded-xl border-2 border-slate-100 text-center text-xs font-black text-slate-400 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-all uppercase peer-disabled:opacity-30 peer-disabled:grayscale peer-disabled:cursor-not-allowed">Petang</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Teacher Info -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nama Pemohon (PIC)</label>
+                                <input type="text" id="picName" required class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-bold text-slate-700 uppercase" oninput="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">No. Telefon</label>
+                                <input type="tel" id="picPhone" required class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-bold text-slate-700" placeholder="01XXXXXXXX">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btnSubmit" disabled class="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-brand-500/20 transform hover:-translate-y-1 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50 disabled:pointer-events-none disabled:grayscale">
+                            <i class="fas fa-paper-plane"></i> Hantar Tempahan
+                        </button>
+                    </form>
+
+                    <div id="schoolBadge" class="mt-8 pt-6 border-t border-slate-100 text-center">
+                        <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2 block">Ditempah Oleh Sekolah</span>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg">
+                            <span id="displayKod" class="text-xs font-black text-brand-600">KOD</span>
+                            <div class="w-px h-3 bg-slate-300"></div>
+                            <span id="displayNama" class="text-[10px] font-bold text-slate-500">NAMA SEKOLAH</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="mt-auto py-10 bg-white border-t border-slate-200">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; 2026 USTP PPD ALOR GAJAH</p>
+        </div>
+    </footer>
+
+    <!-- LOGIC LOAD ORDER: DB -> SERVICE -> SCRIPT -->
+    <script type="module" src="../../js/core/db.js"></script>
+    <script type="module" src="../../js/services/booking.service.js"></script>
+    <script type="module" src="script.js"></script>
+
+</body>
+</html>

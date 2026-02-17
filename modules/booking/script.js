@@ -1,7 +1,7 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.2 (BORDER FIX)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.3 (VISUAL CLEANUP)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * Target HTML: modules/booking/index.html
+ * Kemaskini: Membuang teks "PILIH" yang mengganggu.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -39,9 +39,12 @@ async function initBookingPortal() {
             schoolInfo.nama = data.nama_sekolah;
             document.getElementById('displayKod').innerText = schoolInfo.kod;
             
-            // Fix: Handle long names in badge
+            // Fix: Handle long names in badge with wrap-safe
             const dispNama = document.getElementById('displayNama');
-            if (dispNama) dispNama.innerText = schoolInfo.nama.toUpperCase();
+            if (dispNama) {
+                dispNama.innerText = schoolInfo.nama.toUpperCase();
+                dispNama.classList.add('wrap-safe');
+            }
             
             loadBookingHistory(schoolInfo.kod);
         }
@@ -88,6 +91,7 @@ async function loadBookingHistory(kod) {
                         <div class="text-[9px] font-black text-brand-500 uppercase mt-0.5">${item.masa}</div>
                     </td>
                     <td class="px-6 py-4 align-top">
+                        <!-- WRAP-SAFE APPLIED HERE -->
                         <div class="text-xs font-bold text-slate-700 uppercase leading-tight wrap-safe" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
                     </td>
                     <td class="px-6 py-4 text-center align-top">${statusBadge}</td>
@@ -181,11 +185,9 @@ window.renderCalendar = async function() {
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
             } else if (isTooSoon) {
-                // Jangan guna status 'closed' supaya tidak kelabu, tapi guna locked sementara
-                // ATAU gunakan closed tapi tukar teks. Mari kita guna closed (kelabu)
                 status = 'closed'; 
                 statusText = 'TUTUP';
-                statusIcon = 'fa-clock'; // Ikon masa tamat
+                statusIcon = 'fa-clock'; 
             } else if (!isAllowedDay) {
                 status = 'closed';
                 statusText = 'TIADA SESI';
@@ -209,7 +211,6 @@ window.renderCalendar = async function() {
             
             // Bina Kad HTML
             const card = document.createElement('div');
-            // FIX: Class di sini mesti sepadan dengan CSS yang dibetulkan (border-2)
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''} animate-fade-in group`;
             
             // Tentukan warna ikon dan teks
@@ -221,6 +222,7 @@ window.renderCalendar = async function() {
 
             const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase wrap-safe leading-tight">${lockedDetails[dateString]}</div>` : '';
 
+            // REMOVED: Blok teks "PILIH ->" di bahagian bawah kad.
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -238,14 +240,9 @@ window.renderCalendar = async function() {
                     </span>
                     ${lockedMsg}
                 </div>
-                
-                ${(status === 'open' || status === 'partial') ? 
-                  `<div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                      <span class="text-brand-600 text-xs font-bold flex items-center gap-1">Pilih <i class="fas fa-arrow-right"></i></span>
-                   </div>` : ''}
             `;
 
-            // Hanya benarkan klik jika status OPEN atau PARTIAL (dan bukan tarikh lepas/tutup)
+            // Hanya benarkan klik jika status OPEN atau PARTIAL
             if (status === 'open' || status === 'partial') {
                 card.onclick = () => handleCardSelection(dateString, availableSlots, card);
             }

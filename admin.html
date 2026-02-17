@@ -27,31 +27,79 @@
     }
   </script>
 
-  <style>
-    .hidden { display: none !important; }
-    .tab-active { @apply bg-brand-600 text-white shadow-md transform scale-105; }
-    .tab-inactive { @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600; }
-    
-    /* Global Table Wrapping Fix */
-    table td, table th {
-      white-space: normal !important;
-      word-wrap: break-word !important;
-      overflow-wrap: break-word !important;
-      vertical-align: middle;
+  <style type="text/tailwindcss">
+    @layer components {
+        .hidden { display: none !important; }
+        
+        .tab-active { 
+            @apply bg-brand-600 text-white shadow-md transform scale-105; 
+        }
+        .tab-inactive { 
+            @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600; 
+        }
+        
+        /* Global Table Wrapping Fix */
+        table td, table th {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            vertical-align: middle;
+        }
+
+        /* Word Cloud Styles */
+        .cloud-tag { 
+            @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; 
+        }
+        .cloud-tag.active { 
+            @apply bg-brand-600 text-white border-brand-600 shadow-md transform scale-105; 
+        }
+        .cloud-tag .count { 
+            @apply ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px]; 
+        }
+        .cloud-tag.active .count { 
+            @apply bg-white/20 text-white; 
+        }
+
+        /* Calendar Tile Styles (Booking Module Integration) */
+        .day-card { 
+            @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-200 transition-all duration-300 cursor-pointer overflow-hidden bg-white hover:shadow-lg hover:-translate-y-1; 
+            min-height: 120px; 
+        }
+        .card-open { 
+            @apply border-slate-200 hover:border-brand-500 hover:bg-brand-50/10 group; 
+        }
+        .card-partial { 
+            @apply border-amber-300 bg-amber-50/40 hover:border-amber-500; 
+        }
+        .card-full { 
+            @apply border-red-200 bg-red-50/30 opacity-80 cursor-not-allowed grayscale-[0.3]; 
+        }
+        .card-locked { 
+            @apply border-purple-300 bg-purple-50/60 cursor-not-allowed opacity-95; 
+        }
+        .card-closed { 
+            @apply border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed; 
+        }
+        .card-active { 
+            @apply !border-brand-600 ring-4 ring-brand-100 bg-brand-50/30 transform scale-[1.03] shadow-xl z-20; 
+        }
+        
+        /* Text Wrapping Helper */
+        .wrap-safe { 
+            white-space: normal !important; 
+            word-wrap: break-word !important; 
+            overflow-wrap: break-word !important; 
+            word-break: break-word !important; 
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .uppercase-input { text-transform: uppercase; }
     }
-
-    /* Word Cloud Styles */
-    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
-    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md transform scale-105; }
-    .cloud-tag .count { @apply ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px]; }
-    .cloud-tag.active .count { @apply bg-white/20 text-white; }
-
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
-    .uppercase-input { text-transform: uppercase; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

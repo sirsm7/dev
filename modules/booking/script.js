@@ -1,10 +1,7 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.2
- * Fungsi: Menguruskan logik tempahan dengan sistem jubin interaktif.
- * --- UPDATE V3.2 ---
- * 1. Visual Fix: Memastikan jubin kalendar menyokong wrapping teks (.wrap-safe).
- * 2. CSS Integration: Membiarkan CSS (index.html) mengawal warna status untuk integriti tema.
- * 3. UX Fix: Menghapuskan 'line-clamp' pada sejarah tempahan supaya butiran lengkap kelihatan.
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.1
+ * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
+ * Target HTML: modules/booking/index.html
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -19,7 +16,8 @@ let activeWeek = 1;
 let selectedDateString = null; 
 let schoolInfo = { kod: '', nama: '' };
 
-const ALLOWED_DAYS = [2, 3, 4, 6]; // Selasa, Rabu, Khamis, Sabtu
+// Konfigurasi Hari: 0=Ahad, 1=Isnin, 2=Selasa, 3=Rabu, 4=Khamis, 5=Jumaat, 6=Sabtu
+const ALLOWED_DAYS = [2, 3, 4, 6]; 
 const MALAY_MONTHS = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
 const DAY_NAMES = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
 
@@ -41,6 +39,7 @@ async function initBookingPortal() {
             schoolInfo.nama = data.nama_sekolah;
             document.getElementById('displayKod').innerText = schoolInfo.kod;
             
+            // Fix: Handle long names in badge
             const dispNama = document.getElementById('displayNama');
             if (dispNama) dispNama.innerText = schoolInfo.nama.toUpperCase();
             
@@ -50,16 +49,12 @@ async function initBookingPortal() {
         console.error("[Booking] Gagal muat info sekolah:", e);
     }
 
-    // Isi dropdown bimbingan
     populateDropdown('tajukBengkel', 'BENGKEL');
-    
-    // Render kalendar permulaan
     renderCalendar();
 }
 
 /**
  * Memuatkan sejarah tempahan sekolah semasa.
- * FIX: Menghapuskan line-clamp untuk paparan teks penuh.
  */
 async function loadBookingHistory(kod) {
     const tbody = document.getElementById('historyTableBody');
@@ -93,8 +88,7 @@ async function loadBookingHistory(kod) {
                         <div class="text-[9px] font-black text-brand-500 uppercase mt-0.5">${item.masa}</div>
                     </td>
                     <td class="px-6 py-4">
-                        <!-- FIX: Teks Penuh Tanpa Truncate -->
-                        <div class="text-xs font-bold text-slate-700 uppercase leading-tight wrap-safe" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
+                        <div class="text-xs font-bold text-slate-700 uppercase leading-tight line-clamp-2" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
                     </td>
                     <td class="px-6 py-4 text-center">${statusBadge}</td>
                 </tr>`;
@@ -106,7 +100,6 @@ async function loadBookingHistory(kod) {
 
 /**
  * Render Utama: Kalendar Berasaskan Kad.
- * FIX: Menggunakan kelas status CSS untuk pewarnaan dan border.
  */
 window.renderCalendar = async function() {
     const container = document.getElementById('calendarBody');
@@ -115,6 +108,7 @@ window.renderCalendar = async function() {
     
     if (!container || !monthLabel || !tabsContainer) return;
 
+    // Loading State UI
     container.innerHTML = `
         <div class="col-span-full py-20 text-center flex flex-col items-center justify-center">
             <i class="fas fa-circle-notch fa-spin text-slate-300 text-3xl mb-4"></i>
@@ -126,13 +120,15 @@ window.renderCalendar = async function() {
     try {
         const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(currentYear, currentMonth);
         
+        // Kira hari dalam bulan
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const pad = (n) => n.toString().padStart(2, '0');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // 1. Render Tab Minggu
+        // 1. Render Tab Minggu (Navigasi M1-M5)
         const totalWeeks = Math.ceil(daysInMonth / 7);
+        // Pastikan activeWeek tidak melebihi totalWeeks bila tukar bulan
         if (activeWeek > totalWeeks) activeWeek = 1;
 
         let tabsHtml = '';
@@ -146,7 +142,7 @@ window.renderCalendar = async function() {
         }
         tabsContainer.innerHTML = tabsHtml;
 
-        // 2. T Julat Hari
+        // 2. Tentukan Julat Hari untuk Minggu Aktif
         const startDay = (activeWeek - 1) * 7 + 1;
         const endDay = Math.min(activeWeek * 7, daysInMonth);
 
@@ -160,10 +156,12 @@ window.renderCalendar = async function() {
             const dateObj = new Date(currentYear, currentMonth, d);
             const dayOfWeek = dateObj.getDay();
             
+            // Logik Status
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
             
+            // Polisi: Tempahan mesti dibuat 3 hari sebelum
             const minNoticeDate = new Date();
             minNoticeDate.setDate(today.getDate() + 3);
             minNoticeDate.setHours(0, 0, 0, 0);
@@ -176,6 +174,7 @@ window.renderCalendar = async function() {
             let statusIcon = 'fa-check-circle';
             let availableSlots = ['Pagi', 'Petang'];
 
+            // Logik Penentuan Status & Style
             if (isPastOrTooSoon) {
                 status = 'closed';
                 statusText = 'TUTUP';
@@ -186,7 +185,7 @@ window.renderCalendar = async function() {
                 statusIcon = 'fa-ban';
             } else if (isLocked) {
                 status = 'locked';
-                statusText = 'DIKUNCI'; 
+                statusText = 'DIKUNCI'; // lockedDetails[dateString]
                 statusIcon = 'fa-lock';
             } else if (slotsTaken.length >= 2) {
                 status = 'full';
@@ -199,20 +198,22 @@ window.renderCalendar = async function() {
                 availableSlots = ['Pagi', 'Petang'].filter(s => !slotsTaken.includes(s));
             }
 
-            const isSelected = (dateString === selectedDateString);
-            const card = document.createElement('div');
+            // Jika status closed, kita mungkin nak render gaya minimal atau skip?
+            // Untuk kalendar lengkap, kita render semua tapi dengan visual 'disabled'
             
-            // FIX: Menggunakan kelas status daripada index.html
+            const isSelected = (dateString === selectedDateString);
+            
+            // Bina Kad HTML
+            const card = document.createElement('div');
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''} animate-fade-in group`;
             
-            // Warna Ikon & Badge (Sync dengan CSS)
-            let iconColor = 'text-brand-600 bg-brand-100';
-            if (status === 'full') iconColor = 'text-red-600 bg-red-100';
-            if (status === 'locked') iconColor = 'text-purple-600 bg-purple-100';
-            if (status === 'partial') iconColor = 'text-amber-600 bg-amber-100';
-            if (status === 'closed') iconColor = 'text-slate-400 bg-slate-200';
+            let statusColorClass = 'text-brand-600 bg-brand-50';
+            if (status === 'full') statusColorClass = 'text-red-500 bg-red-50';
+            if (status === 'locked') statusColorClass = 'text-purple-600 bg-purple-50';
+            if (status === 'partial') statusColorClass = 'text-amber-600 bg-amber-50';
+            if (status === 'closed') statusColorClass = 'text-slate-400 bg-slate-100';
 
-            const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-600 font-black mt-1 uppercase wrap-safe">${lockedDetails[dateString]}</div>` : '';
+            const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase truncate">${lockedDetails[dateString]}</div>` : '';
 
             card.innerHTML = `
                 <div class="flex justify-between items-start">
@@ -220,21 +221,21 @@ window.renderCalendar = async function() {
                         <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">${DAY_NAMES[dayOfWeek]}</span>
                         <span class="text-3xl font-black text-slate-800 leading-none">${d}</span>
                     </div>
-                    <div class="${iconColor} w-9 h-9 rounded-2xl flex items-center justify-center text-sm shadow-sm transition-transform group-hover:rotate-12">
+                    <div class="${statusColorClass} w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm">
                         <i class="fas ${statusIcon}"></i>
                     </div>
                 </div>
                 
                 <div class="mt-4">
-                    <span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${iconColor} border border-black/5">
+                    <span class="inline-block px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${statusColorClass}">
                         ${statusText}
                     </span>
                     ${lockedMsg}
                 </div>
                 
-                ${(status === 'open' || status === 'partial') ? 
-                  `<div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                      <span class="text-brand-600 text-xs font-black flex items-center gap-1">PILIH <i class="fas fa-arrow-right"></i></span>
+                ${status === 'open' || status === 'partial' ? 
+                  `<div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                      <span class="text-brand-600 text-xs font-bold flex items-center gap-1">Pilih <i class="fas fa-arrow-right"></i></span>
                    </div>` : ''}
             `;
 
@@ -252,7 +253,7 @@ window.renderCalendar = async function() {
 
     } catch (err) {
         console.error("[Booking] Calendar Error:", err);
-        container.innerHTML = `<div class="col-span-full py-20 text-center text-red-500 font-bold bg-red-50 rounded-3xl border-2 border-red-200">Gagal memuatkan data kalendar. Sila muat semula.</div>`;
+        container.innerHTML = `<div class="col-span-full py-20 text-center text-red-500 font-bold bg-red-50 rounded-2xl border-2 border-red-100">Gagal memuatkan data kalendar.</div>`;
     }
 };
 
@@ -262,36 +263,38 @@ window.renderCalendar = async function() {
 function handleCardSelection(dateStr, availableSlots, element) {
     selectedDateString = dateStr;
 
-    // Reset visual
+    // Reset visual selection
     document.querySelectorAll('.day-card').forEach(r => r.classList.remove('card-active'));
     element.classList.add('card-active');
 
-    // Update UI Borang
+    // Update Form UI
     const dateObj = new Date(dateStr);
     const dateReadable = dateObj.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
-    const dispInput = document.getElementById('displayDate');
-    dispInput.value = dateReadable.toUpperCase();
-    dispInput.classList.remove('bg-brand-50/50', 'cursor-not-allowed', 'text-brand-700');
-    dispInput.classList.add('bg-white', 'text-slate-800', 'border-brand-500');
+    const displayInput = document.getElementById('displayDate');
+    displayInput.value = dateReadable.toUpperCase();
+    displayInput.classList.remove('bg-brand-50/50', 'cursor-not-allowed', 'text-brand-700');
+    displayInput.classList.add('bg-white', 'text-slate-800', 'border-brand-500');
     
     document.getElementById('rawDate').value = dateStr;
 
-    // Papar pemilih sesi
+    // Show Slot Wrapper
     const wrapper = document.getElementById('slotWrapper');
     wrapper.classList.remove('hidden');
 
+    // Configure Slot Radio Buttons
     const radioPagi = document.querySelector('input[name="inputMasa"][value="Pagi"]');
     const radioPetang = document.querySelector('input[name="inputMasa"][value="Petang"]');
     const labelPagi = document.getElementById('labelPagi');
     const labelPetang = document.getElementById('labelPetang');
 
-    // Reset State Sesi
+    // Reset State
     radioPagi.disabled = true; radioPetang.disabled = true;
     labelPagi.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
     labelPetang.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
     radioPagi.checked = false; radioPetang.checked = false;
 
+    // Enable Available Slots
     if (availableSlots.includes('Pagi')) {
         radioPagi.disabled = false;
         labelPagi.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
@@ -301,6 +304,7 @@ function handleCardSelection(dateStr, availableSlots, element) {
         labelPetang.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
     
+    // Auto-select if only one slot remains
     if (availableSlots.length === 1) {
         if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
         else radioPetang.checked = true;
@@ -308,6 +312,7 @@ function handleCardSelection(dateStr, availableSlots, element) {
 
     checkFormValidity();
     
+    // Listen for slot changes
     document.querySelectorAll('input[name="inputMasa"]').forEach(r => {
         r.addEventListener('change', checkFormValidity);
     });
@@ -320,15 +325,15 @@ function checkFormValidity() {
     
     if (date && masa) {
         btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
     } else {
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
     }
 }
 
 /**
- * Navigasi.
+ * Navigasi Minggu & Bulan.
  */
 window.switchWeek = function(w) {
     activeWeek = w;
@@ -340,26 +345,22 @@ window.changeMonth = function(offset) {
     currentMonth += offset;
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    activeWeek = 1; 
+    
+    activeWeek = 1; // Reset ke minggu pertama bila tukar bulan
     resetSelection();
     renderCalendar();
 };
 
 function resetSelection() {
     selectedDateString = null;
-    const btn = document.getElementById('btnSubmit');
-    if (btn) btn.disabled = true;
-    
-    const wrapper = document.getElementById('slotWrapper');
-    if (wrapper) wrapper.classList.add('hidden');
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('slotWrapper').classList.add('hidden');
     
     const disp = document.getElementById('displayDate');
-    if (disp) {
-        disp.value = "";
-        disp.classList.add('bg-brand-50/50', 'cursor-not-allowed');
-        disp.classList.remove('bg-white', 'text-slate-800', 'border-brand-500');
-        disp.placeholder = "SILA PILIH TARIKH DI KIRI";
-    }
+    disp.value = "";
+    disp.classList.add('bg-brand-50/50', 'cursor-not-allowed');
+    disp.classList.remove('bg-white', 'text-slate-800', 'border-brand-500');
+    disp.placeholder = "SILA PILIH TARIKH DI KIRI";
 }
 
 /**
@@ -374,7 +375,7 @@ window.handleBookingSubmit = async function() {
     const btn = document.getElementById('btnSubmit');
 
     if (!date || !tajukBengkel || !masaInp || !picName || !picPhone) {
-        return Swal.fire({ icon: "warning", title: "Tidak Lengkap", text: "Sila pastikan semua ruangan wajib diisi." });
+        return Swal.fire({ icon: "warning", title: "Tidak Lengkap", text: "Sila isi semua maklumat bertanda." });
     }
 
     const payload = {
@@ -396,20 +397,22 @@ window.handleBookingSubmit = async function() {
         
         await Swal.fire({
             icon: 'success',
-            title: 'Permohonan Berjaya!',
-            html: `Kod Rujukan: <br><b class="text-2xl font-mono text-brand-600 mt-2 block tracking-tighter">${result.bookingId}</b><br><span class="text-xs text-slate-500 font-bold">USTP akan menghubungi PIC untuk pengesahan lanjut.</span>`,
-            confirmButtonColor: '#2563eb',
-            customClass: { popup: 'rounded-[2rem]' }
+            title: 'Tempahan Berjaya!',
+            html: `Nombor Rujukan: <br><b class="text-xl font-mono text-brand-600 mt-2 block">${result.bookingId}</b><br><span class="text-sm text-slate-500">Sila simpan untuk rujukan.</span>`,
+            confirmButtonColor: '#2563eb'
         });
 
+        // Reset UI
         document.getElementById('bookingForm').reset();
         resetSelection();
+        
+        // Refresh Data
         renderCalendar();
         loadBookingHistory(schoolInfo.kod);
         
     } catch (err) {
         document.getElementById('loadingOverlay').classList.add('hidden');
         btn.disabled = false;
-        Swal.fire({ icon: "error", title: "Gagal", text: err.message, customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ icon: "error", title: "Gagal", text: err.message });
     }
 };

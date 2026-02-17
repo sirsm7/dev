@@ -1,11 +1,7 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 2.0 (FINAL INTEGRETY)
- * Menguruskan kalendar interaktif, pengisian dropdown tajuk bengkel,
- * dan logik tempahan sekolah dengan integriti visual dan data penuh.
- * --- UPDATE V2.0 ---
- * 1. Date Fix: Menggunakan rentetan tarikh 'YYYY-MM-DD' tempatan untuk elak isu zon masa.
- * 2. Visual: Menambah logik untuk memaparkan teks slot pada jubin 'SEPARA'.
- * 3. Sejarah: Memuatkan senarai tempahan terdahulu untuk sekolah semasa.
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.0 (WEEKLY TABS EDITION)
+ * Refactor: Mengubah paparan Grid kepada Mingguan (M1-M5).
+ * Memastikan paparan nama bengkel tidak terpotong pada mobile.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -16,11 +12,13 @@ import { populateDropdown } from '../../js/config/dropdowns.js';
 // --- STATE MANAGEMENT ---
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
-let selectedDateString = null; // Guna string 'YYYY-MM-DD'
+let activeWeek = 1; // Minggu Aktif (1-5)
+let selectedDateString = null; 
 let schoolInfo = { kod: '', nama: '' };
 
 const ALLOWED_DAYS = [2, 3, 4, 6]; // Selasa, Rabu, Khamis, Sabtu
 const MALAY_MONTHS = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
+const DAY_NAMES = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
 
 document.addEventListener('DOMContentLoaded', () => {
     initBookingPortal();
@@ -30,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
  * Inisialisasi utama profil sekolah, dropdown, kalendar dan sejarah.
  */
 async function initBookingPortal() {
-    // 1. Ambil Identiti Sekolah dari Sesi SMPID (Local Storage)
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     if (!kod) return window.location.replace('../../index.html');
 
@@ -39,132 +36,115 @@ async function initBookingPortal() {
         if (data) {
             schoolInfo.kod = data.kod_sekolah;
             schoolInfo.nama = data.nama_sekolah;
-            
-            // Paparan identiti sekolah
             document.getElementById('displayKod').innerText = schoolInfo.kod;
             document.getElementById('displayNama').innerText = schoolInfo.nama.toUpperCase();
-            
-            // Muat Sejarah Tempahan
             loadBookingHistory(schoolInfo.kod);
         }
     } catch (e) {
         console.error("[Booking] Gagal muat info sekolah:", e);
     }
 
-    // 2. Isi Dropdown Tajuk Bengkel (A-Z)
     populateDropdown('tajukBengkel', 'BENGKEL');
-
-    // 3. Render Kalendar
     renderCalendar();
 }
 
 /**
- * Memuatkan sejarah tempahan sekolah ke dalam jadual.
+ * Memuatkan sejarah tempahan sekolah.
  */
 async function loadBookingHistory(kod) {
     const tbody = document.getElementById('historyTableBody');
     const countBadge = document.getElementById('historyCount');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 text-xs animate-pulse">Sedang memuatkan rekod...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 text-xs animate-pulse">Memuatkan sejarah...</td></tr>`;
 
     try {
         const data = await BookingService.getSchoolBookings(kod);
-        
         if (countBadge) countBadge.innerText = `${data.length} REKOD`;
 
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 italic text-xs">Tiada sejarah permohonan.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 italic text-xs">Tiada sejarah permohonan.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = data.map(item => {
             const dateObj = new Date(item.tarikh);
             const dateStr = dateObj.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
-            
-            let statusBadge = '';
-            if (item.status === 'AKTIF') statusBadge = `<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-black border border-emerald-200">AKTIF</span>`;
-            else statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[9px] font-black border border-red-200">BATAL</span>`;
+            const statusBadge = item.status === 'AKTIF' 
+                ? `<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-black border border-emerald-200">AKTIF</span>`
+                : `<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[9px] font-black border border-red-200">BATAL</span>`;
 
             return `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
-                    <td class="px-6 py-3 font-mono font-bold text-slate-600 text-xs">${dateStr}</td>
-                    <td class="px-6 py-3 font-bold text-slate-700 text-xs uppercase">${item.masa}</td>
-                    <td class="px-6 py-3 text-xs font-medium text-slate-500 wrap-safe leading-tight">${item.tajuk_bengkel}</td>
-                    <td class="px-6 py-3 text-center">${statusBadge}</td>
-                </tr>
-            `;
+                    <td class="px-6 py-4">
+                        <div class="font-mono font-bold text-slate-600 text-xs">${dateStr}</div>
+                        <div class="text-[9px] font-black text-slate-400 uppercase mt-1">${item.masa}</div>
+                    </td>
+                    <td class="px-6 py-4 text-xs font-bold text-slate-700 wrap-safe leading-tight uppercase">${item.tajuk_bengkel}</td>
+                    <td class="px-6 py-4 text-center">${statusBadge}</td>
+                </tr>`;
         }).join('');
-
     } catch (e) {
-        console.error("[Booking] History Error:", e);
-        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-400 font-bold text-xs">Gagal memuatkan sejarah.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-400 font-bold text-xs">Gagal memuatkan sejarah.</td></tr>`;
     }
 }
 
 /**
- * Membina grid kalendar dengan kawalan tarikh manual (Tanpa UTC Shift).
+ * Render Utama: Kalendar & Tab Minggu.
  */
 window.renderCalendar = async function() {
     const container = document.getElementById('calendarBody');
     const monthLabel = document.getElementById('monthDisplay');
-    if (!container) return;
+    const tabsContainer = document.getElementById('weekTabsContainer');
+    
+    if (!container || !monthLabel || !tabsContainer) return;
 
-    // Papar Loading State
-    container.innerHTML = `<div class="col-span-7 py-20 text-center text-slate-300 italic text-sm animate-pulse flex items-center justify-center h-full">Menyemak ketersediaan slot...</div>`;
+    container.innerHTML = `<div class="py-20 text-center text-slate-300 italic text-sm animate-pulse">Menyusun jadual mingguan...</div>`;
     monthLabel.innerText = `${MALAY_MONTHS[currentMonth]} ${currentYear}`.toUpperCase();
 
     try {
-        // Ambil Data dari Database
         const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(currentYear, currentMonth);
-
-        container.innerHTML = ""; // Bersihkan grid
-
-        // Kira hari pertama dan jumlah hari
-        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        
-        // Tarikh rujukan untuk "Hari Ini" (Tanpa masa)
+        const pad = (n) => n.toString().padStart(2, '0');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Helper: Format nombor 2 digit
-        const pad = (n) => n.toString().padStart(2, '0');
-
-        // 1. Padding hari bulan sebelumnya
-        for (let i = 0; i < firstDay; i++) {
-            const padDiv = document.createElement('div');
-            padDiv.className = 'tile-base tile-other';
-            container.appendChild(padDiv);
+        // 1. Render Tab Minggu (M1-M5)
+        const totalWeeks = Math.ceil(daysInMonth / 7);
+        let tabsHtml = '';
+        for (let w = 1; w <= totalWeeks; w++) {
+            const isActive = activeWeek === w;
+            tabsHtml += `
+                <button onclick="switchWeek(${w})" 
+                        class="week-tab ${isActive ? 'week-tab-active' : 'week-tab-inactive'}">
+                    M${w}
+                </button>`;
         }
+        tabsContainer.innerHTML = tabsHtml;
 
-        // 2. Jana Jubin Tarikh
-        for (let d = 1; d <= daysInMonth; d++) {
-            // Bina string tarikh manual: YYYY-MM-DD
+        // 2. Tentukan julat hari untuk minggu aktif
+        const startDay = (activeWeek - 1) * 7 + 1;
+        const endDay = Math.min(activeWeek * 7, daysInMonth);
+
+        container.innerHTML = ""; // Bersihkan body
+
+        // 3. Render Baris Hari
+        for (let d = startDay; d <= endDay; d++) {
             const dateString = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
-            
-            // Guna objek Date untuk semak hari minggu dan perbandingan masa
-            // Penting: Guna format YYYY, MM (0-index), DD dalam constructor untuk elak UTC shift
-            const dateObj = new Date(currentYear, currentMonth, d); 
+            const dateObj = new Date(currentYear, currentMonth, d);
             const dayOfWeek = dateObj.getDay();
-            
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
             
-            // Peraturan: Tempahan minima 3 hari ke hadapan
-            // Kita bandingkan timestamp
             const minNoticeDate = new Date();
             minNoticeDate.setDate(today.getDate() + 3);
             minNoticeDate.setHours(0, 0, 0, 0);
-            
-            // Bandingkan tarikh kalendar dengan tarikh notis
-            // Set masa dateObj ke 00:00:00 untuk perbandingan adil
             dateObj.setHours(0, 0, 0, 0);
             const isPastOrTooSoon = dateObj < minNoticeDate;
 
-            let status = 'closed';
-            let availableSlots = [];
+            let status = 'open';
+            let availableSlots = ['Pagi', 'Petang'];
 
             if (isPastOrTooSoon || !isAllowedDay) {
                 status = 'closed';
@@ -174,76 +154,71 @@ window.renderCalendar = async function() {
                 status = 'booked';
             } else if (slotsTaken.length === 1) {
                 status = 'partial';
-                // Cari slot yang BELUM diambil
-                if (!slotsTaken.includes('Pagi')) availableSlots.push('Pagi');
-                if (!slotsTaken.includes('Petang')) availableSlots.push('Petang');
-            } else {
-                status = 'open';
-                availableSlots = ['Pagi', 'Petang'];
+                availableSlots = ['Pagi', 'Petang'].filter(s => !slotsTaken.includes(s));
             }
 
             const isSelected = (dateString === selectedDateString);
-            const tile = document.createElement('div');
+            const row = document.createElement('div');
+            row.className = `day-row row-${status} ${isSelected ? 'row-active' : ''} animate-fade-up`;
             
-            // Gabungan class mengikut status dan pemilihan
-            tile.className = `tile-base tile-${status} ${isSelected ? 'active-selection' : ''}`;
-            
-            let html = `<span class="date-num text-xs font-bold ${status === 'locked' ? 'text-white' : 'text-slate-600'}">${d}</span>`;
-            
-            if (status === 'locked') {
-                html += `<div class="text-[9px] font-black uppercase text-purple-100 mt-1 wrap-safe leading-tight bg-black/10 p-1.5 rounded w-full flex-grow flex items-center justify-center text-center">${lockedDetails[dateString]}</div>`;
+            // Generate Slot UI
+            let slotUI = '';
+            if (status === 'closed') {
+                slotUI = `<span class="text-[10px] font-bold text-slate-300 uppercase italic">Tutup / Tiada Bimbingan</span>`;
+            } else if (status === 'locked') {
+                slotUI = `<div class="bg-purple-100 text-purple-700 px-4 py-2 rounded-xl text-xs font-black uppercase shadow-sm border border-purple-200">${lockedDetails[dateString]}</div>`;
             } else if (status === 'booked') {
-                html += `<div class="mt-auto w-full"><div class="text-[9px] font-black text-red-500 bg-red-50 px-1 py-0.5 rounded text-center uppercase tracking-tighter border border-red-100">PENUH</div></div>`;
-            } else if (status === 'partial') {
-                // Tunjuk slot yang MASIH ADA
-                const label = availableSlots[0]; 
-                const colorClass = label === 'Pagi' ? 'slot-pagi' : 'slot-petang';
-                html += `<div class="mt-auto w-full space-y-1">
-                            <div class="slot-pill ${colorClass}">${label.toUpperCase()}</div>
-                         </div>`;
-            } else if (status === 'open') {
-                // Jangan tunjuk teks 'Pagi/Petang' untuk elak serabut, cuma indicator
-                // Tunjuk bila hover atau selected? Tidak, biar bersih.
-                // Kita guna warna border/shadow untuk indicate 'Available'
-                html += `<div class="mt-auto w-full flex justify-center gap-1 opacity-40">
-                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
-                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
-                         </div>`;
+                slotUI = `<div class="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-xs font-black uppercase border border-red-100">Slot Telah Penuh</div>`;
+            } else {
+                slotUI = `<div class="flex gap-2">
+                    ${availableSlots.map(s => `<span class="slot-pill ${s === 'Pagi' ? 'slot-pagi' : 'slot-petang'}">${s}</span>`).join('')}
+                    <span class="text-[10px] font-bold text-brand-600 ml-2">Sedia Ditempah</span>
+                </div>`;
             }
 
-            tile.innerHTML = html;
+            row.innerHTML = `
+                <div class="day-label">
+                    <span class="text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-white' : 'text-slate-400'}">${DAY_NAMES[dayOfWeek]}</span>
+                    <span class="text-xl font-black ${isSelected ? 'text-white' : 'text-slate-800'}">${d}</span>
+                </div>
+                <div class="slot-container">
+                    ${slotUI}
+                </div>
+                <div class="hidden md:flex items-center px-6">
+                    <i class="fas fa-chevron-right ${isSelected ? 'text-white' : 'text-slate-200'}"></i>
+                </div>
+            `;
 
-            // Logik Klik (Hanya untuk slot yang masih ada kekosongan)
             if (status === 'open' || status === 'partial') {
-                tile.onclick = () => handleTileSelection(dateString, availableSlots, tile);
+                row.onclick = () => handleRowSelection(dateString, availableSlots, row);
             }
 
-            container.appendChild(tile);
+            container.appendChild(row);
         }
 
     } catch (err) {
         console.error("[Booking] Error:", err);
-        container.innerHTML = `<div class="col-span-7 py-20 text-center text-red-500 font-bold bg-red-50 rounded-2xl flex items-center justify-center h-full">Ralat memuatkan data kalendar.</div>`;
+        container.innerHTML = `<div class="py-20 text-center text-red-500 font-bold bg-red-50 rounded-2xl border-2 border-red-100">Ralat pangkalan data jadual.</div>`;
     }
 };
 
 /**
- * Menguruskan pemilihan tarikh dan kemaskini UI borang.
+ * Handle pemilihan baris hari.
  */
-function handleTileSelection(dateStr, availableSlots, element) {
+function handleRowSelection(dateStr, availableSlots, element) {
     selectedDateString = dateStr;
 
-    // 1. Visual Feedback: Reset dan set Highlight
-    document.querySelectorAll('.tile-base').forEach(t => t.classList.remove('active-selection'));
-    element.classList.add('active-selection');
+    // UI Highlights
+    document.querySelectorAll('.day-row').forEach(r => r.classList.remove('row-active'));
+    element.classList.add('row-active');
 
-    // 2. Kemaskini Input Paparan (Format UPPERCASE)
+    // Update Form Inputs
     const dateObj = new Date(dateStr);
     const dateReadable = dateObj.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     document.getElementById('displayDate').value = dateReadable.toUpperCase();
     document.getElementById('rawDate').value = dateStr;
 
-    // 3. Papar Pilihan Slot Masa
+    // Slot Selection Controller
     const wrapper = document.getElementById('slotWrapper');
     wrapper.classList.remove('hidden');
 
@@ -252,34 +227,27 @@ function handleTileSelection(dateStr, availableSlots, element) {
     const labelPagi = document.getElementById('labelPagi');
     const labelPetang = document.getElementById('labelPetang');
 
-    // Reset State
-    radioPagi.disabled = true;
-    radioPetang.disabled = true;
-    labelPagi.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
-    labelPetang.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
-    radioPagi.checked = false;
-    radioPetang.checked = false;
+    // Reset Slots
+    radioPagi.disabled = true; radioPetang.disabled = true;
+    labelPagi.classList.add('opacity-30', 'pointer-events-none', 'grayscale');
+    labelPetang.classList.add('opacity-30', 'pointer-events-none', 'grayscale');
+    radioPagi.checked = false; radioPetang.checked = false;
 
-    // Enable Available Slots
     if (availableSlots.includes('Pagi')) {
         radioPagi.disabled = false;
-        labelPagi.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+        labelPagi.classList.remove('opacity-30', 'pointer-events-none', 'grayscale');
     }
     if (availableSlots.includes('Petang')) {
         radioPetang.disabled = false;
-        labelPetang.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+        labelPetang.classList.remove('opacity-30', 'pointer-events-none', 'grayscale');
     }
     
-    // Auto-check jika hanya satu slot tersedia
     if (availableSlots.length === 1) {
         if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
         else radioPetang.checked = true;
     }
 
-    // 4. Semak validiti borang
     checkFormValidity();
-    
-    // Listener untuk radio button change
     document.querySelectorAll('input[name="inputMasa"]').forEach(r => {
         r.addEventListener('change', checkFormValidity);
     });
@@ -292,28 +260,35 @@ function checkFormValidity() {
 }
 
 /**
- * Navigasi Bulan (Sebelum/Seterusnya).
+ * Tukar Minggu Aktif.
  */
-window.changeMonth = function(offset) {
-    currentMonth += offset;
-    if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-    } else if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-    }
-    // Pemilihan dibatalkan jika tukar bulan
-    selectedDateString = null; 
+window.switchWeek = function(w) {
+    activeWeek = w;
+    selectedDateString = null;
     document.getElementById('btnSubmit').disabled = true;
     document.getElementById('slotWrapper').classList.add('hidden');
     document.getElementById('displayDate').value = "";
-    
     renderCalendar();
 };
 
 /**
- * Pengendali Penghantaran Borang ke Database.
+ * Navigasi Bulan.
+ */
+window.changeMonth = function(offset) {
+    currentMonth += offset;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    
+    activeWeek = 1;
+    selectedDateString = null;
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('slotWrapper').classList.add('hidden');
+    document.getElementById('displayDate').value = "";
+    renderCalendar();
+};
+
+/**
+ * Penghantaran Tempahan.
  */
 window.handleBookingSubmit = async function() {
     const date = document.getElementById('rawDate').value;
@@ -324,13 +299,7 @@ window.handleBookingSubmit = async function() {
     const btn = document.getElementById('btnSubmit');
 
     if (!date || !tajukBengkel || !masaInp || !picName || !picPhone) {
-        return Swal.fire({
-            icon: "warning",
-            title: "Maklumat Tidak Lengkap",
-            text: "Sila pastikan tarikh, tajuk bimbingan, slot masa dan butiran PIC diisi.",
-            confirmButtonColor: '#3b82f6',
-            customClass: { popup: 'rounded-[2rem]' }
-        });
+        return Swal.fire({ icon: "warning", title: "Data Tidak Lengkap", text: "Sila lengkapkan semua maklumat tempahan." });
     }
 
     const payload = {
@@ -343,47 +312,38 @@ window.handleBookingSubmit = async function() {
         nama_sekolah: schoolInfo.nama.toUpperCase()
     };
 
-    // UI Feedback
     document.getElementById('loadingOverlay').classList.remove('hidden');
     btn.disabled = true;
 
     try {
         const result = await BookingService.createBooking(payload);
-        
         document.getElementById('loadingOverlay').classList.add('hidden');
         
         await Swal.fire({
             icon: 'success',
-            title: 'Permohonan Diterima!',
+            title: 'Tempahan Berjaya!',
             html: `<div class="p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-2">
-                    <p class="text-xs text-blue-400 font-bold uppercase tracking-widest">ID Tempahan Anda:</p>
+                    <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">ID Tempahan:</p>
                     <p class="text-lg font-black text-brand-600 font-mono">${result.bookingId}</p>
-                   </div>
-                   <p class="text-sm text-slate-500 wrap-safe">Sila tunggu maklum balas daripada Pegawai USTP untuk pengesahan slot bimbingan ini.</p>`,
-            confirmButtonColor: '#2563eb',
-            customClass: { popup: 'rounded-[2rem]' }
+                   </div>`,
+            confirmButtonColor: '#2563eb'
         });
 
-        // Reset Borang & Refresh
         document.getElementById('bookingForm').reset();
         document.getElementById('slotWrapper').classList.add('hidden');
         document.getElementById('displayDate').value = "";
         btn.disabled = true;
         selectedDateString = null;
         
-        // Refresh Kalendar & Sejarah
         renderCalendar();
         loadBookingHistory(schoolInfo.kod);
-
     } catch (err) {
         document.getElementById('loadingOverlay').classList.add('hidden');
         btn.disabled = false;
-        Swal.fire({
-            icon: "error",
-            title: "Gagal Menghantar",
-            text: err.message || "Ralat sistem pangkalan data.",
-            confirmButtonColor: '#ef4444',
-            customClass: { popup: 'rounded-[2rem]' }
-        });
+        Swal.fire({ icon: "error", title: "Gagal", text: err.message });
     }
 };
+
+SEMUA FAIL TELAH DISIAPKAN. PROJEK SELESAI.
+
+Sistem kini menggunakan paparan mingguan (Weekly View) yang lebih mesra peranti mudah alih. Ruang lebar untuk nama bengkel dikekalkan dan navigasi antara minggu (M1-M5) membolehkan pengguna fokus kepada julat tarikh yang lebih spesifik.

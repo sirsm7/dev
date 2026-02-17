@@ -1,11 +1,9 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.4 AUTO-WEEK)
- * Fungsi: Menguruskan sistem tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V3.4 ---
- * 1. UX Upgrade: Penentuan Minggu Aktif secara automatik (Auto-detect Current Week).
- * 2. Navigation Fix: Reset minggu kepada 1 hanya jika berpindah ke bulan lain, 
- * kecuali jika kembali ke bulan semasa.
- * 3. Strict Interaction: Hari Ahad(0) & Isnin(1) dinyahaktifkan sepenuhnya.
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.5 SATURDAY LOGIC)
+ * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
+ * --- UPDATE V3.5 ---
+ * 1. Business Logic: Sabtu dikira PENUH (FULL) jika 1 slot diambil.
+ * 2. Visual: Menghapuskan status 'PARTIAL' untuk hari Sabtu.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -188,6 +186,9 @@ window.renderAdminBookingCalendar = async function() {
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
             
+            // Tentukan Kapasiti Maksimum (Sabtu = 1, Lain = 2)
+            const maxCapacity = (dayOfWeek === 6) ? 1 : 2;
+
             // PRIORITI 1: Bukan Hari Dibenarkan (Ahad/Isnin/Jumaat)
             if (!isAllowedDay) {
                 status = 'closed';
@@ -206,13 +207,13 @@ window.renderAdminBookingCalendar = async function() {
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
             } 
-            // PRIORITI 4: Penuh (2 Slot)
-            else if (slotsTaken.length >= 2) {
+            // PRIORITI 4: Penuh (Ikut Kapasiti Hari)
+            else if (slotsTaken.length >= maxCapacity) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
             } 
-            // PRIORITI 5: Berbaki 1 Slot
+            // PRIORITI 5: Berbaki 1 Slot (Hanya untuk hari bukan Sabtu)
             else if (slotsTaken.length === 1) {
                 status = 'partial';
                 statusText = '1 SLOT BAKI';

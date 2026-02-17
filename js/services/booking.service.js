@@ -68,6 +68,13 @@ export const BookingService = {
             throw new Error("Tempahan hanya dibenarkan pada hari Selasa, Rabu, Khamis dan Sabtu sahaja.");
         }
 
+        // --- NEW LOGIC: SEKATAN SABTU PETANG ---
+        // Jika hari Sabtu (6) dan masa Petang, tolak permintaan.
+        if (day === 6 && masa === 'Petang') {
+            throw new Error("Maaf, sesi bimbingan hari Sabtu hanya dibuka untuk slot Pagi sahaja.");
+        }
+        // ----------------------------------------
+
         // Semak Kunci
         const { data: isLocked } = await db
             .from('smpid_bb_kunci')

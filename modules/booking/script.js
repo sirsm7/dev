@@ -1,10 +1,9 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.6 (AUTO-WEEK EDITION)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.7 (SATURDAY LOGIC UPDATE)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * --- UPDATE V3.6 ---
- * 1. UX Upgrade: Penentuan Minggu Aktif secara automatik (Auto-detect Current Week).
- * 2. Navigation Fix: Reset minggu kepada minggu hari ini jika kembali ke bulan semasa.
- * 3. Text Integrity: Integriti wrapping teks penuh (wrap-safe).
+ * --- UPDATE V3.7 ---
+ * 1. Business Logic: Sabtu hanya benarkan slot PAGI. Slot PETANG dibuang secara automatik.
+ * 2. Visual Logic: Kad Sabtu akan terus jadi 'PENUH' (Merah) jika Pagi diambil.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -197,7 +196,21 @@ window.renderCalendar = async function() {
             let statusIcon = 'fa-check-circle';
             let availableSlots = ['Pagi', 'Petang'];
 
-            // Status Logic determination
+            // --- LOGIK KHAS HARI SABTU ---
+            // Jika Sabtu (6), buang slot Petang dari senarai
+            if (dayOfWeek === 6) {
+                availableSlots = ['Pagi']; 
+                // Jika slot Pagi sudah diambil, availableSlots akan jadi kosong selepas filter di bawah
+            }
+            // -----------------------------
+
+            // Tapis slot yang sudah ditempah
+            availableSlots = availableSlots.filter(s => !slotsTaken.includes(s));
+
+            // Tentukan Status Visual Berdasarkan Baki Slot
+            const remainingCapacity = availableSlots.length;
+            const maxCapacity = (dayOfWeek === 6) ? 1 : 2; // Sabtu max 1, lain-lain max 2
+
             if (isPast) {
                 status = 'closed';
                 statusText = 'LEPAS';
@@ -214,15 +227,19 @@ window.renderCalendar = async function() {
                 status = 'locked';
                 statusText = 'DIKUNCI'; 
                 statusIcon = 'fa-lock';
-            } else if (slotsTaken.length >= 2) {
+            } else if (remainingCapacity === 0) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
-            } else if (slotsTaken.length === 1) {
+            } else if (remainingCapacity < maxCapacity) {
                 status = 'partial';
-                statusText = '1 SLOT BAKI';
+                statusText = 'TERHAD'; // Baki 1 slot (Sama ada Pagi/Petang)
                 statusIcon = 'fa-exclamation-circle';
-                availableSlots = ['Pagi', 'Petang'].filter(s => !slotsTaken.includes(s));
+            } else {
+                // Kekal 'open' jika semua slot available
+                status = 'open';
+                statusText = 'KOSONG';
+                statusIcon = 'fa-check-circle';
             }
 
             const isSelected = (dateString === selectedDateString);
@@ -299,11 +316,13 @@ function handleCardSelection(dateStr, availableSlots, element) {
     const labelPagi = document.getElementById('labelPagi');
     const labelPetang = document.getElementById('labelPetang');
 
+    // Reset State
     radioPagi.disabled = true; radioPetang.disabled = true;
     labelPagi.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
     labelPetang.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
     radioPagi.checked = false; radioPetang.checked = false;
 
+    // Enable based on availability
     if (availableSlots.includes('Pagi')) {
         radioPagi.disabled = false;
         labelPagi.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
@@ -313,7 +332,7 @@ function handleCardSelection(dateStr, availableSlots, element) {
         labelPetang.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
     
-    // Auto-select if single slot remains
+    // Auto-select logic
     if (availableSlots.length === 1) {
         if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
         else radioPetang.checked = true;

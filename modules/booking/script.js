@@ -1,7 +1,10 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.4 (CLEAN & WRAP EDITION)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.5 (FULL INTEGRITY REPRINT)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * Target HTML: modules/booking/index.html
+ * Kemaskini: 
+ * 1. Pembaikan visual "Rekod Saya" (Badge tidak terputus).
+ * 2. Pembuangan teks "PILIH" pada kad harian.
+ * 3. Integriti wrapping teks penuh (wrap-safe).
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -16,7 +19,7 @@ let activeWeek = 1;
 let selectedDateString = null; 
 let schoolInfo = { kod: '', nama: '' };
 
-// Konfigurasi Hari: 0=Ahad, 1=Isnin, 2=Selasa, 3=Rabu, 4=Khamis, 5=Jumaat, 6=Sabtu
+// Day Configuration: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
 const ALLOWED_DAYS = [2, 3, 4, 6]; 
 const MALAY_MONTHS = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
 const DAY_NAMES = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
@@ -26,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Inisialisasi profil sekolah dan komponen UI.
+ * Initialize school profile and UI components.
  */
 async function initBookingPortal() {
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
@@ -39,7 +42,7 @@ async function initBookingPortal() {
             schoolInfo.nama = data.nama_sekolah;
             document.getElementById('displayKod').innerText = schoolInfo.kod;
             
-            // Integriti Teks: Nama sekolah dalam badge di-set sebagai wrap-safe
+            // Text Integrity: Apply wrap-safe to school name badge
             const dispNama = document.getElementById('displayNama');
             if (dispNama) {
                 dispNama.innerText = schoolInfo.nama.toUpperCase();
@@ -49,29 +52,30 @@ async function initBookingPortal() {
             loadBookingHistory(schoolInfo.kod);
         }
     } catch (e) {
-        console.error("[Booking] Gagal muat info sekolah:", e);
+        console.error("[Booking] Failed to load school info:", e);
     }
 
+    // Populate dropdowns using centralized config
     populateDropdown('tajukBengkel', 'BENGKEL');
     renderCalendar();
 }
 
 /**
- * Memuatkan sejarah tempahan sekolah semasa.
+ * Load booking history for the current school with Premium UI.
  */
 async function loadBookingHistory(kod) {
     const tbody = document.getElementById('historyTableBody');
     const countBadge = document.getElementById('historyCount');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 text-xs animate-pulse">Memuatkan rekod...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="p-12 text-center text-slate-400 text-xs animate-pulse">Memproses rekod bimbingan...</td></tr>`;
 
     try {
         const data = await BookingService.getSchoolBookings(kod);
         if (countBadge) countBadge.innerText = `${data.length} Permohonan`;
 
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 italic">Tiada rekod ditemui.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="p-12 text-center text-slate-400 italic bg-slate-50/50">Tiada rekod tempahan ditemui untuk sekolah ini.</td></tr>`;
             return;
         }
 
@@ -79,31 +83,48 @@ async function loadBookingHistory(kod) {
             const dateObj = new Date(item.tarikh);
             const dateStr = dateObj.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
             
-            let statusBadge = `<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-black border border-emerald-200">AKTIF</span>`;
+            // Session Visual Logic
+            const isPagi = item.masa === 'Pagi';
+            const sessionIcon = isPagi ? 'fa-sun text-amber-500' : 'fa-moon text-indigo-400';
+            const sessionBg = isPagi ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100';
+
+            // FIX BADGE: Use min-w-max and consistent padding to prevent "AKTI F" truncation
+            let statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-600 border-emerald-200 min-w-[80px] justify-center shadow-sm">AKTIF</span>`;
             if (item.status !== 'AKTIF') {
-                statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-black border border-red-200">BATAL</span>`;
+                statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black border bg-red-50 text-red-600 border-red-200 min-w-[80px] justify-center shadow-sm">BATAL</span>`;
             }
 
             return `
-                <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 group">
-                    <td class="px-6 py-4">
-                        <div class="font-mono font-bold text-slate-600">${dateStr}</div>
-                        <div class="text-[9px] font-black text-brand-500 uppercase mt-0.5">${item.masa}</div>
+                <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
+                    <td class="px-6 py-5 align-top">
+                        <div class="flex flex-col gap-1.5">
+                            <div class="font-mono font-black text-slate-800 text-xs tracking-tighter uppercase">${dateStr}</div>
+                            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[9px] font-black w-fit ${sessionBg} transition-transform group-hover:scale-105">
+                                <i class="fas ${sessionIcon}"></i> ${item.masa.toUpperCase()}
+                            </div>
+                        </div>
                     </td>
-                    <td class="px-6 py-4">
-                        <div class="text-xs font-bold text-slate-700 uppercase leading-tight wrap-safe" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
+                    <td class="px-6 py-5 align-top">
+                        <div class="flex flex-col gap-1">
+                            <div class="text-xs font-bold text-slate-700 uppercase leading-relaxed wrap-safe max-w-sm group-hover:text-brand-600 transition-colors" title="${item.tajuk_bengkel}">
+                                ${item.tajuk_bengkel}
+                            </div>
+                            <div class="text-[9px] text-slate-400 font-mono font-bold">REF: ${item.id_tempahan || '-'}</div>
+                        </div>
                     </td>
-                    <td class="px-6 py-4 text-center">${statusBadge}</td>
+                    <td class="px-6 py-5 text-center align-top">
+                        ${statusBadge}
+                    </td>
                 </tr>`;
         }).join('');
     } catch (e) {
         console.error("[BookingHistory] Error:", e);
-        tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-400 font-bold">Ralat memuatkan sejarah.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" class="p-12 text-center text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl">Gagal memproses data sejarah dari pelayan.</td></tr>`;
     }
 }
 
 /**
- * Render Utama: Kalendar Berasaskan Kad.
+ * Main Render: Grid-based Calendar Cards.
  */
 window.renderCalendar = async function() {
     const container = document.getElementById('calendarBody');
@@ -112,7 +133,7 @@ window.renderCalendar = async function() {
     
     if (!container || !monthLabel || !tabsContainer) return;
 
-    // Loading State UI
+    // Loading UI
     container.innerHTML = `
         <div class="col-span-full py-20 text-center flex flex-col items-center justify-center">
             <i class="fas fa-circle-notch fa-spin text-slate-300 text-3xl mb-4"></i>
@@ -124,13 +145,12 @@ window.renderCalendar = async function() {
     try {
         const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(currentYear, currentMonth);
         
-        // Kira hari dalam bulan
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const pad = (n) => n.toString().padStart(2, '0');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // 1. Render Tab Minggu (Navigasi M1-M5)
+        // Render Week Tabs (M1-M5)
         const totalWeeks = Math.ceil(daysInMonth / 7);
         if (activeWeek > totalWeeks) activeWeek = 1;
 
@@ -145,13 +165,10 @@ window.renderCalendar = async function() {
         }
         tabsContainer.innerHTML = tabsHtml;
 
-        // 2. Tentukan Julat Hari untuk Minggu Aktif
         const startDay = (activeWeek - 1) * 7 + 1;
         const endDay = Math.min(activeWeek * 7, daysInMonth);
 
         container.innerHTML = ""; 
-
-        // 3. Render Kad Hari
         let hasContent = false;
 
         for (let d = startDay; d <= endDay; d++) {
@@ -160,13 +177,11 @@ window.renderCalendar = async function() {
             dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay();
-            
-            // Logik Status & Tapisan
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
             
-            // Polisi: Tempahan mesti dibuat 3 hari sebelum
+            // Notice Period Policy: 3 days before
             const minNoticeDate = new Date();
             minNoticeDate.setDate(today.getDate() + 3);
             minNoticeDate.setHours(0, 0, 0, 0);
@@ -179,7 +194,7 @@ window.renderCalendar = async function() {
             let statusIcon = 'fa-check-circle';
             let availableSlots = ['Pagi', 'Petang'];
 
-            // Logik Penentuan Status Visual
+            // Status Logic determination
             if (isPast) {
                 status = 'closed';
                 statusText = 'LEPAS';
@@ -208,12 +223,9 @@ window.renderCalendar = async function() {
             }
 
             const isSelected = (dateString === selectedDateString);
-            
-            // Bina Kad HTML
             const card = document.createElement('div');
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''} animate-fade-in group`;
             
-            // Tentukan warna ikon dan teks - brand-500 digunakan bagi menggantikan 400
             let statusColorClass = 'text-brand-600 bg-brand-50 border-brand-200';
             if (status === 'full') statusColorClass = 'text-red-500 bg-red-50 border-red-200';
             if (status === 'locked') statusColorClass = 'text-purple-600 bg-purple-50 border-purple-200';
@@ -222,7 +234,7 @@ window.renderCalendar = async function() {
 
             const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase wrap-safe leading-tight">${lockedDetails[dateString]}</div>` : '';
 
-            // PERUBAHAN: Teks "PILIH" telah dibuang sepenuhnya.
+            // VISUAL CLEANUP: "PILIH" text removed as requested.
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -242,7 +254,7 @@ window.renderCalendar = async function() {
                 </div>
             `;
 
-            // Hanya benarkan klik jika status OPEN atau PARTIAL (bukan tarikh lepas/tutup)
+            // Only allow interaction for active states
             if (status === 'open' || status === 'partial') {
                 card.onclick = () => handleCardSelection(dateString, availableSlots, card);
             }
@@ -262,16 +274,13 @@ window.renderCalendar = async function() {
 };
 
 /**
- * Pengurusan Pemilihan Kad.
+ * Handle Card Selection UI and state.
  */
 function handleCardSelection(dateStr, availableSlots, element) {
     selectedDateString = dateStr;
-
-    // Reset visual selection
     document.querySelectorAll('.day-card').forEach(r => r.classList.remove('card-active'));
     element.classList.add('card-active');
 
-    // Update Form UI
     const dateObj = new Date(dateStr);
     const dateReadable = dateObj.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
@@ -281,24 +290,18 @@ function handleCardSelection(dateStr, availableSlots, element) {
     displayInput.classList.add('bg-white', 'text-slate-800', 'border-brand-500');
     
     document.getElementById('rawDate').value = dateStr;
+    document.getElementById('slotWrapper').classList.remove('hidden');
 
-    // Show Slot Wrapper
-    const wrapper = document.getElementById('slotWrapper');
-    wrapper.classList.remove('hidden');
-
-    // Configure Slot Radio Buttons
     const radioPagi = document.querySelector('input[name="inputMasa"][value="Pagi"]');
     const radioPetang = document.querySelector('input[name="inputMasa"][value="Petang"]');
     const labelPagi = document.getElementById('labelPagi');
     const labelPetang = document.getElementById('labelPetang');
 
-    // Reset State
     radioPagi.disabled = true; radioPetang.disabled = true;
     labelPagi.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
     labelPetang.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
     radioPagi.checked = false; radioPetang.checked = false;
 
-    // Enable Available Slots
     if (availableSlots.includes('Pagi')) {
         radioPagi.disabled = false;
         labelPagi.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
@@ -308,20 +311,21 @@ function handleCardSelection(dateStr, availableSlots, element) {
         labelPetang.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
     
-    // Auto-select if only one slot remains
+    // Auto-select if single slot remains
     if (availableSlots.length === 1) {
         if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
         else radioPetang.checked = true;
     }
 
     checkFormValidity();
-    
-    // Listen for slot changes
     document.querySelectorAll('input[name="inputMasa"]').forEach(r => {
         r.addEventListener('change', checkFormValidity);
     });
 }
 
+/**
+ * Validates form state to enable submit button.
+ */
 function checkFormValidity() {
     const date = document.getElementById('rawDate').value;
     const masa = document.querySelector('input[name="inputMasa"]:checked');
@@ -337,7 +341,7 @@ function checkFormValidity() {
 }
 
 /**
- * Navigasi Minggu & Bulan.
+ * Week & Month Navigation.
  */
 window.switchWeek = function(w) {
     activeWeek = w;
@@ -355,6 +359,9 @@ window.changeMonth = function(offset) {
     renderCalendar();
 };
 
+/**
+ * Resets form selection and UI state.
+ */
 function resetSelection() {
     selectedDateString = null;
     document.getElementById('btnSubmit').disabled = true;
@@ -368,7 +375,7 @@ function resetSelection() {
 }
 
 /**
- * Penghantaran Borang.
+ * Form submission logic with SweetAlert2.
  */
 window.handleBookingSubmit = async function() {
     const date = document.getElementById('rawDate').value;
@@ -379,7 +386,6 @@ window.handleBookingSubmit = async function() {
     const btn = document.getElementById('btnSubmit');
 
     if (!date || !tajukBengkel || !masaInp || !picName || !picPhone) {
-        // Peringatan: Swal.fire hanya berfungsi jika CDN SweetAlert2 ada dalam HTML
         return Swal.fire({ icon: "warning", title: "Tidak Lengkap", text: "Sila isi semua maklumat bertanda." });
     }
 
@@ -407,7 +413,7 @@ window.handleBookingSubmit = async function() {
             confirmButtonColor: '#2563eb'
         });
 
-        // Reset UI
+        // Reset UI Form
         document.getElementById('bookingForm').reset();
         resetSelection();
         
@@ -422,7 +428,7 @@ window.handleBookingSubmit = async function() {
     }
 };
 
-// Global Exposure for HTML Event Handlers
+// Global Exports for HTML Click Handlers
 window.changeMonth = changeMonth;
 window.switchWeek = switchWeek;
 window.handleBookingSubmit = handleBookingSubmit;

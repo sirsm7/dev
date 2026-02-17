@@ -1,11 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.1 SURGICAL)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.2 SURGICAL)
  * Fungsi: Menguruskan sistem tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V3.1 ---
- * 1. UI Integrity: Memberikan border tegas pada kad dan tab navigasi.
- * 2. Logic Fix: Hari Ahad (0) dipaksa menjadi 'TIADA SESI' (Status Closed).
- * 3. Text Safety: Mengaktifkan wrap-safe pada senarai tempahan aktif.
- * 4. Cleanup: Membuang teks "PILIH" pada paparan hari admin.
+ * --- UPDATE V3.2 ---
+ * 1. Logic Integrity: Hari Ahad(0) & Isnin(1) akan sentiasa memaparkan 'TIADA SESI'.
+ * 2. Visual Priority: 'TIADA SESI' mempunyai keutamaan lebih tinggi berbanding 'LEPAS' untuk hari Ahad.
+ * 3. Bug Fix: Membersihkan visual daripada redundansi teks.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -126,7 +125,7 @@ window.switchAdminWeek = function(weekNum) {
 };
 
 /**
- * Membina Grid Kalendar (Admin Side) - FIXED DATE LOGIC
+ * Membina Grid Kalendar (Admin Side) - STRATEGI VISUAL BARU
  */
 window.renderAdminBookingCalendar = async function() {
     const grid = document.getElementById('adminCalendarGrid');
@@ -174,7 +173,7 @@ window.renderAdminBookingCalendar = async function() {
 
             const dayOfWeek = dateObj.getDay(); 
             
-            // INTEGRITI TARIKH: Ahad(0) & Isnin(1) mestilah TIADA SESI
+            // LOGIK INTEGRITI: Hari Ahad(0) & Isnin(1) adalah TIADA SESI secara mutlak
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
@@ -184,7 +183,12 @@ window.renderAdminBookingCalendar = async function() {
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
             
-            if (isPast) {
+            // PRIORITI: Jika bukan hari dibenarkan, abaikan status lain
+            if (!isAllowedDay) {
+                status = 'closed';
+                statusText = 'TIADA SESI';
+                statusIcon = 'fa-ban';
+            } else if (isPast) {
                 status = 'closed';
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
@@ -192,10 +196,6 @@ window.renderAdminBookingCalendar = async function() {
                 status = 'locked';
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
-            } else if (!isAllowedDay) {
-                status = 'closed';
-                statusText = 'TIADA SESI';
-                statusIcon = 'fa-ban';
             } else if (slotsTaken.length >= 2) {
                 status = 'full';
                 statusText = 'PENUH';

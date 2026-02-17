@@ -42,32 +42,32 @@
 
         /* Jubin Kalendar Responsif */
         .tile-base {
-            @apply min-h-[90px] p-2 rounded-2xl border-2 transition-all duration-300 relative flex flex-col justify-between h-full w-full;
+            @apply min-h-[90px] p-2 rounded-2xl border-2 transition-all duration-300 relative flex flex-col justify-between h-full w-full select-none;
         }
 
         /* State Jubin */
         .tile-other { @apply bg-slate-50 border-transparent opacity-20 pointer-events-none; }
         .tile-closed { @apply bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed opacity-60; }
         
-        /* Interaktif */
+        /* Interaktif - Hover Effects yang Lebih Jelas */
         .tile-open { 
-            @apply bg-white border-slate-100 hover:border-brand-300 hover:shadow-lg cursor-pointer transform hover:-translate-y-1; 
+            @apply bg-white border-slate-100 cursor-pointer transform hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg hover:ring-2 hover:ring-brand-200 hover:ring-offset-1 hover:z-10; 
         }
         .tile-partial { 
-            @apply bg-amber-50/40 border-amber-100 hover:border-amber-400 hover:shadow-lg cursor-pointer transform hover:-translate-y-1; 
+            @apply bg-amber-50/40 border-amber-100 cursor-pointer transform hover:-translate-y-1 hover:border-amber-400 hover:shadow-lg hover:ring-2 hover:ring-amber-200 hover:ring-offset-1 hover:z-10; 
         }
         .tile-booked { 
-            @apply bg-red-50/50 border-red-100 cursor-not-allowed; 
+            @apply bg-red-50/50 border-red-100 cursor-not-allowed opacity-80; 
         }
         .tile-locked { 
             @apply bg-purple-600 border-purple-600 text-white cursor-not-allowed shadow-md; 
         }
 
-        /* Highlight Pilihan */
+        /* Highlight Pilihan (Active State) */
         .active-selection { 
-            @apply ring-4 ring-brand-500 ring-offset-2 z-10 !border-brand-500 !bg-white shadow-xl scale-[1.02]; 
+            @apply !border-brand-600 !bg-white shadow-xl scale-[1.05] ring-4 ring-brand-500/30 ring-offset-2 z-20; 
         }
-        .active-selection .date-num { @apply text-brand-600; }
+        .active-selection .date-num { @apply text-brand-700 underline decoration-2 underline-offset-4; }
 
         /* Slot Pills */
         .slot-pill { @apply text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter text-center w-full shadow-sm; }
@@ -110,9 +110,10 @@
     <main class="flex-grow container mx-auto px-4 py-8 max-w-6xl">
         <div class="flex flex-col lg:flex-row gap-8">
             
-            <!-- Left Column: Calendar -->
-            <div class="lg:w-2/3">
-                <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col h-full">
+            <!-- Left Column: Calendar & History -->
+            <div class="lg:w-2/3 flex flex-col gap-8">
+                <!-- KALENDAR -->
+                <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col">
                     <!-- Calendar Header -->
                     <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-slate-50/50 gap-4">
                         <div class="flex items-center gap-4">
@@ -131,7 +132,7 @@
                     </div>
 
                     <!-- Calendar Grid Area -->
-                    <div class="p-4 md:p-6 bg-white flex-grow">
+                    <div class="p-4 md:p-6 bg-white">
                         <!-- Days Header -->
                         <div class="grid grid-cols-7 gap-2 mb-2">
                             <div class="text-center text-[10px] font-black text-slate-300 uppercase py-2 tracking-widest">AHA</div>
@@ -144,16 +145,41 @@
                         </div>
                         
                         <!-- Days Tiles -->
-                        <div id="calendarBody" class="grid grid-cols-7 gap-2 auto-rows-fr">
+                        <div id="calendarBody" class="grid grid-cols-7 gap-2 auto-rows-fr min-h-[400px]">
                             <!-- JS Injection Here -->
                         </div>
                     </div>
 
                     <!-- Footer Info -->
-                    <div class="bg-blue-50 p-5 border-t border-blue-100 mt-auto">
+                    <div class="bg-blue-50 p-5 border-t border-blue-100">
                         <p class="text-[10px] font-bold text-blue-700 leading-relaxed wrap-safe">
                             <i class="fas fa-info-circle mr-1 text-blue-500 text-xs"></i> NOTA: Slot bimbingan hanya dibuka pada hari <strong>Selasa, Rabu, Khamis dan Sabtu</strong>. Permohonan perlu dibuat sekurang-kurangnya 3 hari sebelum tarikh acara.
                         </p>
+                    </div>
+                </div>
+
+                <!-- SEJARAH TEMPAHAN -->
+                <div id="historySection" class="bg-white rounded-[2rem] shadow-lg border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                            <i class="fas fa-history text-slate-400"></i> Sejarah Permohonan
+                        </h3>
+                        <span class="text-[10px] font-bold bg-white border border-slate-200 px-2 py-1 rounded text-slate-400" id="historyCount">0 REKOD</span>
+                    </div>
+                    <div class="overflow-x-auto max-h-[300px] custom-scrollbar">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-[10px] text-slate-400 uppercase bg-white border-b border-slate-100 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-6 py-3 font-black">Tarikh</th>
+                                    <th class="px-6 py-3 font-black">Slot</th>
+                                    <th class="px-6 py-3 font-black">Tajuk Bimbingan</th>
+                                    <th class="px-6 py-3 font-black text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-50">
+                                <tr><td colspan="4" class="p-8 text-center text-slate-400 italic text-xs">Memuatkan sejarah...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -170,7 +196,7 @@
                         <!-- Date Info -->
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tarikh Dipilih</label>
-                            <input type="text" id="displayDate" readonly class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 font-black text-brand-600 outline-none wrap-safe text-sm uppercase" placeholder="SILA PILIH TARIKH">
+                            <input type="text" id="displayDate" readonly class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 font-black text-brand-600 outline-none wrap-safe text-sm uppercase cursor-default" placeholder="SILA PILIH TARIKH">
                             <input type="hidden" id="rawDate">
                         </div>
 
@@ -189,13 +215,15 @@
                         <div id="slotWrapper" class="hidden animate-fade-up">
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Pilihan Slot Masa</label>
                             <div class="grid grid-cols-2 gap-3">
-                                <label id="labelPagi" class="cursor-pointer group">
+                                <label id="labelPagi" class="cursor-pointer group relative overflow-hidden rounded-xl border-2 border-slate-100 hover:border-blue-200 transition-all">
                                     <input type="radio" name="inputMasa" value="Pagi" class="peer hidden">
-                                    <div class="p-3 rounded-xl border-2 border-slate-100 text-center text-[10px] font-black text-slate-400 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-checked:shadow-lg transition-all uppercase group-hover:border-blue-200">PAGI</div>
+                                    <div class="p-3 text-center text-[10px] font-black text-slate-400 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 uppercase z-10 relative">PAGI</div>
+                                    <div class="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
                                 </label>
-                                <label id="labelPetang" class="cursor-pointer group">
+                                <label id="labelPetang" class="cursor-pointer group relative overflow-hidden rounded-xl border-2 border-slate-100 hover:border-orange-200 transition-all">
                                     <input type="radio" name="inputMasa" value="Petang" class="peer hidden">
-                                    <div class="p-3 rounded-xl border-2 border-slate-100 text-center text-[10px] font-black text-slate-400 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 peer-checked:shadow-lg transition-all uppercase group-hover:border-orange-200">PETANG</div>
+                                    <div class="p-3 text-center text-[10px] font-black text-slate-400 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 uppercase z-10 relative">PETANG</div>
+                                    <div class="absolute inset-0 bg-orange-50 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
                                 </label>
                             </div>
                         </div>

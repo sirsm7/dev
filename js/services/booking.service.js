@@ -16,16 +16,24 @@ export const BookingService = {
      * @param {number} month (0-11)
      */
     async getMonthlyData(year, month) {
-        const startDate = new Date(year, month, 1).toISOString();
-        const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+        // Fix: Construct Local Date Strings for DB Query to avoid Timezone Shift
+        // Kita guna string format YYYY-MM-DD untuk query range
+        
+        const pad = (n) => n.toString().padStart(2, '0');
+        // Bulan dalam JS 0-11, perlu +1 untuk string
+        const startStr = `${year}-${pad(month + 1)}-01`;
+        
+        // Cari hari terakhir bulan
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const endStr = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
 
         // 1. Ambil Tempahan Aktif
         const { data: bookings, error: errB } = await db
             .from('smpid_bb_tempahan')
             .select('*')
             .eq('status', 'AKTIF')
-            .gte('tarikh', startDate)
-            .lte('tarikh', endDate);
+            .gte('tarikh', startStr)
+            .lte('tarikh', endStr);
 
         if (errB) throw errB;
 
@@ -33,23 +41,27 @@ export const BookingService = {
         const { data: locks, error: errL } = await db
             .from('smpid_bb_kunci')
             .select('*')
-            .gte('tarikh', startDate)
-            .lte('tarikh', endDate);
+            .gte('tarikh', startStr)
+            .lte('tarikh', endStr);
 
         if (errL) throw errL;
 
         // Proses data tempahan ke format objek { 'YYYY-MM-DD': ['Pagi', 'Petang'] }
         const bookedSlots = {};
         bookings.forEach(b => {
-            const iso = b.tarikh;
-            if (!bookedSlots[iso]) bookedSlots[iso] = [];
-            bookedSlots[iso].push(b.masa);
+            // Pastikan kita ambil tarikh sahaja (YYYY-MM-DD)
+            // Split untuk keselamatan jika DB return full ISO timestamp
+            const dateOnly = b.tarikh.split('T')[0]; 
+            
+            if (!bookedSlots[dateOnly]) bookedSlots[dateOnly] = [];
+            bookedSlots[dateOnly].push(b.masa);
         });
 
         // Proses data kunci ke format objek { 'YYYY-MM-DD': 'Sebab' }
         const lockedDetails = {};
         locks.forEach(l => {
-            lockedDetails[l.tarikh] = l.komen;
+            const dateOnly = l.tarikh.split('T')[0];
+            lockedDetails[dateOnly] = l.komen;
         });
 
         return { bookedSlots, lockedDetails };
@@ -62,6 +74,8 @@ export const BookingService = {
         const { tarikh, masa, kod_sekolah } = payload;
 
         // 1. Validasi Hari (2=Selasa, 3=Rabu, 4=Khamis, 6=Sabtu)
+        // Nota: new Date('YYYY-MM-DD') menganggap UTC 00:00.
+        // Hari minggu adalah konsisten secara global untuk tarikh yang sama.
         const day = new Date(tarikh).getDay();
         const allowedDays = [2, 3, 4, 6];
         if (!allowedDays.includes(day)) {
@@ -89,7 +103,8 @@ export const BookingService = {
         if (existing) throw new Error(`Slot ${masa} pada tarikh tersebut telah ditempah.`);
 
         // 4. Jana ID Tempahan Unik (Format: YYMMDD-KOD-RAND)
-        const ymd = tarikh.replace(/-/g, '').substring(2);
+        // Format tarikh YYYY-MM-DD -> YYMMDD
+        const ymd = tarikh.replace(/-/g, '').substring(2); 
         const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
         const bookingId = `${ymd}-${kod_sekolah.slice(-3)}-${rand}`;
 
@@ -116,6 +131,21 @@ export const BookingService = {
             .select('*')
             .eq('status', 'AKTIF')
             .order('tarikh', { ascending: true });
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
+     * Mendapatkan sejarah tempahan sekolah tertentu (User View).
+     */
+    async getSchoolBookings(kodSekolah) {
+        const { data, error } = await db
+            .from('smpid_bb_tempahan')
+            .select('*')
+            .eq('kod_sekolah', kodSekolah)
+            // Papar semua status (AKTIF/BATAL) untuk sejarah sekolah
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
         return data;

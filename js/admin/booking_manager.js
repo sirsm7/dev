@@ -1,10 +1,11 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.3 SURGICAL)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.4 AUTO-WEEK)
  * Fungsi: Menguruskan sistem tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V3.3 ---
- * 1. Strict Interaction: Hari Ahad(0) & Isnin(1) dinyahaktifkan sepenuhnya daripada sebarang klik.
- * 2. Visual Priority: Hari 'Tiada Sesi' sentiasa memaparkan status ban/ban icon.
- * 3. Bug Fix: Memastikan status 'closed' (Tiada Sesi) tidak membenarkan handleAdminDateAction dipanggil.
+ * --- UPDATE V3.4 ---
+ * 1. UX Upgrade: Penentuan Minggu Aktif secara automatik (Auto-detect Current Week).
+ * 2. Navigation Fix: Reset minggu kepada 1 hanya jika berpindah ke bulan lain, 
+ * kecuali jika kembali ke bulan semasa.
+ * 3. Strict Interaction: Hari Ahad(0) & Isnin(1) dinyahaktifkan sepenuhnya.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -12,9 +13,13 @@ import { toggleLoading } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
 
 // --- STATE MANAGEMENT ---
-let adminCurrentMonth = new Date().getMonth();
-let adminCurrentYear = new Date().getFullYear();
-let adminActiveWeek = 1; 
+const todayDate = new Date();
+let adminCurrentMonth = todayDate.getMonth();
+let adminCurrentYear = todayDate.getFullYear();
+
+// LOGIK AUTO-MINGGU: Mengira minggu berdasarkan tarikh hari ini
+let adminActiveWeek = Math.ceil(todayDate.getDate() / 7); 
+
 let activeBookings = [];
 let adminSelectedDate = null; 
 
@@ -246,7 +251,6 @@ window.renderAdminBookingCalendar = async function() {
             `;
 
             // SEKATAN KLIK: Admin hanya boleh klik jika tarikh MASA DEPAN DAN (Dibenarkan ATAU Sudah Dikunci)
-            // Hari Ahad/Isnin yang 'open' tidak akan boleh diklik untuk dikunci kerana tidak perlu.
             if (!isPast && isAllowedDay) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
@@ -254,7 +258,6 @@ window.renderAdminBookingCalendar = async function() {
                     handleAdminDateAction(dateString, isLocked);
                 };
             } else if (!isPast && isLocked) {
-                // Benarkan buka kunci walaupun bukan hari dibenarkan (just in case)
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
@@ -442,6 +445,13 @@ window.changeAdminMonth = function(offset) {
         adminCurrentYear--; 
     }
     
-    adminActiveWeek = 1; 
+    // Auto-calculate week only if it returns to the actual current real-time month
+    const realToday = new Date();
+    if (adminCurrentMonth === realToday.getMonth() && adminCurrentYear === realToday.getFullYear()) {
+        adminActiveWeek = Math.ceil(realToday.getDate() / 7);
+    } else {
+        adminActiveWeek = 1; 
+    }
+    
     window.renderAdminBookingCalendar();
 };

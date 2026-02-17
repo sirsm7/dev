@@ -1,10 +1,10 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.5 (FULL INTEGRITY REPRINT)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.6 (AUTO-WEEK EDITION)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * Kemaskini: 
- * 1. Pembaikan visual "Rekod Saya" (Badge tidak terputus).
- * 2. Pembuangan teks "PILIH" pada kad harian.
- * 3. Integriti wrapping teks penuh (wrap-safe).
+ * --- UPDATE V3.6 ---
+ * 1. UX Upgrade: Penentuan Minggu Aktif secara automatik (Auto-detect Current Week).
+ * 2. Navigation Fix: Reset minggu kepada minggu hari ini jika kembali ke bulan semasa.
+ * 3. Text Integrity: Integriti wrapping teks penuh (wrap-safe).
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -13,9 +13,13 @@ import { APP_CONFIG } from '../../js/config/app.config.js';
 import { populateDropdown } from '../../js/config/dropdowns.js';
 
 // --- STATE MANAGEMENT ---
-let currentMonth = new Date().getMonth();
-let currentYear = new Date().getFullYear();
-let activeWeek = 1; 
+const todayDate = new Date();
+let currentMonth = todayDate.getMonth();
+let currentYear = todayDate.getFullYear();
+
+// LOGIK AUTO-MINGGU: Mengira minggu semasa berdasarkan tarikh hari ini
+let activeWeek = Math.ceil(todayDate.getDate() / 7); 
+
 let selectedDateString = null; 
 let schoolInfo = { kod: '', nama: '' };
 
@@ -88,7 +92,6 @@ async function loadBookingHistory(kod) {
             const sessionIcon = isPagi ? 'fa-sun text-amber-500' : 'fa-moon text-indigo-400';
             const sessionBg = isPagi ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100';
 
-            // FIX BADGE: Use min-w-max and consistent padding to prevent "AKTI F" truncation
             let statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-600 border-emerald-200 min-w-[80px] justify-center shadow-sm">AKTIF</span>`;
             if (item.status !== 'AKTIF') {
                 statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black border bg-red-50 text-red-600 border-red-200 min-w-[80px] justify-center shadow-sm">BATAL</span>`;
@@ -234,7 +237,6 @@ window.renderCalendar = async function() {
 
             const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase wrap-safe leading-tight">${lockedDetails[dateString]}</div>` : '';
 
-            // VISUAL CLEANUP: "PILIH" text removed as requested.
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -354,7 +356,14 @@ window.changeMonth = function(offset) {
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
     
-    activeWeek = 1; 
+    // Auto-calculate week only if it returns to the actual current real-time month
+    const realToday = new Date();
+    if (currentMonth === realToday.getMonth() && currentYear === realToday.getFullYear()) {
+        activeWeek = Math.ceil(realToday.getDate() / 7);
+    } else {
+        activeWeek = 1; 
+    }
+    
     resetSelection();
     renderCalendar();
 };

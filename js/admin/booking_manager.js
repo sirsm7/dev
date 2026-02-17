@@ -1,11 +1,11 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.0 REFACTOR)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.1 SURGICAL)
  * Fungsi: Menguruskan sistem tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V3.0 (CSS & LOGIC OVERHAUL) ---
- * 1. UI Fix: Membetulkan paparan kad yang kabur dengan sempadan yang jelas.
- * 2. Weekly Navigation: Menambah tab navigasi mingguan (Minggu 1-5).
- * 3. Date Logic: Menapis tarikh lampau (hanya paparkan hari ini dan ke hadapan).
- * 4. Text Safety: Menggunakan 'wrap-safe' untuk mengelakkan truncation.
+ * --- UPDATE V3.1 ---
+ * 1. UI Integrity: Memberikan border tegas pada kad dan tab navigasi.
+ * 2. Logic Fix: Hari Ahad (0) dipaksa menjadi 'TIADA SESI' (Status Closed).
+ * 3. Text Safety: Mengaktifkan wrap-safe pada senarai tempahan aktif.
+ * 4. Cleanup: Membuang teks "PILIH" pada paparan hari admin.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -15,7 +15,7 @@ import { APP_CONFIG } from '../config/app.config.js';
 // --- STATE MANAGEMENT ---
 let adminCurrentMonth = new Date().getMonth();
 let adminCurrentYear = new Date().getFullYear();
-let adminActiveWeek = 1; // Penambahan State Minggu
+let adminActiveWeek = 1; 
 let activeBookings = [];
 let adminSelectedDate = null; 
 
@@ -25,17 +25,14 @@ const DAY_NAMES = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu
 
 /**
  * Inisialisasi Modul Booking Admin (EntryPoint)
- * Hanya dijalankan apabila Tab Tempahan dibuka.
  */
 window.initAdminBooking = async function() {
     const wrapper = document.getElementById('tab-tempahan');
     if (!wrapper) return;
 
-    // Bina struktur HTML asas jika belum wujud dalam tab
     if (!document.getElementById('bookingAdminContent')) {
         wrapper.innerHTML = `
             <div class="p-6 md:p-8" id="bookingAdminContent">
-                <!-- HEADER SEKSYEN -->
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b-2 border-slate-100 pb-6">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Pengurusan Bimbingan & Bengkel</h2>
@@ -47,7 +44,6 @@ window.initAdminBooking = async function() {
                     </div>
                 </div>
 
-                <!-- VIEW 1: KALENDAR (LOCKING SYSTEM) -->
                 <div id="adminBookingCalendarView" class="animate-fade-up">
                     <div class="grid grid-cols-1 lg:grid-cols-1 gap-8">
                         <div>
@@ -59,14 +55,10 @@ window.initAdminBooking = async function() {
                                 </div>
                                 
                                 <div class="p-6">
-                                    <!-- Week Tabs Container -->
                                     <div class="overflow-x-auto pb-4 mb-4">
-                                        <div class="flex gap-2 min-w-max" id="adminWeekTabsContainer">
-                                            <!-- Tab Minggu akan diisi oleh JS -->
-                                        </div>
+                                        <div class="flex gap-2 min-w-max" id="adminWeekTabsContainer"></div>
                                     </div>
 
-                                    <!-- Legend -->
                                     <div class="flex flex-wrap gap-4 justify-center mb-6 bg-slate-100/50 p-4 rounded-2xl border-2 border-slate-200/50">
                                         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-white border-2 border-slate-300 shadow-sm"></span> <span class="text-[10px] font-bold text-slate-500 uppercase">Kosong</span></div>
                                         <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-100 border-2 border-amber-400 shadow-sm"></span> <span class="text-[10px] font-bold text-slate-500 uppercase">1 Slot</span></div>
@@ -82,7 +74,6 @@ window.initAdminBooking = async function() {
                     </div>
                 </div>
 
-                <!-- VIEW 2: SENARAI AKTIF (JADUAL) -->
                 <div id="adminBookingListView" class="hidden animate-fade-up">
                     <div class="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-sm">
                         <div class="overflow-x-auto">
@@ -104,14 +95,10 @@ window.initAdminBooking = async function() {
         `;
     }
 
-    // Papar data permulaan
     window.renderAdminBookingCalendar();
     window.loadAdminBookingList();
 };
 
-/**
- * Menukar antara paparan Kalendar dan Senarai
- */
 window.switchAdminBookingView = function(view) {
     const btnCal = document.getElementById('btnViewCal');
     const btnList = document.getElementById('btnViewList');
@@ -133,16 +120,13 @@ window.switchAdminBookingView = function(view) {
     }
 };
 
-/**
- * Navigasi Minggu Admin
- */
 window.switchAdminWeek = function(weekNum) {
     adminActiveWeek = weekNum;
     window.renderAdminBookingCalendar();
 };
 
 /**
- * Membina Grid Kalendar (Admin Side) - VERSI JUBIN VISUAL DENGAN TAPISAN TARIKH
+ * Membina Grid Kalendar (Admin Side) - FIXED DATE LOGIC
  */
 window.renderAdminBookingCalendar = async function() {
     const grid = document.getElementById('adminCalendarGrid');
@@ -161,60 +145,46 @@ window.renderAdminBookingCalendar = async function() {
     try {
         const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(adminCurrentYear, adminCurrentMonth);
         
-        // Setup Tarikh & Minggu
         const daysInMonth = new Date(adminCurrentYear, adminCurrentMonth + 1, 0).getDate();
         const pad = (n) => n.toString().padStart(2, '0');
-        
-        // Tarikh Semasa (Untuk Tapisan Past Dates)
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset masa untuk perbandingan bersih
+        today.setHours(0, 0, 0, 0);
 
-        // 1. Render Tab Minggu Admin
         const totalWeeks = Math.ceil(daysInMonth / 7);
         if (adminActiveWeek > totalWeeks) adminActiveWeek = 1;
 
         let tabsHtml = '';
         for (let w = 1; w <= totalWeeks; w++) {
             const isActive = adminActiveWeek === w;
-            // Gunakan kelas CSS dari admin.html (week-tab-admin)
             const activeClass = isActive ? 'week-tab-admin-active' : 'week-tab-admin-inactive';
-            tabsHtml += `
-                <button onclick="switchAdminWeek(${w})" 
-                        class="week-tab-admin ${activeClass}">
-                    MINGGU ${w}
-                </button>`;
+            tabsHtml += `<button onclick="switchAdminWeek(${w})" class="week-tab-admin ${activeClass}">MINGGU ${w}</button>`;
         }
         tabsContainer.innerHTML = tabsHtml;
 
-        // 2. Kira Julat Hari Minggu Ini
         const startDay = (adminActiveWeek - 1) * 7 + 1;
         const endDay = Math.min(adminActiveWeek * 7, daysInMonth);
 
         grid.innerHTML = "";
         let hasContent = false;
 
-        // 3. Jana Jubin Tarikh
         for (let d = startDay; d <= endDay; d++) {
-            // FIX DATE BUG: Bina string tarikh manual
             const dateString = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}-${pad(d)}`;
             const dateObj = new Date(adminCurrentYear, adminCurrentMonth, d);
-            dateObj.setHours(0, 0, 0, 0); // Penting untuk perbandingan tarikh
+            dateObj.setHours(0, 0, 0, 0);
 
-            const dayOfWeek = dateObj.getDay(); // 0=Ahad, ...
+            const dayOfWeek = dateObj.getDay(); 
             
-            // Logik Status Visual
+            // INTEGRITI TARIKH: Ahad(0) & Isnin(1) mestilah TIADA SESI
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
-            const isPast = dateObj < today; // Tapis tarikh lepas
+            const isPast = dateObj < today;
 
-            // Keutamaan Status
             let status = 'open';
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
             
             if (isPast) {
-                // Tarikh Lepas: Render sebagai Disabled/Greyed Out
                 status = 'closed';
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
@@ -236,7 +206,6 @@ window.renderAdminBookingCalendar = async function() {
                 statusIcon = 'fa-exclamation-circle';
             }
 
-            // Warna Ikon & Badge (Konsisten dengan CSS)
             let iconColor = 'text-brand-600 bg-brand-100';
             if (status === 'full') iconColor = 'text-red-600 bg-red-100';
             if (status === 'locked') iconColor = 'text-purple-600 bg-purple-100';
@@ -244,11 +213,9 @@ window.renderAdminBookingCalendar = async function() {
             if (status === 'closed') iconColor = 'text-slate-400 bg-slate-200';
 
             const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-600 font-black mt-1 uppercase wrap-safe leading-tight bg-purple-50 p-1 rounded border border-purple-100">${lockedDetails[dateString] || 'ADMIN LOCK'}</div>` : '';
-
             const isSelected = (dateString === adminSelectedDate);
             
             const card = document.createElement('div');
-            // Guna kelas CSS .day-card dan .card-* dari admin.html yang telah dikemaskini
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''}`;
             
             card.innerHTML = `
@@ -270,8 +237,6 @@ window.renderAdminBookingCalendar = async function() {
                 </div>
             `;
 
-            // Admin boleh klik untuk kunci/buka kunci pada mana-mana hari hadapan (Future Allowed Days)
-            // Atau hari yang memang sedang dikunci (untuk buka balik)
             if (!isPast && (isAllowedDay || isLocked)) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
@@ -294,10 +259,6 @@ window.renderAdminBookingCalendar = async function() {
     }
 };
 
-/**
- * Handle Kunci/Buka Tarikh
- * Integriti: Memaksa catatan menjadi UPPERCASE secara automatik.
- */
 async function handleAdminDateAction(iso, currentlyLocked) {
     if (currentlyLocked) {
         Swal.fire({
@@ -343,7 +304,7 @@ async function handleAdminDateAction(iso, currentlyLocked) {
             customClass: { popup: 'rounded-3xl border-2 border-slate-100', input: 'rounded-xl font-bold uppercase mx-4 shadow-sm border-2 border-slate-200' },
             preConfirm: (val) => {
                 if (!val) return Swal.showValidationMessage('Sebab atau catatan wajib diisi.');
-                return val.toUpperCase(); // AUTO UPPERCASE
+                return val.toUpperCase();
             }
         });
 
@@ -367,10 +328,6 @@ async function handleAdminDateAction(iso, currentlyLocked) {
     }
 }
 
-/**
- * Memuatkan Senarai Tempahan Aktif ke dalam Jadual
- * Integriti: Menggunakan 'wrap-safe' untuk memastikan teks panjang tidak terpotong.
- */
 window.loadAdminBookingList = async function() {
     const tbody = document.getElementById('adminBookingTableBody');
     if (!tbody) return;
@@ -396,7 +353,6 @@ window.loadAdminBookingList = async function() {
                         </div>
                     </td>
                     <td class="px-8 py-6 align-top">
-                        <!-- Integriti Teks: wrap-safe class used -->
                         <div class="font-bold text-brand-600 text-sm leading-snug mb-1.5 wrap-safe max-w-xs group-hover:text-brand-700 transition-colors uppercase">${b.nama_sekolah}</div>
                         <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest wrap-safe leading-relaxed">${b.tajuk_bengkel || 'TIADA TAJUK SPESIFIK'}</div>
                     </td>
@@ -420,9 +376,6 @@ window.loadAdminBookingList = async function() {
     }
 };
 
-/**
- * Membatalkan Tempahan (Aksi Pentadbir)
- */
 window.cancelBookingAdmin = async function(dbId, bookingId) {
     const { value: reason } = await Swal.fire({
         title: 'Batal Tempahan?',
@@ -441,7 +394,7 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
         customClass: { popup: 'rounded-[2rem] border-4 border-red-50', input: 'rounded-xl font-bold uppercase mx-4 shadow-sm border-2 border-slate-200' },
         preConfirm: (value) => {
             if (!value) return Swal.showValidationMessage('Sila nyatakan sebab pembatalan.');
-            return value.toUpperCase(); // AUTO UPPERCASE
+            return value.toUpperCase();
         }
     });
 
@@ -452,7 +405,7 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
             toggleLoading(false);
             Swal.fire({ icon: 'success', title: 'Berjaya Dibatalkan', text: 'Permohonan telah dimansuhkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' } });
             window.loadAdminBookingList();
-            window.renderAdminBookingCalendar(); // Refresh calendar to free up slots
+            window.renderAdminBookingCalendar(); 
         } catch (e) {
             toggleLoading(false);
             Swal.fire({ icon: 'error', title: 'Ralat Pembatalan', text: 'Gagal mengemaskini status tempahan.', customClass: { popup: 'rounded-[2rem]' } });
@@ -460,12 +413,9 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
     }
 };
 
-/**
- * Navigasi Bulan Kalendar Admin
- */
 window.changeAdminMonth = function(offset) {
     adminCurrentMonth += offset;
-    adminSelectedDate = null; // Reset pemilihan tarikh bila tukar bulan
+    adminSelectedDate = null; 
     
     if (adminCurrentMonth > 11) { 
         adminCurrentMonth = 0; 
@@ -475,6 +425,6 @@ window.changeAdminMonth = function(offset) {
         adminCurrentYear--; 
     }
     
-    adminActiveWeek = 1; // Reset ke minggu pertama
+    adminActiveWeek = 1; 
     window.renderAdminBookingCalendar();
 };

@@ -19,7 +19,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- SUPABASE (DENGAN BACKUP CDN) -->
-    <!-- Jika JsDelivr gagal/disekat, ia akan cuba Unpkg secara automatik -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
             onerror="console.warn('CDN Utama Disekat. Mencuba Backup...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2'">
     </script>
@@ -46,44 +45,60 @@
         }
     </script>
 
-    <style>
-        .hidden { display: none !important; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .wrap-safe {
-            white-space: normal !important;
-            overflow-wrap: break-word !important;
-            word-break: break-word !important;
-        }
+    <!-- FIX: Menambah type="text/tailwindcss" supaya @apply berfungsi -->
+    <style type="text/tailwindcss">
+        @layer components {
+            .hidden { display: none !important; }
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            
+            .wrap-safe {
+                white-space: normal !important;
+                overflow-wrap: break-word !important;
+                word-break: break-word !important;
+            }
 
-        .day-card {
-            @apply relative flex flex-col justify-between p-5 rounded-3xl border-2 transition-all duration-300 cursor-pointer overflow-hidden bg-white hover:shadow-xl hover:-translate-y-1;
-            min-height: 160px;
-        }
+            /* Day Card Base Style - Memastikan Border Sentiasa Ada */
+            .day-card {
+                @apply relative flex flex-col justify-between p-5 rounded-3xl border-2 transition-all duration-300 cursor-pointer overflow-hidden bg-white hover:shadow-xl hover:-translate-y-1;
+                min-height: 160px;
+            }
 
-        .card-open { @apply border-slate-200 hover:border-brand-400 group; }
-        .card-partial { @apply border-amber-300 bg-amber-50/30 hover:border-amber-500; }
-        .card-full { @apply border-red-200 bg-red-50/30 opacity-80 cursor-not-allowed grayscale-[0.5]; }
-        .card-locked { @apply border-purple-200 bg-purple-50/50 cursor-not-allowed opacity-90; }
-        .card-closed { @apply border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed; }
+            /* State Styles - Warna Border Yang Jelas */
+            .card-open { 
+                @apply border-slate-200 hover:border-brand-400 group; 
+            }
+            .card-partial { 
+                @apply border-amber-300 bg-amber-50/30 hover:border-amber-500; 
+            }
+            .card-full { 
+                @apply border-red-200 bg-red-50/30 opacity-80 cursor-not-allowed grayscale-[0.5]; 
+            }
+            .card-locked { 
+                @apply border-purple-200 bg-purple-50/50 cursor-not-allowed opacity-90; 
+            }
+            /* Card Closed (Tarikh Lepas) - Visual Dimmed */
+            .card-closed { 
+                @apply border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed grayscale pointer-events-none; 
+            }
 
-        .card-active { 
-            @apply !border-brand-600 ring-4 ring-brand-100 bg-brand-50/20 transform scale-[1.02] shadow-2xl z-10; 
-        }
+            .card-active { 
+                @apply !border-brand-600 ring-4 ring-brand-100 bg-brand-50/20 transform scale-[1.02] shadow-2xl z-10; 
+            }
 
-        .week-tab {
-            @apply px-6 py-3 rounded-2xl text-xs font-black tracking-widest transition-all border-2 border-transparent flex-shrink-0;
-        }
-        .week-tab-active {
-            @apply bg-slate-900 text-white shadow-lg scale-105 border-slate-900;
-        }
-        .week-tab-inactive {
-            @apply bg-white text-slate-400 hover:text-brand-600 hover:bg-brand-50 border-slate-200;
-        }
+            .week-tab {
+                @apply px-6 py-3 rounded-2xl text-xs font-black tracking-widest transition-all border-2 border-transparent flex-shrink-0;
+            }
+            .week-tab-active {
+                @apply bg-slate-900 text-white shadow-lg scale-105 border-slate-900;
+            }
+            .week-tab-inactive {
+                @apply bg-white text-slate-400 hover:text-brand-600 hover:bg-brand-50 border-slate-200;
+            }
 
-        .form-input {
-            @apply w-full p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-slate-700 outline-none focus:border-brand-500 focus:bg-white transition-all text-sm;
+            .form-input {
+                @apply w-full p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-slate-700 outline-none focus:border-brand-500 focus:bg-white transition-all text-sm;
+            }
         }
     </style>
 </head>
@@ -159,6 +174,7 @@
                     <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-100 border-2 border-amber-400 shadow-sm"></span> <span class="text-[10px] font-bold text-slate-500 uppercase">Terhad</span></div>
                     <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-100 border-2 border-red-400 shadow-sm"></span> <span class="text-[10px] font-bold text-slate-500 uppercase">Penuh</span></div>
                     <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-100 border-2 border-purple-400 shadow-sm"></span> <span class="text-[10px] font-bold text-slate-500 uppercase">Dikunci</span></div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-200 border-2 border-slate-300 shadow-sm opacity-50"></span> <span class="text-[10px] font-bold text-slate-400 uppercase">Lepas</span></div>
                 </div>
 
                 <!-- History Section -->

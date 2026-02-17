@@ -181,7 +181,9 @@ window.renderCalendar = async function() {
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
             } else if (isTooSoon) {
-                status = 'closed'; // Guna style closed tapi text 'TUTUP'
+                // Jangan guna status 'closed' supaya tidak kelabu, tapi guna locked sementara
+                // ATAU gunakan closed tapi tukar teks. Mari kita guna closed (kelabu)
+                status = 'closed'; 
                 statusText = 'TUTUP';
                 statusIcon = 'fa-clock'; // Ikon masa tamat
             } else if (!isAllowedDay) {
@@ -207,9 +209,10 @@ window.renderCalendar = async function() {
             
             // Bina Kad HTML
             const card = document.createElement('div');
-            // Guna kelas CSS .day-card dan .card-* dari index.html yang dikemaskini (border nyata)
+            // FIX: Class di sini mesti sepadan dengan CSS yang dibetulkan (border-2)
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''} animate-fade-in group`;
             
+            // Tentukan warna ikon dan teks
             let statusColorClass = 'text-brand-600 bg-brand-50 border-brand-200';
             if (status === 'full') statusColorClass = 'text-red-500 bg-red-50 border-red-200';
             if (status === 'locked') statusColorClass = 'text-purple-600 bg-purple-50 border-purple-200';

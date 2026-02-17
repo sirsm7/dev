@@ -1,7 +1,7 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.0 (WEEKLY TABS EDITION)
- * Refactor: Mengubah paparan Grid kepada Mingguan (M1-M5).
- * Memastikan paparan nama bengkel tidak terpotong pada mobile.
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.1 (STRICT INTEGRITY FIX)
+ * Refactor: Menguruskan paparan mingguan (M1-M5) dengan navigasi tab.
+ * Perbaikan: Memastikan tiada ralat sintaksis pada penghujung fail.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -12,7 +12,7 @@ import { populateDropdown } from '../../js/config/dropdowns.js';
 // --- STATE MANAGEMENT ---
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
-let activeWeek = 1; // Minggu Aktif (1-5)
+let activeWeek = 1; 
 let selectedDateString = null; 
 let schoolInfo = { kod: '', nama: '' };
 
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Inisialisasi utama profil sekolah, dropdown, kalendar dan sejarah.
+ * Inisialisasi profil sekolah dan komponen UI.
  */
 async function initBookingPortal() {
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
@@ -49,7 +49,7 @@ async function initBookingPortal() {
 }
 
 /**
- * Memuatkan sejarah tempahan sekolah.
+ * Memuatkan sejarah tempahan sekolah semasa.
  */
 async function loadBookingHistory(kod) {
     const tbody = document.getElementById('historyTableBody');
@@ -90,7 +90,7 @@ async function loadBookingHistory(kod) {
 }
 
 /**
- * Render Utama: Kalendar & Tab Minggu.
+ * Render Utama: Kalendar Mingguan.
  */
 window.renderCalendar = async function() {
     const container = document.getElementById('calendarBody');
@@ -122,11 +122,11 @@ window.renderCalendar = async function() {
         }
         tabsContainer.innerHTML = tabsHtml;
 
-        // 2. Tentukan julat hari untuk minggu aktif
+        // 2. Tentukan julat hari (7 hari seunit)
         const startDay = (activeWeek - 1) * 7 + 1;
         const endDay = Math.min(activeWeek * 7, daysInMonth);
 
-        container.innerHTML = ""; // Bersihkan body
+        container.innerHTML = ""; 
 
         // 3. Render Baris Hari
         for (let d = startDay; d <= endDay; d++) {
@@ -161,7 +161,6 @@ window.renderCalendar = async function() {
             const row = document.createElement('div');
             row.className = `day-row row-${status} ${isSelected ? 'row-active' : ''} animate-fade-up`;
             
-            // Generate Slot UI
             let slotUI = '';
             if (status === 'closed') {
                 slotUI = `<span class="text-[10px] font-bold text-slate-300 uppercase italic">Tutup / Tiada Bimbingan</span>`;
@@ -203,22 +202,19 @@ window.renderCalendar = async function() {
 };
 
 /**
- * Handle pemilihan baris hari.
+ * Pemilihan Baris.
  */
 function handleRowSelection(dateStr, availableSlots, element) {
     selectedDateString = dateStr;
 
-    // UI Highlights
     document.querySelectorAll('.day-row').forEach(r => r.classList.remove('row-active'));
     element.classList.add('row-active');
 
-    // Update Form Inputs
     const dateObj = new Date(dateStr);
     const dateReadable = dateObj.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     document.getElementById('displayDate').value = dateReadable.toUpperCase();
     document.getElementById('rawDate').value = dateStr;
 
-    // Slot Selection Controller
     const wrapper = document.getElementById('slotWrapper');
     wrapper.classList.remove('hidden');
 
@@ -227,7 +223,6 @@ function handleRowSelection(dateStr, availableSlots, element) {
     const labelPagi = document.getElementById('labelPagi');
     const labelPetang = document.getElementById('labelPetang');
 
-    // Reset Slots
     radioPagi.disabled = true; radioPetang.disabled = true;
     labelPagi.classList.add('opacity-30', 'pointer-events-none', 'grayscale');
     labelPetang.classList.add('opacity-30', 'pointer-events-none', 'grayscale');
@@ -260,7 +255,7 @@ function checkFormValidity() {
 }
 
 /**
- * Tukar Minggu Aktif.
+ * Navigasi.
  */
 window.switchWeek = function(w) {
     activeWeek = w;
@@ -271,9 +266,6 @@ window.switchWeek = function(w) {
     renderCalendar();
 };
 
-/**
- * Navigasi Bulan.
- */
 window.changeMonth = function(offset) {
     currentMonth += offset;
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
@@ -288,7 +280,7 @@ window.changeMonth = function(offset) {
 };
 
 /**
- * Penghantaran Tempahan.
+ * Penghantaran.
  */
 window.handleBookingSubmit = async function() {
     const date = document.getElementById('rawDate').value;
@@ -299,7 +291,7 @@ window.handleBookingSubmit = async function() {
     const btn = document.getElementById('btnSubmit');
 
     if (!date || !tajukBengkel || !masaInp || !picName || !picPhone) {
-        return Swal.fire({ icon: "warning", title: "Data Tidak Lengkap", text: "Sila lengkapkan semua maklumat tempahan." });
+        return Swal.fire({ icon: "warning", title: "Data Tidak Lengkap", text: "Lengkapkan butiran." });
     }
 
     const payload = {
@@ -321,11 +313,8 @@ window.handleBookingSubmit = async function() {
         
         await Swal.fire({
             icon: 'success',
-            title: 'Tempahan Berjaya!',
-            html: `<div class="p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-2">
-                    <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">ID Tempahan:</p>
-                    <p class="text-lg font-black text-brand-600 font-mono">${result.bookingId}</p>
-                   </div>`,
+            title: 'Berjaya!',
+            html: `<p class="text-sm">ID: <b>${result.bookingId}</b></p>`,
             confirmButtonColor: '#2563eb'
         });
 
@@ -343,7 +332,3 @@ window.handleBookingSubmit = async function() {
         Swal.fire({ icon: "error", title: "Gagal", text: err.message });
     }
 };
-
-SEMUA FAIL TELAH DISIAPKAN. PROJEK SELESAI.
-
-Sistem kini menggunakan paparan mingguan (Weekly View) yang lebih mesra peranti mudah alih. Ruang lebar untuk nama bengkel dikekalkan dan navigasi antara minggu (M1-M5) membolehkan pengguna fokus kepada julat tarikh yang lebih spesifik.

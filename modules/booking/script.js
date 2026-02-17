@@ -1,11 +1,11 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 1.5
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 1.6 (FINAL FIX)
  * Menguruskan kalendar interaktif, pengisian dropdown tajuk bengkel,
  * dan logik tempahan sekolah dengan integriti visual dan data penuh.
- * --- UPDATE V1.5 ---
- * 1. Visual Sync: Menyelaraskan logik 'active-selection' dengan paparan Admin.
- * 2. Data Integrity: Memastikan paparan tarikh dan identiti menggunakan UPPERCASE.
- * 3. Text Wrapping: Memastikan data yang dijana ke DOM tidak menggunakan pemotongan teks (truncation).
+ * --- UPDATE V1.6 ---
+ * 1. UI Sync: Menggunakan kelas CSS baharu (tile-base, tile-open, wrap-safe) dari index.html.
+ * 2. Text Handling: Memastikan teks nota kunci dan status dipaparkan penuh tanpa truncate.
+ * 3. Logic: Pemilihan tarikh kini lebih responsif dan tepat.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -40,7 +40,7 @@ async function initBookingPortal() {
             schoolInfo.kod = data.kod_sekolah;
             schoolInfo.nama = data.nama_sekolah;
             
-            // Paparan identiti sekolah (Wrap text handled by CSS class 'wrap-text' in HTML)
+            // Paparan identiti sekolah
             document.getElementById('displayKod').innerText = schoolInfo.kod;
             document.getElementById('displayNama').innerText = schoolInfo.nama.toUpperCase();
         }
@@ -56,7 +56,7 @@ async function initBookingPortal() {
 }
 
 /**
- * Membina grid kalendar dengan kesan visual hover dan highlight pemilihan.
+ * Membina grid kalendar dengan struktur HTML yang dikemaskini.
  */
 window.renderCalendar = async function() {
     const container = document.getElementById('calendarBody');
@@ -64,7 +64,7 @@ window.renderCalendar = async function() {
     if (!container) return;
 
     // Papar Loading State
-    container.innerHTML = `<div class="col-span-7 py-20 text-center text-slate-300 italic text-sm animate-pulse">Menyemak ketersediaan slot...</div>`;
+    container.innerHTML = `<div class="col-span-7 py-20 text-center text-slate-300 italic text-sm animate-pulse flex items-center justify-center h-full">Menyemak ketersediaan slot...</div>`;
     monthLabel.innerText = `${MALAY_MONTHS[currentMonth]} ${currentYear}`.toUpperCase();
 
     try {
@@ -81,7 +81,7 @@ window.renderCalendar = async function() {
         // 1. Padding hari bulan sebelumnya
         for (let i = 0; i < firstDay; i++) {
             const pad = document.createElement('div');
-            pad.className = 'tile tile-other';
+            pad.className = 'tile-base tile-other';
             container.appendChild(pad);
         }
 
@@ -122,20 +122,25 @@ window.renderCalendar = async function() {
             const tile = document.createElement('div');
             
             // Gabungan class mengikut status dan pemilihan
-            tile.className = `tile tile-${status} ${isSelected ? 'active-selection' : ''}`;
+            tile.className = `tile-base tile-${status} ${isSelected ? 'active-selection' : ''}`;
             
-            let html = `<span class="date-num text-xs">${d}</span>`;
+            let html = `<span class="date-num text-xs font-bold ${status === 'locked' ? 'text-white' : 'text-slate-600'}">${d}</span>`;
             
             if (status === 'locked') {
-                // Teks dibenarkan wrap jika sebab kunci panjang
-                html += `<div class="text-[7px] font-black uppercase text-purple-100 mt-1 wrap-text leading-tight bg-black/10 p-1 rounded">${lockedDetails[isoDate]}</div>`;
+                // Teks dibenarkan wrap sepenuhnya (wrap-safe)
+                html += `<div class="text-[9px] font-black uppercase text-purple-100 mt-1 wrap-safe leading-tight bg-black/10 p-1.5 rounded w-full flex-grow flex items-center justify-center text-center">${lockedDetails[isoDate]}</div>`;
             } else if (status === 'booked') {
-                html += `<div class="text-[8px] font-black text-red-500 mt-1 uppercase tracking-tighter">PENUH</div>`;
+                html += `<div class="mt-auto w-full"><div class="text-[9px] font-black text-red-500 bg-red-50 px-1 py-0.5 rounded text-center uppercase tracking-tighter">PENUH</div></div>`;
             } else if (status === 'partial') {
                 const label = availableSlots[0];
-                html += `<div class="slot-pill slot-${label.toLowerCase()} mt-1">${label.toUpperCase()} SEDIA</div>`;
+                html += `<div class="mt-auto w-full space-y-1">
+                            <div class="slot-pill slot-${label.toLowerCase()}">${label.toUpperCase()}</div>
+                         </div>`;
             } else if (status === 'open') {
-                html += `<div class="text-[8px] font-black text-emerald-500 mt-1 uppercase tracking-tighter">2 SLOT KOSONG</div>`;
+                html += `<div class="mt-auto w-full space-y-1">
+                            <div class="slot-pill slot-pagi">PAGI</div>
+                            <div class="slot-pill slot-petang">PETANG</div>
+                         </div>`;
             }
 
             tile.innerHTML = html;
@@ -150,7 +155,7 @@ window.renderCalendar = async function() {
 
     } catch (err) {
         console.error("[Booking] Error:", err);
-        container.innerHTML = `<div class="col-span-7 py-20 text-center text-red-500 font-bold bg-red-50 rounded-2xl">Ralat memuatkan data kalendar.</div>`;
+        container.innerHTML = `<div class="col-span-7 py-20 text-center text-red-500 font-bold bg-red-50 rounded-2xl flex items-center justify-center h-full">Ralat memuatkan data kalendar.</div>`;
     }
 };
 
@@ -160,8 +165,8 @@ window.renderCalendar = async function() {
 function handleTileSelection(isoDate, availableSlots, element) {
     selectedDateISO = isoDate;
 
-    // 1. Visual Feedback: Reset dan set Highlight (Identikal dengan Admin)
-    document.querySelectorAll('.tile').forEach(t => t.classList.remove('active-selection'));
+    // 1. Visual Feedback: Reset dan set Highlight
+    document.querySelectorAll('.tile-base').forEach(t => t.classList.remove('active-selection'));
     element.classList.add('active-selection');
 
     // 2. Kemaskini Input Paparan (Format UPPERCASE)
@@ -175,21 +180,46 @@ function handleTileSelection(isoDate, availableSlots, element) {
 
     const radioPagi = document.querySelector('input[name="inputMasa"][value="Pagi"]');
     const radioPetang = document.querySelector('input[name="inputMasa"][value="Petang"]');
+    const labelPagi = document.getElementById('labelPagi');
+    const labelPetang = document.getElementById('labelPetang');
 
-    radioPagi.disabled = !availableSlots.includes('Pagi');
-    radioPetang.disabled = !availableSlots.includes('Petang');
+    // Reset State
+    radioPagi.disabled = true;
+    radioPetang.disabled = true;
+    labelPagi.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+    labelPetang.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+    radioPagi.checked = false;
+    radioPetang.checked = false;
+
+    // Enable Available Slots
+    if (availableSlots.includes('Pagi')) {
+        radioPagi.disabled = false;
+        labelPagi.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+    }
+    if (availableSlots.includes('Petang')) {
+        radioPetang.disabled = false;
+        labelPetang.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+    }
     
     // Auto-check jika hanya satu slot tersedia
     if (availableSlots.length === 1) {
         if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
         else radioPetang.checked = true;
-    } else {
-        radioPagi.checked = false;
-        radioPetang.checked = false;
     }
 
-    // 4. Aktifkan Butang Hantar
-    document.getElementById('btnSubmit').disabled = false;
+    // 4. Aktifkan Butang Hantar (jika slot dipilih)
+    checkFormValidity();
+    
+    // Listener untuk radio button change
+    document.querySelectorAll('input[name="inputMasa"]').forEach(r => {
+        r.addEventListener('change', checkFormValidity);
+    });
+}
+
+function checkFormValidity() {
+    const date = document.getElementById('rawDate').value;
+    const masa = document.querySelector('input[name="inputMasa"]:checked');
+    document.getElementById('btnSubmit').disabled = !(date && masa);
 }
 
 /**
@@ -204,7 +234,7 @@ window.changeMonth = function(offset) {
         currentMonth = 11;
         currentYear--;
     }
-    // Pemilihan dibatalkan jika tukar bulan untuk elak ralat visual
+    // Pemilihan dibatalkan jika tukar bulan
     selectedDateISO = null; 
     document.getElementById('btnSubmit').disabled = true;
     document.getElementById('slotWrapper').classList.add('hidden');
@@ -260,7 +290,7 @@ window.handleBookingSubmit = async function() {
                     <p class="text-xs text-blue-400 font-bold uppercase tracking-widest">ID Tempahan Anda:</p>
                     <p class="text-lg font-black text-brand-600 font-mono">${result.bookingId}</p>
                    </div>
-                   <p class="text-sm text-slate-500 wrap-text">Sila tunggu maklum balas daripada Pegawai USTP untuk pengesahan slot bimbingan ini.</p>`,
+                   <p class="text-sm text-slate-500 wrap-safe">Sila tunggu maklum balas daripada Pegawai USTP untuk pengesahan slot bimbingan ini.</p>`,
             confirmButtonColor: '#2563eb',
             customClass: { popup: 'rounded-[2rem]' }
         });

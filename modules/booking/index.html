@@ -31,37 +31,48 @@
 
     <style>
         .hidden { display: none !important; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .day-header { @apply text-center text-[10px] font-black text-slate-400 uppercase py-2 tracking-widest; }
         
-        /* State Styles - Sync with Admin View */
-        .tile { @apply min-h-[75px] p-2 rounded-2xl border-2 border-slate-100 bg-white flex flex-col justify-between transition-all duration-300 relative overflow-hidden; }
-        .tile-other { @apply bg-slate-50 opacity-20 pointer-events-none border-none; }
-        .tile-closed { @apply bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed opacity-50; }
+        /* Utiliti Teks Wrapping Selamat */
+        .wrap-safe {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
+        }
+
+        /* Jubin Kalendar Responsif */
+        .tile-base {
+            @apply min-h-[90px] p-2 rounded-2xl border-2 transition-all duration-300 relative flex flex-col justify-between h-full w-full;
+        }
+
+        /* State Jubin */
+        .tile-other { @apply bg-slate-50 border-transparent opacity-20 pointer-events-none; }
+        .tile-closed { @apply bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed opacity-60; }
         
-        /* Interactive Tiles */
-        .tile-open { @apply border-slate-100 hover:border-brand-300 hover:scale-105 hover:shadow-lg cursor-pointer; }
-        .tile-open .date-num { @apply text-slate-800 font-black; }
-        
-        .tile-partial { @apply border-amber-100 bg-amber-50/30 hover:border-amber-400 hover:scale-105 hover:shadow-lg cursor-pointer; }
-        .tile-partial .date-num { @apply text-amber-600 font-black; }
-        
-        .tile-booked { @apply border-red-50 bg-red-50/50 cursor-not-allowed; }
-        .tile-booked .date-num { @apply text-red-400 font-bold; }
-        
-        .tile-locked { @apply border-purple-200 bg-purple-600 text-white cursor-not-allowed; }
-        .tile-locked .date-num { @apply text-white font-bold; }
-        
-        /* Selection Highlight - Sync with Admin */
-        .active-selection { @apply ring-4 ring-brand-500 ring-offset-2 scale-[1.05] z-10 !border-brand-500 shadow-xl !bg-white; }
-        .active-selection .date-num { @apply !text-brand-600; }
-        
-        .slot-pill { @apply text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter text-center w-full; }
+        /* Interaktif */
+        .tile-open { 
+            @apply bg-white border-slate-100 hover:border-brand-300 hover:shadow-lg cursor-pointer transform hover:-translate-y-1; 
+        }
+        .tile-partial { 
+            @apply bg-amber-50/40 border-amber-100 hover:border-amber-400 hover:shadow-lg cursor-pointer transform hover:-translate-y-1; 
+        }
+        .tile-booked { 
+            @apply bg-red-50/50 border-red-100 cursor-not-allowed; 
+        }
+        .tile-locked { 
+            @apply bg-purple-600 border-purple-600 text-white cursor-not-allowed shadow-md; 
+        }
+
+        /* Highlight Pilihan */
+        .active-selection { 
+            @apply ring-4 ring-brand-500 ring-offset-2 z-10 !border-brand-500 !bg-white shadow-xl scale-[1.02]; 
+        }
+        .active-selection .date-num { @apply text-brand-600; }
+
+        /* Slot Pills */
+        .slot-pill { @apply text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter text-center w-full shadow-sm; }
         .slot-pagi { @apply bg-blue-100 text-blue-700; }
         .slot-petang { @apply bg-orange-100 text-orange-700; }
-
-        /* Global Wrapping Fix */
-        .wrap-text { white-space: normal !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -86,7 +97,7 @@
             <div class="flex items-center gap-3 overflow-hidden">
                 <img src="../../icoppdag.png" alt="Logo" class="h-10 w-auto flex-shrink-0">
                 <div class="overflow-hidden">
-                    <h1 class="font-black text-slate-900 leading-tight tracking-tight wrap-text text-sm md:text-base">TEMPAHAN BIMBINGAN / BENGKEL</h1>
+                    <h1 class="font-black text-slate-900 leading-tight tracking-tight wrap-safe text-sm md:text-base">TEMPAHAN BIMBINGAN / BENGKEL</h1>
                     <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">Unit Sumber Teknologi Pendidikan</p>
                 </div>
             </div>
@@ -101,29 +112,46 @@
             
             <!-- Left Column: Calendar -->
             <div class="lg:w-2/3">
-                <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
+                <div class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col h-full">
+                    <!-- Calendar Header -->
                     <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-slate-50/50 gap-4">
                         <div class="flex items-center gap-4">
-                            <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md transition flex items-center justify-center text-slate-400 hover:text-brand-600"><i class="fas fa-chevron-left"></i></button>
-                            <h2 id="monthDisplay" class="text-base font-black text-slate-800 min-w-[140px] text-center uppercase tracking-tighter">MEMUATKAN...</h2>
-                            <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md transition flex items-center justify-center text-slate-400 hover:text-brand-600"><i class="fas fa-chevron-right"></i></button>
+                            <button onclick="changeMonth(-1)" class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md transition flex items-center justify-center text-slate-400 hover:text-brand-600 active:scale-95"><i class="fas fa-chevron-left"></i></button>
+                            <h2 id="monthDisplay" class="text-base font-black text-slate-800 min-w-[160px] text-center uppercase tracking-tighter">MEMUATKAN...</h2>
+                            <button onclick="changeMonth(1)" class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md transition flex items-center justify-center text-slate-400 hover:text-brand-600 active:scale-95"><i class="fas fa-chevron-right"></i></button>
                         </div>
-                        <div class="flex gap-3 bg-white px-3 py-2 rounded-full border border-slate-200 shadow-sm">
+                        
+                        <!-- Legend -->
+                        <div class="flex flex-wrap justify-center gap-3 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
                             <span class="flex items-center gap-1.5 text-[9px] font-black text-slate-400"><div class="w-2 h-2 rounded-full bg-emerald-500"></div> BUKA</span>
                             <span class="flex items-center gap-1.5 text-[9px] font-black text-slate-400"><div class="w-2 h-2 rounded-full bg-amber-500"></div> SEPARA</span>
                             <span class="flex items-center gap-1.5 text-[9px] font-black text-slate-400"><div class="w-2 h-2 rounded-full bg-red-500"></div> PENUH</span>
+                            <span class="flex items-center gap-1.5 text-[9px] font-black text-slate-400"><div class="w-2 h-2 rounded-full bg-purple-600"></div> CUTI</span>
                         </div>
                     </div>
-                    <div class="p-4 md:p-8">
-                        <div class="calendar-grid mb-2">
-                            ${['Aha','Isn','Sel','Rab','Kha','Jum','Sab'].map(d => `<div class="day-header">${d}</div>`).join('')}
+
+                    <!-- Calendar Grid Area -->
+                    <div class="p-4 md:p-6 bg-white flex-grow">
+                        <!-- Days Header -->
+                        <div class="grid grid-cols-7 gap-2 mb-2">
+                            <div class="text-center text-[10px] font-black text-slate-300 uppercase py-2 tracking-widest">AHA</div>
+                            <div class="text-center text-[10px] font-black text-slate-300 uppercase py-2 tracking-widest">ISN</div>
+                            <div class="text-center text-[10px] font-black text-brand-600 uppercase py-2 tracking-widest bg-brand-50 rounded-lg">SEL</div>
+                            <div class="text-center text-[10px] font-black text-brand-600 uppercase py-2 tracking-widest bg-brand-50 rounded-lg">RAB</div>
+                            <div class="text-center text-[10px] font-black text-brand-600 uppercase py-2 tracking-widest bg-brand-50 rounded-lg">KHA</div>
+                            <div class="text-center text-[10px] font-black text-slate-300 uppercase py-2 tracking-widest">JUM</div>
+                            <div class="text-center text-[10px] font-black text-brand-600 uppercase py-2 tracking-widest bg-brand-50 rounded-lg">SAB</div>
                         </div>
-                        <div id="calendarBody" class="calendar-grid">
-                            <!-- JS Injection -->
+                        
+                        <!-- Days Tiles -->
+                        <div id="calendarBody" class="grid grid-cols-7 gap-2 auto-rows-fr">
+                            <!-- JS Injection Here -->
                         </div>
                     </div>
-                    <div class="bg-blue-50 p-5 border-t border-blue-100">
-                        <p class="text-[10px] font-bold text-blue-700 leading-relaxed wrap-text">
+
+                    <!-- Footer Info -->
+                    <div class="bg-blue-50 p-5 border-t border-blue-100 mt-auto">
+                        <p class="text-[10px] font-bold text-blue-700 leading-relaxed wrap-safe">
                             <i class="fas fa-info-circle mr-1 text-blue-500 text-xs"></i> NOTA: Slot bimbingan hanya dibuka pada hari <strong>Selasa, Rabu, Khamis dan Sabtu</strong>. Permohonan perlu dibuat sekurang-kurangnya 3 hari sebelum tarikh acara.
                         </p>
                     </div>
@@ -142,7 +170,7 @@
                         <!-- Date Info -->
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tarikh Dipilih</label>
-                            <input type="text" id="displayDate" readonly class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 font-black text-brand-600 outline-none wrap-text text-sm uppercase" placeholder="Klik pada kalendar">
+                            <input type="text" id="displayDate" readonly class="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 font-black text-brand-600 outline-none wrap-safe text-sm uppercase" placeholder="SILA PILIH TARIKH">
                             <input type="hidden" id="rawDate">
                         </div>
 
@@ -150,7 +178,7 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tajuk Bengkel / Bimbingan</label>
                             <div class="relative">
-                                <select id="tajukBengkel" required class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-bold text-slate-700 appearance-none bg-white text-xs wrap-text">
+                                <select id="tajukBengkel" required class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-bold text-slate-700 appearance-none bg-white text-xs wrap-safe leading-snug pr-8">
                                     <!-- Populated by JS -->
                                 </select>
                                 <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
@@ -180,7 +208,7 @@
                             </div>
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">No. Telefon (WhatsApp)</label>
-                                <input type="tel" id="picPhone" required class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Contoh: 0123456789">
+                                <input type="tel" id="picPhone" required class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Contoh: 0123456789" oninput="if(typeof autoFormatPhone === 'function') autoFormatPhone(this)">
                             </div>
                         </div>
 
@@ -193,7 +221,7 @@
                         <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3 block">Identiti Sekolah</span>
                         <div class="inline-flex flex-col items-center gap-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl w-full">
                             <span id="displayKod" class="text-xs font-black text-brand-600 tracking-tighter">KOD</span>
-                            <span id="displayNama" class="text-[10px] font-bold text-slate-500 wrap-text leading-tight px-2 uppercase">NAMA SEKOLAH</span>
+                            <span id="displayNama" class="text-[10px] font-bold text-slate-500 wrap-safe leading-tight px-2 uppercase">NAMA SEKOLAH</span>
                         </div>
                     </div>
                 </div>
@@ -208,8 +236,9 @@
         </div>
     </footer>
 
-    <!-- LOGIC LOAD ORDER: DB -> DROPDOWNS -> SERVICE -> SCRIPT -->
+    <!-- LOGIC LOAD ORDER: DB -> HELPER -> DROPDOWNS -> SERVICE -> SCRIPT -->
     <script type="module" src="../../js/core/db.js"></script>
+    <script type="module" src="../../js/core/helpers.js"></script>
     <script type="module" src="../../js/config/dropdowns.js"></script>
     <script type="module" src="../../js/services/booking.service.js"></script>
     <script type="module" src="script.js"></script>

@@ -1,5 +1,5 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.1
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.2 (BORDER FIX)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
  * Target HTML: modules/booking/index.html
  */
@@ -83,14 +83,14 @@ async function loadBookingHistory(kod) {
 
             return `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 group">
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-4 align-top">
                         <div class="font-mono font-bold text-slate-600">${dateStr}</div>
                         <div class="text-[9px] font-black text-brand-500 uppercase mt-0.5">${item.masa}</div>
                     </td>
-                    <td class="px-6 py-4">
-                        <div class="text-xs font-bold text-slate-700 uppercase leading-tight line-clamp-2" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
+                    <td class="px-6 py-4 align-top">
+                        <div class="text-xs font-bold text-slate-700 uppercase leading-tight wrap-safe" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
                     </td>
-                    <td class="px-6 py-4 text-center">${statusBadge}</td>
+                    <td class="px-6 py-4 text-center align-top">${statusBadge}</td>
                 </tr>`;
         }).join('');
     } catch (e) {
@@ -128,7 +128,6 @@ window.renderCalendar = async function() {
 
         // 1. Render Tab Minggu (Navigasi M1-M5)
         const totalWeeks = Math.ceil(daysInMonth / 7);
-        // Pastikan activeWeek tidak melebihi totalWeeks bila tukar bulan
         if (activeWeek > totalWeeks) activeWeek = 1;
 
         let tabsHtml = '';
@@ -154,9 +153,11 @@ window.renderCalendar = async function() {
         for (let d = startDay; d <= endDay; d++) {
             const dateString = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
             const dateObj = new Date(currentYear, currentMonth, d);
+            dateObj.setHours(0, 0, 0, 0); // Penting untuk perbandingan tarikh bersih
+
             const dayOfWeek = dateObj.getDay();
             
-            // Logik Status
+            // Logik Status & Tapisan
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
@@ -165,27 +166,31 @@ window.renderCalendar = async function() {
             const minNoticeDate = new Date();
             minNoticeDate.setDate(today.getDate() + 3);
             minNoticeDate.setHours(0, 0, 0, 0);
-            dateObj.setHours(0, 0, 0, 0);
             
-            const isPastOrTooSoon = dateObj < minNoticeDate;
+            const isPast = dateObj < today; // Tarikh sudah lepas
+            const isTooSoon = dateObj < minNoticeDate; // Tarikh terlalu awal (kurang 3 hari)
 
             let status = 'open';
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
             let availableSlots = ['Pagi', 'Petang'];
 
-            // Logik Penentuan Status & Style
-            if (isPastOrTooSoon) {
+            // Logik Penentuan Status Visual
+            if (isPast) {
                 status = 'closed';
+                statusText = 'LEPAS';
+                statusIcon = 'fa-history';
+            } else if (isTooSoon) {
+                status = 'closed'; // Guna style closed tapi text 'TUTUP'
                 statusText = 'TUTUP';
-                statusIcon = 'fa-lock';
+                statusIcon = 'fa-clock'; // Ikon masa tamat
             } else if (!isAllowedDay) {
                 status = 'closed';
                 statusText = 'TIADA SESI';
                 statusIcon = 'fa-ban';
             } else if (isLocked) {
                 status = 'locked';
-                statusText = 'DIKUNCI'; // lockedDetails[dateString]
+                statusText = 'DIKUNCI'; 
                 statusIcon = 'fa-lock';
             } else if (slotsTaken.length >= 2) {
                 status = 'full';
@@ -198,22 +203,20 @@ window.renderCalendar = async function() {
                 availableSlots = ['Pagi', 'Petang'].filter(s => !slotsTaken.includes(s));
             }
 
-            // Jika status closed, kita mungkin nak render gaya minimal atau skip?
-            // Untuk kalendar lengkap, kita render semua tapi dengan visual 'disabled'
-            
             const isSelected = (dateString === selectedDateString);
             
             // Bina Kad HTML
             const card = document.createElement('div');
+            // Guna kelas CSS .day-card dan .card-* dari index.html yang dikemaskini (border nyata)
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''} animate-fade-in group`;
             
-            let statusColorClass = 'text-brand-600 bg-brand-50';
-            if (status === 'full') statusColorClass = 'text-red-500 bg-red-50';
-            if (status === 'locked') statusColorClass = 'text-purple-600 bg-purple-50';
-            if (status === 'partial') statusColorClass = 'text-amber-600 bg-amber-50';
-            if (status === 'closed') statusColorClass = 'text-slate-400 bg-slate-100';
+            let statusColorClass = 'text-brand-600 bg-brand-50 border-brand-200';
+            if (status === 'full') statusColorClass = 'text-red-500 bg-red-50 border-red-200';
+            if (status === 'locked') statusColorClass = 'text-purple-600 bg-purple-50 border-purple-200';
+            if (status === 'partial') statusColorClass = 'text-amber-600 bg-amber-50 border-amber-200';
+            if (status === 'closed') statusColorClass = 'text-slate-400 bg-slate-100 border-slate-200';
 
-            const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase truncate">${lockedDetails[dateString]}</div>` : '';
+            const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase wrap-safe leading-tight">${lockedDetails[dateString]}</div>` : '';
 
             card.innerHTML = `
                 <div class="flex justify-between items-start">
@@ -221,24 +224,25 @@ window.renderCalendar = async function() {
                         <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">${DAY_NAMES[dayOfWeek]}</span>
                         <span class="text-3xl font-black text-slate-800 leading-none">${d}</span>
                     </div>
-                    <div class="${statusColorClass} w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm">
+                    <div class="${statusColorClass} w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-sm shadow-sm transition-transform group-hover:rotate-12">
                         <i class="fas ${statusIcon}"></i>
                     </div>
                 </div>
                 
                 <div class="mt-4">
-                    <span class="inline-block px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${statusColorClass}">
+                    <span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${statusColorClass} border">
                         ${statusText}
                     </span>
                     ${lockedMsg}
                 </div>
                 
-                ${status === 'open' || status === 'partial' ? 
+                ${(status === 'open' || status === 'partial') ? 
                   `<div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
                       <span class="text-brand-600 text-xs font-bold flex items-center gap-1">Pilih <i class="fas fa-arrow-right"></i></span>
                    </div>` : ''}
             `;
 
+            // Hanya benarkan klik jika status OPEN atau PARTIAL (dan bukan tarikh lepas/tutup)
             if (status === 'open' || status === 'partial') {
                 card.onclick = () => handleCardSelection(dateString, availableSlots, card);
             }
@@ -248,7 +252,7 @@ window.renderCalendar = async function() {
         }
 
         if (!hasContent) {
-            container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 text-sm">Tiada tarikh dalam minggu ini.</div>`;
+            container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 text-sm italic border-2 border-dashed border-slate-200 rounded-xl">Tiada tarikh aktif dalam minggu ini.</div>`;
         }
 
     } catch (err) {
@@ -325,10 +329,10 @@ function checkFormValidity() {
     
     if (date && masa) {
         btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'disabled:transform-none');
     } else {
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'disabled:transform-none');
     }
 }
 

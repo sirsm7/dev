@@ -1,10 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.2 SURGICAL)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.3 SURGICAL)
  * Fungsi: Menguruskan sistem tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V3.2 ---
- * 1. Logic Integrity: Hari Ahad(0) & Isnin(1) akan sentiasa memaparkan 'TIADA SESI'.
- * 2. Visual Priority: 'TIADA SESI' mempunyai keutamaan lebih tinggi berbanding 'LEPAS' untuk hari Ahad.
- * 3. Bug Fix: Membersihkan visual daripada redundansi teks.
+ * --- UPDATE V3.3 ---
+ * 1. Strict Interaction: Hari Ahad(0) & Isnin(1) dinyahaktifkan sepenuhnya daripada sebarang klik.
+ * 2. Visual Priority: Hari 'Tiada Sesi' sentiasa memaparkan status ban/ban icon.
+ * 3. Bug Fix: Memastikan status 'closed' (Tiada Sesi) tidak membenarkan handleAdminDateAction dipanggil.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -125,7 +125,7 @@ window.switchAdminWeek = function(weekNum) {
 };
 
 /**
- * Membina Grid Kalendar (Admin Side) - STRATEGI VISUAL BARU
+ * Membina Grid Kalendar (Admin Side) - STRATEGI INTERAKSI TEGAS
  */
 window.renderAdminBookingCalendar = async function() {
     const grid = document.getElementById('adminCalendarGrid');
@@ -173,7 +173,7 @@ window.renderAdminBookingCalendar = async function() {
 
             const dayOfWeek = dateObj.getDay(); 
             
-            // LOGIK INTEGRITI: Hari Ahad(0) & Isnin(1) adalah TIADA SESI secara mutlak
+            // LOGIK INTEGRITI: Hari Ahad(0) & Isnin(1) adalah TIADA SESI
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
@@ -183,24 +183,32 @@ window.renderAdminBookingCalendar = async function() {
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
             
-            // PRIORITI: Jika bukan hari dibenarkan, abaikan status lain
+            // PRIORITI 1: Bukan Hari Dibenarkan (Ahad/Isnin/Jumaat)
             if (!isAllowedDay) {
                 status = 'closed';
                 statusText = 'TIADA SESI';
                 statusIcon = 'fa-ban';
-            } else if (isPast) {
+            } 
+            // PRIORITI 2: Tarikh Lampau
+            else if (isPast) {
                 status = 'closed';
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
-            } else if (isLocked) {
+            } 
+            // PRIORITI 3: Dikunci Manual oleh Admin
+            else if (isLocked) {
                 status = 'locked';
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
-            } else if (slotsTaken.length >= 2) {
+            } 
+            // PRIORITI 4: Penuh (2 Slot)
+            else if (slotsTaken.length >= 2) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
-            } else if (slotsTaken.length === 1) {
+            } 
+            // PRIORITI 5: Berbaki 1 Slot
+            else if (slotsTaken.length === 1) {
                 status = 'partial';
                 statusText = '1 SLOT BAKI';
                 statusIcon = 'fa-exclamation-circle';
@@ -237,11 +245,20 @@ window.renderAdminBookingCalendar = async function() {
                 </div>
             `;
 
-            if (!isPast && (isAllowedDay || isLocked)) {
+            // SEKATAN KLIK: Admin hanya boleh klik jika tarikh MASA DEPAN DAN (Dibenarkan ATAU Sudah Dikunci)
+            // Hari Ahad/Isnin yang 'open' tidak akan boleh diklik untuk dikunci kerana tidak perlu.
+            if (!isPast && isAllowedDay) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
                     handleAdminDateAction(dateString, isLocked);
+                };
+            } else if (!isPast && isLocked) {
+                // Benarkan buka kunci walaupun bukan hari dibenarkan (just in case)
+                card.onclick = () => {
+                    adminSelectedDate = dateString;
+                    window.renderAdminBookingCalendar(); 
+                    handleAdminDateAction(dateString, true);
                 };
             }
 

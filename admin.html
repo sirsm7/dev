@@ -56,22 +56,22 @@
             @apply bg-brand-600 text-white border-brand-700 shadow-md transform scale-105; 
         }
 
-        /* Calendar Tile Styles (Booking Module Integration) - Visual Lebih Jelas */
+        /* Calendar Tile Styles (Booking Module Integration) - Visual Lebih Jelas & Border Tegas */
         .day-card { 
-            @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-300 transition-all duration-300 cursor-pointer overflow-hidden bg-white hover:shadow-lg hover:-translate-y-1 shadow-sm; 
+            @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-300 transition-all duration-300 bg-white hover:shadow-lg hover:-translate-y-1 shadow-sm; 
             min-height: 140px; 
         }
         .card-open { 
-            @apply border-slate-300 hover:border-brand-500 hover:bg-brand-50/10 group; 
+            @apply border-slate-300 hover:border-brand-500 hover:bg-brand-50/10 cursor-pointer group; 
         }
         .card-partial { 
-            @apply border-amber-400 bg-amber-50/40 hover:border-amber-600; 
+            @apply border-amber-400 bg-amber-50/40 hover:border-amber-600 cursor-pointer; 
         }
         .card-full { 
-            @apply border-red-400 bg-red-50/50 opacity-90 grayscale-[0.2]; 
+            @apply border-red-400 bg-red-50/50 opacity-90 grayscale-[0.2] cursor-not-allowed; 
         }
         .card-locked { 
-            @apply border-purple-400 bg-purple-50/70 opacity-95; 
+            @apply border-purple-400 bg-purple-50/70 opacity-95 cursor-pointer; 
         }
         .card-closed { 
             @apply border-slate-200 bg-slate-100 opacity-60 grayscale cursor-not-allowed; 

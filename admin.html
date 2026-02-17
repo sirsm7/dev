@@ -61,8 +61,9 @@
             @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-300 transition-all duration-300 bg-white hover:shadow-lg hover:-translate-y-1 shadow-sm; 
             min-height: 140px; 
         }
+        /* FIX: Buang 'group' daripada @apply untuk elak CssSyntaxError */
         .card-open { 
-            @apply border-slate-300 hover:border-brand-500 hover:bg-brand-50/10 cursor-pointer group; 
+            @apply border-slate-300 hover:border-brand-500 hover:bg-brand-50/10 cursor-pointer; 
         }
         .card-partial { 
             @apply border-amber-400 bg-amber-50/40 hover:border-amber-600 cursor-pointer; 
@@ -97,7 +98,7 @@
         
         .uppercase-input { text-transform: uppercase; }
 
-        /* Week Navigation Tabs dalam Admin - FIX: brand-400 diganti kepada slate-400 */
+        /* Week Navigation Tabs dalam Admin */
         .week-tab-admin {
             @apply px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border-2;
         }
@@ -338,7 +339,7 @@
                 </button>
             </div>
 
-            <!-- STATISTIC CARDS (FIXED VISIBILITY) -->
+            <!-- STATISTIC CARDS -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6 text-center">
                 <div onclick="filterByKategori('MURID')" id="cardStat-MURID" class="p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition">
                     <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Murid</span>
@@ -772,13 +773,13 @@
   <script type="module" src="js/core/db.js"></script>
   
   <!-- ADMIN MODULES -->
-  <script type="module" src="js/admin/main.js"></script> <!-- MAIN CONTROLLER MESTI DILOAD -->
+  <script type="module" src="js/admin/main.js"></script>
   <script type="module" src="js/admin/dashboard.js"></script>
   <script type="module" src="js/admin/analysis.js"></script>
   <script type="module" src="js/admin/achievement.js"></script>
   <script type="module" src="js/admin/communication.js"></script>
   <script type="module" src="js/admin/gallery_manager.js"></script>
-  <script type="module" src="js/admin/booking_manager.js"></script> <!-- MODULE BARU BIMBINGAN & BENGKEL -->
+  <script type="module" src="js/admin/booking_manager.js"></script>
   <script type="module" src="js/admin/settings.js"></script>
 
 </body>

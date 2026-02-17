@@ -46,7 +46,6 @@
         }
     </script>
 
-    <!-- PENTING: Gunakan type="text/tailwindcss" supaya @apply diproses oleh CDN Tailwind -->
     <style type="text/tailwindcss">
         @layer components {
             .hidden { display: none !important; }
@@ -68,9 +67,9 @@
                 min-height: 160px;
             }
 
-            /* State Styles - Menggunakan brand-500 yang sah dalam config */
+            /* State Styles - FIX: Buang 'group' daripada @apply */
             .card-open { 
-                @apply border-slate-200 hover:border-brand-500 group; 
+                @apply border-slate-200 hover:border-brand-500; 
             }
             .card-partial { 
                 @apply border-amber-300 bg-amber-50/30 hover:border-amber-500; 

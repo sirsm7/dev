@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 4.5 (Booking Notification & Cross-PIC Routing Added)
+ * Versi: 4.8 (Robust CORS Fix & Double-DM Routing)
  * Host: tech4ag.my
  */
 
@@ -15,6 +15,13 @@ const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY");
 if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error("Sila tetapkan BOT_TOKEN, SUPABASE_URL, dan SUPABASE_KEY.");
 }
+
+// DEFINISI HEADER CORS (PENTING UNTUK AKSES WEB)
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
 // 2. INISIALISASI
 const bot = new Bot(BOT_TOKEN);
@@ -325,10 +332,15 @@ async function alertTaken(ctx: any) {
   await ctx.deleteMessage(); 
 }
 
-// 5. API SERVER & WEBHOOK HANDLER
+// 5. API SERVER & WEBHOOK HANDLER (Deno Serve)
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
 Deno.serve(async (req) => {
+  // CORS PREFLIGHT HANDLER (PENTING)
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const url = new URL(req.url);
 
   // Endpoint: /notify (Data Profil Dikemaskini)
@@ -364,15 +376,94 @@ Deno.serve(async (req) => {
         await Promise.all(sendPromises);
       }
       return new Response(JSON.stringify({ status: "success" }), {
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (e) {
       console.error(e);
-      return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+      return new Response(JSON.stringify({ status: "error", error: e.message }), { 
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
   }
 
-  // --- Endpoint /notify-booking (BARU: Notifikasi Tempahan) ---
+  // Endpoint: /notify-ticket (User Hantar Tiket -> Admin PPD)
+  if (req.method === "POST" && url.pathname === "/notify-ticket") {
+      try {
+          const body = await req.json();
+          const { kod, peranan, tajuk, mesej } = body;
+
+          const { data: admins } = await supabase
+              .from("smpid_admin_users")
+              .select("telegram_id")
+              .not("telegram_id", "is", null);
+
+          if (admins && admins.length > 0) {
+              const text = 
+                  `🆘 *TIKET ADUAN BARU*\n\n` +
+                  `🏫 Sekolah: *${kod}*\n` +
+                  `👤 Pengirim: *${peranan}*\n` +
+                  `📌 Tajuk: *${tajuk}*\n\n` +
+                  `📝 Mesej: ${mesej}\n\n` +
+                  `_Sila buka panel admin untuk membalas._`;
+
+              const sendPromises = admins.map(admin => 
+                  bot.api.sendMessage(admin.telegram_id, text, { parse_mode: "Markdown" })
+                  .catch(err => console.error(err))
+              );
+              await Promise.all(sendPromises);
+          }
+          return new Response(JSON.stringify({ status: "success" }), { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+      } catch (e) {
+          return new Response(JSON.stringify({ status: "error", error: e.message }), { 
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+      }
+  }
+
+  // Endpoint: /reply-ticket (Admin Balas -> User Sekolah)
+  if (req.method === "POST" && url.pathname === "/reply-ticket") {
+      try {
+          const body = await req.json();
+          const { kod, peranan, tajuk, balasan } = body;
+
+          const { data: sekolah } = await supabase
+              .from("smpid_sekolah_data")
+              .select("telegram_id_gpict, telegram_id_admin")
+              .eq("kod_sekolah", kod)
+              .single();
+
+          if (sekolah) {
+              let targetId = null;
+              if (peranan === 'GPICT') targetId = sekolah.telegram_id_gpict;
+              else if (peranan === 'ADMIN') targetId = sekolah.telegram_id_admin;
+
+              if (targetId) {
+                  const text = 
+                      `✅ *STATUS TIKET: SELESAI*\n\n` +
+                      `📌 Tajuk: *${tajuk}*\n` +
+                      `👤 Dibalas Oleh: *PPD (Admin)*\n\n` +
+                      `💬 Respon: ${balasan}\n\n` +
+                      `_Sila semak portal untuk maklumat lanjut._`;
+
+                  await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
+              }
+          }
+          return new Response(JSON.stringify({ status: "success" }), { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+      } catch (e) {
+          return new Response(JSON.stringify({ status: "error", error: e.message }), { 
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+      }
+  }
+
+  // Endpoint: /notify-booking (BARU - Tempahan Bimbingan)
   if (req.method === "POST" && url.pathname === "/notify-booking") {
       try {
           const body = await req.json();
@@ -425,82 +516,21 @@ Deno.serve(async (req) => {
               await Promise.all(schoolPromises);
           }
 
-          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+          return new Response(JSON.stringify({ status: "success" }), { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
       } catch (e) {
-          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
-      }
-  }
-
-  // --- Endpoint /notify-ticket (User Hantar Tiket -> Admin PPD) ---
-  if (req.method === "POST" && url.pathname === "/notify-ticket") {
-      try {
-          const body = await req.json();
-          const { kod, peranan, tajuk, mesej } = body;
-
-          const { data: admins } = await supabase
-              .from("smpid_admin_users")
-              .select("telegram_id")
-              .not("telegram_id", "is", null);
-
-          if (admins && admins.length > 0) {
-              const text = 
-                  `🆘 *TIKET ADUAN BARU*\n\n` +
-                  `🏫 Sekolah: *${kod}*\n` +
-                  `👤 Pengirim: *${peranan}*\n` +
-                  `📌 Tajuk: *${tajuk}*\n\n` +
-                  `📝 Mesej: ${mesej}\n\n` +
-                  `_Sila buka panel admin untuk membalas._`;
-
-              const sendPromises = admins.map(admin => 
-                  bot.api.sendMessage(admin.telegram_id, text, { parse_mode: "Markdown" })
-                  .catch(err => console.error(err))
-              );
-              await Promise.all(sendPromises);
-          }
-          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-      } catch (e) {
-          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
-      }
-  }
-
-  // --- Endpoint /reply-ticket (Admin Balas -> User Sekolah) ---
-  if (req.method === "POST" && url.pathname === "/reply-ticket") {
-      try {
-          const body = await req.json();
-          const { kod, peranan, tajuk, balasan } = body;
-
-          const { data: sekolah } = await supabase
-              .from("smpid_sekolah_data")
-              .select("telegram_id_gpict, telegram_id_admin")
-              .eq("kod_sekolah", kod)
-              .single();
-
-          if (sekolah) {
-              let targetId = null;
-              if (peranan === 'GPICT') targetId = sekolah.telegram_id_gpict;
-              else if (peranan === 'ADMIN') targetId = sekolah.telegram_id_admin;
-
-              if (targetId) {
-                  const text = 
-                      `✅ *STATUS TIKET: SELESAI*\n\n` +
-                      `📌 Tajuk: *${tajuk}*\n` +
-                      `👤 Dibalas Oleh: *PPD (Admin)*\n\n` +
-                      `💬 Respon: ${balasan}\n\n` +
-                      `_Sila semak portal untuk maklumat lanjut._`;
-
-                  await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
-              }
-          }
-          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-      } catch (e) {
-          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+          return new Response(JSON.stringify({ status: "error", error: e.message }), { 
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
       }
   }
 
   // Handle Telegram Webhook
   if (req.method === "OPTIONS") {
       return new Response(null, {
-          headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Content-Type" }
+          headers: corsHeaders // Handle OPTIONS for webhook if needed, though mostly for API
       });
   }
 

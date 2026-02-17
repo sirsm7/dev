@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 4.8 (Robust CORS Fix & Double-DM Routing)
+ * Versi: 4.9 (CORS Priority Fix)
  * Host: tech4ag.my
  */
 
@@ -336,7 +336,8 @@ async function alertTaken(ctx: any) {
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
 Deno.serve(async (req) => {
-  // CORS PREFLIGHT HANDLER (PENTING)
+  // --- KAWALAN CORS UTAMA (PRIORITY HIGH) ---
+  // Diletakkan paling atas untuk memintas sebarang 'Preflight Request'
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -527,12 +528,6 @@ Deno.serve(async (req) => {
       }
   }
 
-  // Handle Telegram Webhook
-  if (req.method === "OPTIONS") {
-      return new Response(null, {
-          headers: corsHeaders // Handle OPTIONS for webhook if needed, though mostly for API
-      });
-  }
-
+  // Fallback untuk Webhook Bot
   return await handleBotUpdate(req);
 });

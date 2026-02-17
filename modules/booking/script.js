@@ -1,10 +1,11 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 1.4
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 1.5
  * Menguruskan kalendar interaktif, pengisian dropdown tajuk bengkel,
- * dan logik tempahan sekolah dengan integriti data penuh.
- * --- UPDATE V1.4 ---
- * 1. Integration: Menggunakan populateDropdown untuk mengisi tajuk bengkel (A-Z).
- * 2. Data Payload: Menambah medan 'tajuk_bengkel' dalam penghantaran data.
+ * dan logik tempahan sekolah dengan integriti visual dan data penuh.
+ * --- UPDATE V1.5 ---
+ * 1. Visual Sync: Menyelaraskan logik 'active-selection' dengan paparan Admin.
+ * 2. Data Integrity: Memastikan paparan tarikh dan identiti menggunakan UPPERCASE.
+ * 3. Text Wrapping: Memastikan data yang dijana ke DOM tidak menggunakan pemotongan teks (truncation).
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -39,51 +40,52 @@ async function initBookingPortal() {
             schoolInfo.kod = data.kod_sekolah;
             schoolInfo.nama = data.nama_sekolah;
             
+            // Paparan identiti sekolah (Wrap text handled by CSS class 'wrap-text' in HTML)
             document.getElementById('displayKod').innerText = schoolInfo.kod;
-            document.getElementById('displayNama').innerText = schoolInfo.nama;
+            document.getElementById('displayNama').innerText = schoolInfo.nama.toUpperCase();
         }
     } catch (e) {
         console.error("[Booking] Gagal muat info sekolah:", e);
     }
 
-    // 2. Isi Dropdown Tajuk Bengkel (Surgical Injection from dropdowns.js)
+    // 2. Isi Dropdown Tajuk Bengkel (A-Z)
     populateDropdown('tajukBengkel', 'BENGKEL');
 
-    // 3. Render Kalendar Pertama Kali
+    // 3. Render Kalendar
     renderCalendar();
 }
 
 /**
- * Membina grid kalendar bagi bulan dan tahun semasa dengan semakan ketersediaan slot.
+ * Membina grid kalendar dengan kesan visual hover dan highlight pemilihan.
  */
 window.renderCalendar = async function() {
     const container = document.getElementById('calendarBody');
     const monthLabel = document.getElementById('monthDisplay');
     if (!container) return;
 
-    // Papar Loading Ringkas
-    container.innerHTML = `<div class="col-span-7 py-10 text-center text-slate-300 italic">Memuatkan slot...</div>`;
+    // Papar Loading State
+    container.innerHTML = `<div class="col-span-7 py-20 text-center text-slate-300 italic text-sm animate-pulse">Menyemak ketersediaan slot...</div>`;
     monthLabel.innerText = `${MALAY_MONTHS[currentMonth]} ${currentYear}`.toUpperCase();
 
     try {
-        // Ambil Data dari Database (Service Layer)
+        // Ambil Data dari Database
         const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(currentYear, currentMonth);
 
-        container.innerHTML = ""; // Bersihkan container
+        container.innerHTML = ""; // Bersihkan grid
 
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // 1. Padding hari bulan lepas
+        // 1. Padding hari bulan sebelumnya
         for (let i = 0; i < firstDay; i++) {
             const pad = document.createElement('div');
             pad.className = 'tile tile-other';
             container.appendChild(pad);
         }
 
-        // 2. Bina Tile bagi setiap hari
+        // 2. Jana Jubin Tarikh
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(currentYear, currentMonth, d);
             const isoDate = dateObj.toISOString().split('T')[0];
@@ -93,7 +95,7 @@ window.renderCalendar = async function() {
             const isLocked = lockedDetails.hasOwnProperty(isoDate);
             const slots = bookedSlots[isoDate] || [];
             
-            // Peraturan: Tempahan mesti minima 3 hari ke depan
+            // Peraturan: Tempahan minima 3 hari ke hadapan
             const minNoticeDate = new Date();
             minNoticeDate.setDate(today.getDate() + 3);
             minNoticeDate.setHours(0, 0, 0, 0);
@@ -102,9 +104,7 @@ window.renderCalendar = async function() {
             let status = 'closed';
             let availableSlots = [];
 
-            if (isPast) {
-                status = 'closed';
-            } else if (!isAllowedDay) {
+            if (isPast || !isAllowedDay) {
                 status = 'closed';
             } else if (isLocked) {
                 status = 'locked';
@@ -118,25 +118,29 @@ window.renderCalendar = async function() {
                 availableSlots = ['Pagi', 'Petang'];
             }
 
+            const isSelected = (isoDate === selectedDateISO);
             const tile = document.createElement('div');
-            tile.className = `tile tile-${status} ${isoDate === selectedDateISO ? 'active-selection' : ''}`;
+            
+            // Gabungan class mengikut status dan pemilihan
+            tile.className = `tile tile-${status} ${isSelected ? 'active-selection' : ''}`;
             
             let html = `<span class="date-num text-xs">${d}</span>`;
             
             if (status === 'locked') {
-                html += `<div class="text-[8px] font-bold text-purple-400 mt-1 uppercase truncate" title="${lockedDetails[isoDate]}">${lockedDetails[isoDate]}</div>`;
+                // Teks dibenarkan wrap jika sebab kunci panjang
+                html += `<div class="text-[7px] font-black uppercase text-purple-100 mt-1 wrap-text leading-tight bg-black/10 p-1 rounded">${lockedDetails[isoDate]}</div>`;
             } else if (status === 'booked') {
-                html += `<div class="text-[8px] font-bold text-red-400 mt-1 uppercase">Penuh</div>`;
+                html += `<div class="text-[8px] font-black text-red-500 mt-1 uppercase tracking-tighter">PENUH</div>`;
             } else if (status === 'partial') {
                 const label = availableSlots[0];
-                html += `<div class="slot-pill slot-${label.toLowerCase()} mt-1">${label} Sedia</div>`;
+                html += `<div class="slot-pill slot-${label.toLowerCase()} mt-1">${label.toUpperCase()} SEDIA</div>`;
             } else if (status === 'open') {
-                html += `<div class="text-[8px] font-bold text-emerald-500 mt-1 uppercase">2 Slot</div>`;
+                html += `<div class="text-[8px] font-black text-emerald-500 mt-1 uppercase tracking-tighter">2 SLOT KOSONG</div>`;
             }
 
             tile.innerHTML = html;
 
-            // Klik hanya pada tarikh yang terbuka atau sebahagian terbuka
+            // Logik Klik (Hanya untuk slot yang masih ada kekosongan)
             if (status === 'open' || status === 'partial') {
                 tile.onclick = () => handleTileSelection(isoDate, availableSlots, tile);
             }
@@ -145,27 +149,27 @@ window.renderCalendar = async function() {
         }
 
     } catch (err) {
-        console.error("[Booking] Ralat Render Kalendar:", err);
-        container.innerHTML = `<div class="col-span-7 py-10 text-center text-red-400 font-bold">Gagal memuatkan data kalendar.</div>`;
+        console.error("[Booking] Error:", err);
+        container.innerHTML = `<div class="col-span-7 py-20 text-center text-red-500 font-bold bg-red-50 rounded-2xl">Ralat memuatkan data kalendar.</div>`;
     }
 };
 
 /**
- * Menguruskan pemilihan tarikh pada kalendar.
+ * Menguruskan pemilihan tarikh dan kemaskini UI borang.
  */
 function handleTileSelection(isoDate, availableSlots, element) {
     selectedDateISO = isoDate;
 
-    // 1. Visual Feedback (Highlighting)
+    // 1. Visual Feedback: Reset dan set Highlight (Identikal dengan Admin)
     document.querySelectorAll('.tile').forEach(t => t.classList.remove('active-selection'));
     element.classList.add('active-selection');
 
-    // 2. Kemaskini Input Paparan
+    // 2. Kemaskini Input Paparan (Format UPPERCASE)
     const dateReadable = new Date(isoDate).toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     document.getElementById('displayDate').value = dateReadable.toUpperCase();
     document.getElementById('rawDate').value = isoDate;
 
-    // 3. Papar Pilihan Slot
+    // 3. Papar Pilihan Slot Masa
     const wrapper = document.getElementById('slotWrapper');
     wrapper.classList.remove('hidden');
 
@@ -175,7 +179,7 @@ function handleTileSelection(isoDate, availableSlots, element) {
     radioPagi.disabled = !availableSlots.includes('Pagi');
     radioPetang.disabled = !availableSlots.includes('Petang');
     
-    // Auto-check jika cuma ada 1 slot yang tinggal
+    // Auto-check jika hanya satu slot tersedia
     if (availableSlots.length === 1) {
         if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
         else radioPetang.checked = true;
@@ -189,7 +193,7 @@ function handleTileSelection(isoDate, availableSlots, element) {
 }
 
 /**
- * Penukaran bulan kalendar (Navigasi).
+ * Navigasi Bulan (Sebelum/Seterusnya).
  */
 window.changeMonth = function(offset) {
     currentMonth += offset;
@@ -200,12 +204,17 @@ window.changeMonth = function(offset) {
         currentMonth = 11;
         currentYear--;
     }
+    // Pemilihan dibatalkan jika tukar bulan untuk elak ralat visual
+    selectedDateISO = null; 
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('slotWrapper').classList.add('hidden');
+    document.getElementById('displayDate').value = "";
+    
     renderCalendar();
 };
 
 /**
- * Pengendali Penghantaran Borang Tempahan.
- * Mengumpul data termasuk tajuk bengkel yang dipilih.
+ * Pengendali Penghantaran Borang ke Database.
  */
 window.handleBookingSubmit = async function() {
     const date = document.getElementById('rawDate').value;
@@ -215,27 +224,27 @@ window.handleBookingSubmit = async function() {
     const picPhone = document.getElementById('picPhone').value.trim();
     const btn = document.getElementById('btnSubmit');
 
-    // Validasi Kelengkapan Data
     if (!date || !tajukBengkel || !masaInp || !picName || !picPhone) {
         return Swal.fire({
             icon: "warning",
-            title: "Data Tidak Lengkap",
-            text: "Sila pastikan tarikh, tajuk bimbingan, slot masa dan butiran PIC telah diisi dengan betul.",
-            confirmButtonColor: '#3b82f6'
+            title: "Maklumat Tidak Lengkap",
+            text: "Sila pastikan tarikh, tajuk bimbingan, slot masa dan butiran PIC diisi.",
+            confirmButtonColor: '#3b82f6',
+            customClass: { popup: 'rounded-[2rem]' }
         });
     }
 
     const payload = {
         tarikh: date,
         masa: masaInp.value,
-        tajuk_bengkel: tajukBengkel, // NEW FIELD V1.4
+        tajuk_bengkel: tajukBengkel,
         nama_pic: picName.toUpperCase(),
         no_tel_pic: picPhone,
         kod_sekolah: schoolInfo.kod,
-        nama_sekolah: schoolInfo.nama
+        nama_sekolah: schoolInfo.nama.toUpperCase()
     };
 
-    // Papar Loading Overlay
+    // UI Feedback
     document.getElementById('loadingOverlay').classList.remove('hidden');
     btn.disabled = true;
 
@@ -246,19 +255,23 @@ window.handleBookingSubmit = async function() {
         
         await Swal.fire({
             icon: 'success',
-            title: 'Tempahan Berjaya!',
-            html: `ID Tempahan: <b class="text-brand-600 font-mono">${result.bookingId}</b><br><br>Permohonan anda telah direkodkan. Pegawai USTP akan menghubungi anda untuk pengesahan slot.`,
-            confirmButtonColor: '#2563eb'
+            title: 'Permohonan Diterima!',
+            html: `<div class="p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-2">
+                    <p class="text-xs text-blue-400 font-bold uppercase tracking-widest">ID Tempahan Anda:</p>
+                    <p class="text-lg font-black text-brand-600 font-mono">${result.bookingId}</p>
+                   </div>
+                   <p class="text-sm text-slate-500 wrap-text">Sila tunggu maklum balas daripada Pegawai USTP untuk pengesahan slot bimbingan ini.</p>`,
+            confirmButtonColor: '#2563eb',
+            customClass: { popup: 'rounded-[2rem]' }
         });
 
-        // Reset Borang & Refresh Kalendar
+        // Reset Borang
         document.getElementById('bookingForm').reset();
         document.getElementById('slotWrapper').classList.add('hidden');
         document.getElementById('displayDate').value = "";
         btn.disabled = true;
         selectedDateISO = null;
         
-        // Refresh grid untuk tunjuk status terkini
         renderCalendar();
 
     } catch (err) {
@@ -267,8 +280,9 @@ window.handleBookingSubmit = async function() {
         Swal.fire({
             icon: "error",
             title: "Gagal Menghantar",
-            text: err.message || "Ralat sistem semasa memproses tempahan.",
-            confirmButtonColor: '#ef4444'
+            text: err.message || "Ralat sistem pangkalan data.",
+            confirmButtonColor: '#ef4444',
+            customClass: { popup: 'rounded-[2rem]' }
         });
     }
 };

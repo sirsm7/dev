@@ -1,7 +1,7 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.3 (VISUAL CLEANUP)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 3.4 (CLEAN & WRAP EDITION)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * Kemaskini: Membuang teks "PILIH" yang mengganggu.
+ * Target HTML: modules/booking/index.html
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -39,7 +39,7 @@ async function initBookingPortal() {
             schoolInfo.nama = data.nama_sekolah;
             document.getElementById('displayKod').innerText = schoolInfo.kod;
             
-            // Fix: Handle long names in badge with wrap-safe
+            // Integriti Teks: Nama sekolah dalam badge di-set sebagai wrap-safe
             const dispNama = document.getElementById('displayNama');
             if (dispNama) {
                 dispNama.innerText = schoolInfo.nama.toUpperCase();
@@ -86,18 +86,18 @@ async function loadBookingHistory(kod) {
 
             return `
                 <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 group">
-                    <td class="px-6 py-4 align-top">
+                    <td class="px-6 py-4">
                         <div class="font-mono font-bold text-slate-600">${dateStr}</div>
                         <div class="text-[9px] font-black text-brand-500 uppercase mt-0.5">${item.masa}</div>
                     </td>
-                    <td class="px-6 py-4 align-top">
-                        <!-- WRAP-SAFE APPLIED HERE -->
+                    <td class="px-6 py-4">
                         <div class="text-xs font-bold text-slate-700 uppercase leading-tight wrap-safe" title="${item.tajuk_bengkel}">${item.tajuk_bengkel}</div>
                     </td>
-                    <td class="px-6 py-4 text-center align-top">${statusBadge}</td>
+                    <td class="px-6 py-4 text-center">${statusBadge}</td>
                 </tr>`;
         }).join('');
     } catch (e) {
+        console.error("[BookingHistory] Error:", e);
         tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-400 font-bold">Ralat memuatkan sejarah.</td></tr>`;
     }
 }
@@ -157,7 +157,7 @@ window.renderCalendar = async function() {
         for (let d = startDay; d <= endDay; d++) {
             const dateString = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
             const dateObj = new Date(currentYear, currentMonth, d);
-            dateObj.setHours(0, 0, 0, 0); // Penting untuk perbandingan tarikh bersih
+            dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay();
             
@@ -171,8 +171,8 @@ window.renderCalendar = async function() {
             minNoticeDate.setDate(today.getDate() + 3);
             minNoticeDate.setHours(0, 0, 0, 0);
             
-            const isPast = dateObj < today; // Tarikh sudah lepas
-            const isTooSoon = dateObj < minNoticeDate; // Tarikh terlalu awal (kurang 3 hari)
+            const isPast = dateObj < today;
+            const isTooSoon = dateObj < minNoticeDate;
 
             let status = 'open';
             let statusText = 'KOSONG';
@@ -213,7 +213,7 @@ window.renderCalendar = async function() {
             const card = document.createElement('div');
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''} animate-fade-in group`;
             
-            // Tentukan warna ikon dan teks
+            // Tentukan warna ikon dan teks - brand-500 digunakan bagi menggantikan 400
             let statusColorClass = 'text-brand-600 bg-brand-50 border-brand-200';
             if (status === 'full') statusColorClass = 'text-red-500 bg-red-50 border-red-200';
             if (status === 'locked') statusColorClass = 'text-purple-600 bg-purple-50 border-purple-200';
@@ -222,7 +222,7 @@ window.renderCalendar = async function() {
 
             const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-500 font-bold mt-1 uppercase wrap-safe leading-tight">${lockedDetails[dateString]}</div>` : '';
 
-            // REMOVED: Blok teks "PILIH ->" di bahagian bawah kad.
+            // PERUBAHAN: Teks "PILIH" telah dibuang sepenuhnya.
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -242,7 +242,7 @@ window.renderCalendar = async function() {
                 </div>
             `;
 
-            // Hanya benarkan klik jika status OPEN atau PARTIAL
+            // Hanya benarkan klik jika status OPEN atau PARTIAL (bukan tarikh lepas/tutup)
             if (status === 'open' || status === 'partial') {
                 card.onclick = () => handleCardSelection(dateString, availableSlots, card);
             }
@@ -329,10 +329,10 @@ function checkFormValidity() {
     
     if (date && masa) {
         btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'disabled:transform-none');
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
     } else {
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed', 'disabled:transform-none');
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
     }
 }
 
@@ -350,7 +350,7 @@ window.changeMonth = function(offset) {
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
     
-    activeWeek = 1; // Reset ke minggu pertama bila tukar bulan
+    activeWeek = 1; 
     resetSelection();
     renderCalendar();
 };
@@ -379,6 +379,7 @@ window.handleBookingSubmit = async function() {
     const btn = document.getElementById('btnSubmit');
 
     if (!date || !tajukBengkel || !masaInp || !picName || !picPhone) {
+        // Peringatan: Swal.fire hanya berfungsi jika CDN SweetAlert2 ada dalam HTML
         return Swal.fire({ icon: "warning", title: "Tidak Lengkap", text: "Sila isi semua maklumat bertanda." });
     }
 
@@ -402,7 +403,7 @@ window.handleBookingSubmit = async function() {
         await Swal.fire({
             icon: 'success',
             title: 'Tempahan Berjaya!',
-            html: `Nombor Rujukan: <br><b class="text-xl font-mono text-brand-600 mt-2 block">${result.bookingId}</b><br><span class="text-sm text-slate-500">Sila simpan untuk rujukan.</span>`,
+            html: `Nombor Rujukan: <br><b class="text-xl font-mono text-brand-600 mt-2 block">${result.bookingId}</b><br><span class="text-sm text-slate-500 wrap-safe">Sila simpan nombor ini untuk rujukan urusan bimbingan.</span>`,
             confirmButtonColor: '#2563eb'
         });
 
@@ -420,3 +421,8 @@ window.handleBookingSubmit = async function() {
         Swal.fire({ icon: "error", title: "Gagal", text: err.message });
     }
 };
+
+// Global Exposure for HTML Event Handlers
+window.changeMonth = changeMonth;
+window.switchWeek = switchWeek;
+window.handleBookingSubmit = handleBookingSubmit;

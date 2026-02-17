@@ -18,7 +18,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- SUPABASE (DENGAN BACKUP CDN) -->
+    <!-- LIBRARIES (SweetAlert2 & Supabase) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
             onerror="console.warn('CDN Utama Disekat. Mencuba Backup...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2'">
     </script>
@@ -45,29 +46,31 @@
         }
     </script>
 
+    <!-- PENTING: Gunakan type="text/tailwindcss" supaya @apply diproses oleh CDN Tailwind -->
     <style type="text/tailwindcss">
         @layer components {
             .hidden { display: none !important; }
             .no-scrollbar::-webkit-scrollbar { display: none; }
             .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             
-            /* WRAP SAFE: Memaksa teks turun baris dan tidak dipotong */
+            /* INTEGRITI TEKS: Memaksa teks turun baris */
             .wrap-safe {
                 white-space: normal !important;
+                word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
                 word-break: break-word !important;
-                line-height: 1.4 !important;
+                line-height: 1.5 !important;
             }
 
-            /* Day Card Base Style */
+            /* Day Card Styles - Definisi Border Tegas */
             .day-card {
                 @apply relative flex flex-col justify-between p-5 rounded-3xl border-2 transition-all duration-300 cursor-pointer overflow-hidden bg-white hover:shadow-xl hover:-translate-y-1;
                 min-height: 160px;
             }
 
-            /* State Styles */
+            /* State Styles - Menggunakan brand-500 yang sah dalam config */
             .card-open { 
-                @apply border-slate-200 hover:border-brand-400 group; 
+                @apply border-slate-200 hover:border-brand-500 group; 
             }
             .card-partial { 
                 @apply border-amber-300 bg-amber-50/30 hover:border-amber-500; 
@@ -79,7 +82,7 @@
                 @apply border-purple-200 bg-purple-50/50 cursor-not-allowed opacity-90; 
             }
             .card-closed { 
-                @apply border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed grayscale pointer-events-none; 
+                @apply border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed grayscale pointer-events-none; 
             }
 
             .card-active { 
@@ -101,9 +104,9 @@
             }
             
             /* Table Wrapping Overrides */
-            table td {
-                @apply align-top py-4 px-6;
-                white-space: normal !important;
+            table td, table th {
+                @apply wrap-safe;
+                vertical-align: top;
             }
         }
     </style>
@@ -201,7 +204,7 @@
                                 </tr>
                             </thead>
                             <tbody id="historyTableBody" class="divide-y divide-slate-50 text-xs">
-                                <tr><td colspan="3" class="p-8 text-center text-slate-400 italic">Memuatkan rekod...</td></tr>
+                                <tr><td colspan="3" class="p-8 text-center text-slate-400 italic font-medium">Memuatkan rekod...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -242,7 +245,7 @@
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Fokus Bimbingan</label>
                                 <div class="relative">
-                                    <select id="tajukBengkel" required class="form-input appearance-none uppercase text-xs font-bold leading-snug pr-10 wrap-safe">
+                                    <select id="tajukBengkel" required class="form-input appearance-none uppercase text-xs font-bold leading-snug pr-10">
                                         <!-- Options injected via JS -->
                                     </select>
                                     <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>

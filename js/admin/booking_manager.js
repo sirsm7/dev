@@ -1,10 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V6.0 ADMIN SYNC)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V6.1 SECURE LOCK)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V6.0 ---
- * 1. Admin Calendar Logic: Membetulkan status 'PENUH' jika slot '1 HARI' ditempah.
- * 2. List Visuals: Menambah badge UNGU untuk slot '1 HARI' dalam senarai admin.
- * 3. Scope Fix: Mengekalkan fungsi global handleAdminDateAction.
+ * --- UPDATE V6.1 ---
+ * 1. Security Patch: Menghalang Admin daripada mengunci tarikh yang ada tempahan aktif.
+ * 2. Visual Logic: Mengekalkan status visual 'PENUH' untuk slot '1 HARI'.
+ * 3. List Visuals: Badge UNGU untuk slot '1 HARI' dalam senarai admin.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -189,7 +189,6 @@ window.renderAdminBookingCalendar = async function() {
 
             // --- LOGIK BARU ADMIN: CHECK 1 HARI ---
             const isFullDayTaken = slotsTaken.includes('1 HARI');
-            // Jika 1 Hari diambil, kita anggap 2 slot diambil (Penuh)
             let filledCount = slotsTaken.length;
             if (isFullDayTaken) filledCount = 2;
 
@@ -208,7 +207,7 @@ window.renderAdminBookingCalendar = async function() {
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
             } 
-            else if (filledCount >= maxCapacity) { // Guna filledCount yang dah ambil kira 1 HARI
+            else if (filledCount >= maxCapacity) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
@@ -228,6 +227,9 @@ window.renderAdminBookingCalendar = async function() {
             const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-600 font-black mt-1 uppercase wrap-safe leading-tight bg-purple-50 p-1 rounded border border-purple-100">${lockedDetails[dateString] || 'ADMIN LOCK'}</div>` : '';
             const isSelected = (dateString === adminSelectedDate);
             
+            // --- SECURITY FLAG: ADAKAH TARIKH INI ADA TEMPAHAN? ---
+            const hasBookings = (filledCount > 0); 
+
             const card = document.createElement('div');
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''}`;
             
@@ -254,13 +256,15 @@ window.renderAdminBookingCalendar = async function() {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, isLocked);
+                    // PASS STATUS 'hasBookings' KE DALAM HANDLER
+                    window.handleAdminDateAction(dateString, isLocked, hasBookings);
                 };
             } else if (!isPast && isLocked) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, true);
+                    // PASS STATUS 'hasBookings' (False for locked usually, but good practice)
+                    window.handleAdminDateAction(dateString, true, false);
                 };
             }
 
@@ -281,8 +285,10 @@ window.renderAdminBookingCalendar = async function() {
 /**
  * Mengawal tindakan kunci/buka tarikh. 
  * Fungsi ini didedahkan ke global window untuk kegunaan onclick HTML.
+ * UPDATE V6.1: Menambah parameter 'hasBookings' untuk sekatan keselamatan.
  */
-window.handleAdminDateAction = async function(iso, currentlyLocked) {
+window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings) {
+    // 1. KES BUKA KUNCI (UNLOCK)
     if (currentlyLocked) {
         Swal.fire({
             title: 'Buka Kunci Tarikh?',
@@ -314,7 +320,27 @@ window.handleAdminDateAction = async function(iso, currentlyLocked) {
                 window.renderAdminBookingCalendar();
             }
         });
-    } else {
+    } 
+    // 2. KES KUNCI TARIKH (LOCK)
+    else {
+        // --- SECURITY CHECK V6.1 ---
+        if (hasBookings) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Halangan Keselamatan',
+                html: `<div class="text-center">
+                         <p class="text-sm font-bold text-red-600 mb-2">TARIKH INI MEMPUNYAI TEMPAHAN AKTIF.</p>
+                         <p class="text-xs text-slate-500">Anda tidak boleh mengunci tarikh yang telah ditempah oleh sekolah. Sila batalkan tempahan sekolah tersebut dahulu di senarai bawah.</p>
+                       </div>`,
+                confirmButtonColor: '#ef4444',
+                customClass: { popup: 'rounded-3xl' }
+            });
+            adminSelectedDate = null;
+            window.renderAdminBookingCalendar();
+            return; // HENTIKAN PROSES
+        }
+        // ---------------------------
+
         const { value: note } = await Swal.fire({
             title: 'Kunci Tarikh Ini?',
             html: `<div class="text-center mb-4"><span class="text-3xl font-black text-purple-600">${iso}</span></div>
@@ -437,7 +463,7 @@ window.loadAdminBookingList = async function() {
                             <div class="font-mono text-[10px] text-indigo-600 font-bold break-all">${item.admin_email || 'ADMIN PPD'}</div>
                         </td>
                         <td class="px-8 py-6 text-center align-top">
-                            <button onclick="handleAdminDateAction('${item.tarikh}', true)" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Buka Kunci Melalui Kalendar">
+                            <button onclick="handleAdminDateAction('${item.tarikh}', true, false)" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Buka Kunci Melalui Kalendar">
                                 <i class="fas fa-unlock"></i>
                             </button>
                         </td>

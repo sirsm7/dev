@@ -1,10 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V5.1 INTEGRITY & FIX)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V6.0 ADMIN SYNC)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V5.1 ---
- * 1. Hard Delete Integration: Menggunakan logik pemadaman kekal tanpa audit.
- * 2. Integrated List: Memaparkan rekod tempahan DAN tarikh dikunci dalam satu jadual.
- * 3. Scope Fix: Mendedahkan handleAdminDateAction ke global window untuk akses onclick HTML.
+ * --- UPDATE V6.0 ---
+ * 1. Admin Calendar Logic: Membetulkan status 'PENUH' jika slot '1 HARI' ditempah.
+ * 2. List Visuals: Menambah badge UNGU untuk slot '1 HARI' dalam senarai admin.
+ * 3. Scope Fix: Mengekalkan fungsi global handleAdminDateAction.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -187,6 +187,12 @@ window.renderAdminBookingCalendar = async function() {
             let statusIcon = 'fa-check-circle';
             const maxCapacity = (dayOfWeek === 6) ? 1 : 2;
 
+            // --- LOGIK BARU ADMIN: CHECK 1 HARI ---
+            const isFullDayTaken = slotsTaken.includes('1 HARI');
+            // Jika 1 Hari diambil, kita anggap 2 slot diambil (Penuh)
+            let filledCount = slotsTaken.length;
+            if (isFullDayTaken) filledCount = 2;
+
             if (!isAllowedDay) {
                 status = 'closed';
                 statusText = 'TIADA SESI';
@@ -202,12 +208,12 @@ window.renderAdminBookingCalendar = async function() {
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
             } 
-            else if (slotsTaken.length >= maxCapacity) {
+            else if (filledCount >= maxCapacity) { // Guna filledCount yang dah ambil kira 1 HARI
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
             } 
-            else if (slotsTaken.length === 1) {
+            else if (filledCount > 0) {
                 status = 'partial';
                 statusText = '1 SLOT BAKI';
                 statusIcon = 'fa-exclamation-circle';
@@ -379,12 +385,17 @@ window.loadAdminBookingList = async function() {
             const dateStr = new Date(item.tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
             
             if (item.type === 'BOOKING') {
+                // --- LOGIK BADGE MASA BARU UNTUK ADMIN ---
+                let masaClass = 'bg-purple-100 text-purple-700 border border-purple-200'; // Default: 1 HARI (Ungu)
+                if (item.masa === 'Pagi') masaClass = 'bg-blue-100 text-blue-700 border border-blue-200';
+                else if (item.masa === 'Petang') masaClass = 'bg-orange-100 text-orange-700 border border-orange-200';
+
                 return `
                     <tr class="hover:bg-slate-50/80 transition-all group">
                         <td class="px-8 py-6 align-top">
                             <div class="font-black text-slate-800 text-sm tracking-tight uppercase">${dateStr}</div>
                             <div class="flex items-center gap-2 mt-1.5">
-                                <span class="text-[9px] font-black px-2 py-0.5 rounded ${item.masa === 'Pagi' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-orange-100 text-orange-700 border border-orange-200'} uppercase tracking-tighter">${item.masa}</span>
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded ${masaClass} uppercase tracking-tighter">${item.masa}</span>
                                 <span class="text-[10px] text-slate-400 font-mono font-bold">${item.id_tempahan}</span>
                             </div>
                         </td>

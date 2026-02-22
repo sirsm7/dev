@@ -1,7 +1,7 @@
 /**
  * modules/pppdm/script.js
  * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program)
- * Fix: yearCurr typo diperbetulkan kepada yearCurrent
+ * Fix: Exact Logic (Dual-Fetch) untuk penentuan sebenar SR / SM melalui jenis_sekolah.
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
@@ -12,8 +12,9 @@ let globalData = [];
 let filteredDataForCSV = []; 
 let processedSchools = {};
 
-// State untuk Program Stats
+// State untuk Program Stats & Pemetaan Jenis Sekolah
 let programStats = {};
+let schoolTypeMap = {}; // Kamus rujukan pantas SR/SM
 
 // Filter State (Default: Tunjuk Semua)
 let activeCardFilter = 'ALL'; 
@@ -30,21 +31,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchData();
 });
 
-// FUNGSI BANTUAN: KATEGORI SEKOLAH (SR / SM)
-function getSchoolType(kod) {
-    if (!kod) return 'LAIN';
-    // Kod bermula MB biasanya Sekolah Rendah, ME adalah Sekolah Menengah
-    if (kod.startsWith('MB')) return 'SR';
-    if (kod.startsWith('ME')) return 'SM';
-    return 'LAIN';
+// FUNGSI BANTUAN: BINA PETA JENIS SEKOLAH (EXACT LOGIC)
+function buildSchoolTypeMap(sekolahData) {
+    schoolTypeMap = {};
+    const srTypes = ['SK', 'SJKC', 'SJKT', 'SR SABK'];
+    const smTypes = ['SMK', 'SBP', 'SM SABK', 'KV'];
+
+    sekolahData.forEach(s => {
+        if (!s.jenis_sekolah) {
+            schoolTypeMap[s.kod_sekolah] = 'LAIN';
+            return;
+        }
+        
+        const jenis = s.jenis_sekolah.toUpperCase().trim();
+        if (srTypes.includes(jenis)) {
+            schoolTypeMap[s.kod_sekolah] = 'SR';
+        } else if (smTypes.includes(jenis)) {
+            schoolTypeMap[s.kod_sekolah] = 'SM';
+        } else {
+            schoolTypeMap[s.kod_sekolah] = 'LAIN';
+        }
+    });
 }
 
-// 1. FETCH DATA & TENTUKAN TAHUN
+// FUNGSI BANTUAN: KATEGORI SEKOLAH (Rujukan Kamus Memori)
+function getSchoolType(kod) {
+    if (!kod) return 'LAIN';
+    return schoolTypeMap[kod] || 'LAIN';
+}
+
+// 1. FETCH DATA (DUAL-FETCH) & TENTUKAN TAHUN
 async function fetchData() {
     try {
-        const { data, error } = await db.from('view_smpid_pppdm_analisa').select('*');
-        if (error) throw error;
+        // Ambil data analisa dan data induk sekolah secara serentak (Parallel Execution)
+        const [resAnalisa, resSekolah] = await Promise.all([
+            db.from('view_smpid_pppdm_analisa').select('*'),
+            db.from('smpid_sekolah_data').select('kod_sekolah, jenis_sekolah')
+        ]);
+
+        if (resAnalisa.error) throw resAnalisa.error;
+        if (resSekolah.error) throw resSekolah.error;
+
+        // Siapkan kamus memori jenis sekolah (SR/SM) sebelum proses data
+        buildSchoolTypeMap(resSekolah.data);
         
+        const data = resAnalisa.data;
+
         const years = [...new Set(data.map(d => d.tahun))].filter(y => y).sort((a,b) => b - a);
         if (years.length > 0) yearCurrent = years[0];
         if (years.length > 1) yearPrev = years[1];
@@ -52,7 +84,7 @@ async function fetchData() {
         updateYearLabels();
         processData(data);
         renderDashboard();
-        renderProgramTable(); // Render jadual tab baharu
+        renderProgramTable(); 
 
     } catch (e) {
         console.error("Fetch Error:", e);
@@ -86,6 +118,7 @@ function processData(rawData) {
     rawData.forEach(row => {
         if (row.kod_sekolah === 'M030') return; 
 
+        // Dapat klasifikasi tepat (Exact Logic) berdasarkan smpid_sekolah_data
         const sType = getSchoolType(row.kod_sekolah);
 
         // --- A. PENGIRAAN PROFIL SEKOLAH (Asal) ---
@@ -123,6 +156,7 @@ function processData(rawData) {
                     programStats[progName][year] = { SR: 0, SM: 0, LAIN: 0, Total: 0 };
                 }
                 
+                // Tambah data ke dalam pecahan yang tepat
                 programStats[progName][year][sType] = (programStats[progName][year][sType] || 0) + 1;
                 programStats[progName][year].Total++;
             }
@@ -305,7 +339,7 @@ function renderTable(dataList) {
     });
 }
 
-// 6. RENDER JADUAL PROGRAM (Fungsi Baharu)
+// 6. RENDER JADUAL PROGRAM 
 function renderProgramTable() {
     const tbody = document.getElementById('programTableBody');
     if(!tbody) return;
@@ -332,7 +366,7 @@ function renderProgramTable() {
 
     progArray.forEach((prog, index) => {
         const sPrev = prog.stats[yearPrev] || { SR: 0, SM: 0, Total: 0 };
-        const sCurr = prog.stats[yearCurrent] || { SR: 0, SM: 0, Total: 0 }; // FIX: yearCurrent
+        const sCurr = prog.stats[yearCurrent] || { SR: 0, SM: 0, Total: 0 }; 
         
         // Gelapkan sedikit baris jika program tersebut tiada penyertaan pada tahun terkini
         const rowClass = sCurr.Total === 0 ? 'bg-slate-50/70 opacity-75' : 'bg-white hover:bg-purple-50/30';
@@ -471,7 +505,7 @@ window.handleSearch = function(query) {
     }
 }
 
-// TAB SYSTEM (DIKEMASKINI)
+// TAB SYSTEM 
 window.switchTab = function(view) {
     // 1. Reset class untuk semua butang tab
     document.querySelectorAll('.tab-btn').forEach(b => {

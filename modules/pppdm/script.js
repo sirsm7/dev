@@ -1,7 +1,7 @@
 /**
  * modules/pppdm/script.js
  * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program & Kad SR/SM)
- * Fix: Menambah fungsi kad penapis untuk SR Terlibat dan SM Terlibat.
+ * Fix: Menambah logik pengiraan pecahan SR/SM untuk dipaparkan dalam lencana kad.
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
@@ -185,34 +185,74 @@ function populateParlimenFilter() {
     });
 }
 
-// 3. RENDER DASHBOARD & KPI
+// 3. RENDER DASHBOARD & KPI (Dengan Pecahan SR/SM)
 function renderDashboard() {
+    // Pengiraan Asas
     const totalSchools = globalData.length; 
+    const allSr = globalData.filter(s => s.type === 'SR').length;
+    const allSm = globalData.filter(s => s.type === 'SM').length;
+
     const activeSchoolsList = globalData.filter(s => s.activities.length > 0);
     const activeSchoolsCount = activeSchoolsList.length;
+    const activeSr = activeSchoolsList.filter(s => s.type === 'SR').length;
+    const activeSm = activeSchoolsList.filter(s => s.type === 'SM').length;
     
-    // KPI SR & SM yang terlibat (Sekurang-kurangnya 1 aktiviti)
-    const srActiveCount = globalData.filter(s => s.type === 'SR' && s.activities.length > 0).length;
-    const smActiveCount = globalData.filter(s => s.type === 'SM' && s.activities.length > 0).length;
+    // KPI SR & SM yang terlibat
+    const srActiveCount = activeSr;
+    const smActiveCount = activeSm;
 
     const totalActs = globalData.reduce((acc, s) => acc + s.activities.length, 0);
-    const currentActiveCount = globalData.filter(s => (s.scores[yearCurrent] || 0) > 0).length;
-    const transformCount = globalData.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0)).length;
-    const zeroCount = globalData.filter(s => s.activities.length === 0).length;
+    const actsSr = globalData.filter(s => s.type === 'SR').reduce((acc, s) => acc + s.activities.length, 0);
+    const actsSm = globalData.filter(s => s.type === 'SM').reduce((acc, s) => acc + s.activities.length, 0);
 
-    const animateValue = (id, val) => { 
+    const currentActiveList = globalData.filter(s => (s.scores[yearCurrent] || 0) > 0);
+    const currentActiveCount = currentActiveList.length;
+    const currSr = currentActiveList.filter(s => s.type === 'SR').length;
+    const currSm = currentActiveList.filter(s => s.type === 'SM').length;
+
+    const transformList = globalData.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0));
+    const transformCount = transformList.length;
+    const transSr = transformList.filter(s => s.type === 'SR').length;
+    const transSm = transformList.filter(s => s.type === 'SM').length;
+
+    const zeroList = globalData.filter(s => s.activities.length === 0);
+    const zeroCount = zeroList.length;
+    const zeroSr = zeroList.filter(s => s.type === 'SR').length;
+    const zeroSm = zeroList.filter(s => s.type === 'SM').length;
+
+    const setTxt = (id, val) => { 
         const el = document.getElementById(id);
         if(el) el.innerText = val; 
     };
     
-    animateValue('kpi-total-schools', totalSchools);
-    animateValue('kpi-active-schools', activeSchoolsCount);
-    animateValue('kpi-sr-active', srActiveCount);
-    animateValue('kpi-sm-active', smActiveCount);
-    animateValue('kpi-total-acts', totalActs);
-    animateValue('kpi-year-curr', currentActiveCount);
-    animateValue('kpi-transform', transformCount);
-    animateValue('kpi-zero', zeroCount);
+    // Set Nilai Utama Kad
+    setTxt('kpi-total-schools', totalSchools);
+    setTxt('kpi-active-schools', activeSchoolsCount);
+    setTxt('kpi-sr-active', srActiveCount);
+    setTxt('kpi-sm-active', smActiveCount);
+    setTxt('kpi-total-acts', totalActs);
+    setTxt('kpi-year-curr', currentActiveCount);
+    setTxt('kpi-transform', transformCount);
+    setTxt('kpi-zero', zeroCount);
+
+    // Set Nilai Pecahan (Breakdown) SR & SM dalam lencana kad
+    setTxt('kpi-all-sr', `SR: ${allSr}`);
+    setTxt('kpi-all-sm', `SM: ${allSm}`);
+    
+    setTxt('kpi-active-sr', `SR: ${activeSr}`);
+    setTxt('kpi-active-sm', `SM: ${activeSm}`);
+    
+    setTxt('kpi-acts-sr', `SR: ${actsSr}`);
+    setTxt('kpi-acts-sm', `SM: ${actsSm}`);
+    
+    setTxt('kpi-curr-sr', `SR: ${currSr}`);
+    setTxt('kpi-curr-sm', `SM: ${currSm}`);
+    
+    setTxt('kpi-trans-sr', `SR: ${transSr}`);
+    setTxt('kpi-trans-sm', `SM: ${transSm}`);
+    
+    setTxt('kpi-zero-sr', `SR: ${zeroSr}`);
+    setTxt('kpi-zero-sm', `SM: ${zeroSm}`);
 
     applyFilters();
 }

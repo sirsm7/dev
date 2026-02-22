@@ -1,6 +1,6 @@
 /**
  * modules/pppdm/script.js
- * Logik Papan Pemuka Analisa PPPDM (Modular Version - Fixed Scope)
+ * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program)
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
@@ -10,6 +10,9 @@ const db = getDatabaseClient();
 let globalData = [];
 let filteredDataForCSV = []; 
 let processedSchools = {};
+
+// State untuk Program Stats
+let programStats = {};
 
 // Filter State (Default: Tunjuk Semua)
 let activeCardFilter = 'ALL'; 
@@ -26,6 +29,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchData();
 });
 
+// FUNGSI BANTUAN: KATEGORI SEKOLAH (SR / SM)
+function getSchoolType(kod) {
+    if (!kod) return 'LAIN';
+    // Kod bermula MB biasanya Sekolah Rendah, ME adalah Sekolah Menengah
+    if (kod.startsWith('MB')) return 'SR';
+    if (kod.startsWith('ME')) return 'SM';
+    return 'LAIN';
+}
+
 // 1. FETCH DATA & TENTUKAN TAHUN
 async function fetchData() {
     try {
@@ -39,6 +51,7 @@ async function fetchData() {
         updateYearLabels();
         processData(data);
         renderDashboard();
+        renderProgramTable(); // Render jadual tab baharu
 
     } catch (e) {
         console.error("Fetch Error:", e);
@@ -53,7 +66,9 @@ function updateYearLabels() {
         'header-year-prev': `${yearPrev} (Terdahulu)`,
         'label-year-curr': `Aktif ${yearCurrent}`,
         'detail-lbl-curr': `Tahun ${yearCurrent}`,
-        'detail-lbl-prev': `Tahun ${yearPrev}`
+        'detail-lbl-prev': `Tahun ${yearPrev}`,
+        'header-prog-curr': `Tahun ${yearCurrent}`,
+        'header-prog-prev': `Tahun ${yearPrev}`
     };
 
     for (const [id, text] of Object.entries(ids)) {
@@ -62,13 +77,17 @@ function updateYearLabels() {
     }
 }
 
-// 2. PROSES DATA (PENTING: FILTER M030 DI SINI)
+// 2. PROSES DATA (FILTER M030, REKOD SEKOLAH & REKOD PROGRAM)
 function processData(rawData) {
     processedSchools = {};
+    programStats = {}; // Reset data program
     
     rawData.forEach(row => {
         if (row.kod_sekolah === 'M030') return; 
 
+        const sType = getSchoolType(row.kod_sekolah);
+
+        // --- A. PENGIRAAN PROFIL SEKOLAH (Asal) ---
         if (!processedSchools[row.kod_sekolah]) {
             processedSchools[row.kod_sekolah] = {
                 kod: row.kod_sekolah,
@@ -89,6 +108,23 @@ function processData(rawData) {
                 tahun: row.tahun,
                 program: row.nama_program
             });
+
+            // --- B. PENGIRAAN KEKERAPAN PROGRAM (Baharu) ---
+            if (row.tahun) {
+                const progName = row.nama_program.trim().toUpperCase();
+                const year = row.tahun;
+
+                if (!programStats[progName]) {
+                    programStats[progName] = {};
+                }
+                
+                if (!programStats[progName][year]) {
+                    programStats[progName][year] = { SR: 0, SM: 0, LAIN: 0, Total: 0 };
+                }
+                
+                programStats[progName][year][sType] = (programStats[progName][year][sType] || 0) + 1;
+                programStats[progName][year].Total++;
+            }
         }
     });
 
@@ -138,8 +174,7 @@ function renderDashboard() {
     applyFilters();
 }
 
-// 4. INTERACTIVE CARD FILTER
-// EXPORT KE WINDOW UNTUK HTML ONCLICK
+// 4. INTERACTIVE CARD FILTER (Bilik Dashboard)
 window.setCardFilter = function(type) {
     activeCardFilter = type;
     
@@ -174,8 +209,7 @@ window.setCardFilter = function(type) {
     applyFilters();
 }
 
-// 5. FILTER & RENDER TABLE
-// EXPORT KE WINDOW
+// 5. FILTER & RENDER TABLE (Sekolah)
 window.applyFilters = function() {
     const parlimenFilter = document.getElementById('filterParlimen')?.value || 'ALL';
     let filtered = [...globalData]; 
@@ -270,8 +304,57 @@ function renderTable(dataList) {
     });
 }
 
-// 6. FUNGSI SOKONGAN (CSV & DETAIL)
-// EXPORT KE WINDOW
+// 6. RENDER JADUAL PROGRAM (Fungsi Baharu)
+function renderProgramTable() {
+    const tbody = document.getElementById('programTableBody');
+    if(!tbody) return;
+    
+    // Transformasi Object programStats kepada Array untuk mudah di-'sort'
+    let progArray = Object.keys(programStats).map(name => {
+        return {
+            name: name,
+            stats: programStats[name],
+            totalCurr: programStats[name][yearCurrent]?.Total || 0,
+            totalPrev: programStats[name][yearPrev]?.Total || 0
+        };
+    });
+
+    // Susun jadual berdasarkan penyertaan tahun terkini secara menurun
+    progArray.sort((a, b) => b.totalCurr - a.totalCurr);
+
+    tbody.innerHTML = '';
+    
+    if (progArray.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">Tiada rekod program direkodkan.</td></tr>`;
+        return;
+    }
+
+    progArray.forEach((prog, index) => {
+        const sPrev = prog.stats[yearPrev] || { SR: 0, SM: 0, Total: 0 };
+        const sCurr = prog.stats[yearCurr] || { SR: 0, SM: 0, Total: 0 };
+        
+        // Gelapkan sedikit baris jika program tersebut tiada penyertaan pada tahun terkini
+        const rowClass = sCurr.Total === 0 ? 'bg-slate-50/70 opacity-75' : 'bg-white hover:bg-purple-50/30';
+        
+        tbody.innerHTML += `
+        <tr class="${rowClass} border-b border-slate-100 transition duration-200">
+            <td class="px-6 py-3 text-center text-xs font-bold text-slate-400">${index + 1}</td>
+            <td class="px-6 py-3 font-bold text-slate-700 text-xs md:text-sm leading-snug">${prog.name}</td>
+            
+            <!-- Tahun Terdahulu -->
+            <td class="px-3 py-3 text-center text-xs font-medium text-slate-500 bg-slate-50/50">${sPrev.SR}</td>
+            <td class="px-3 py-3 text-center text-xs font-medium text-slate-500 bg-slate-50/50">${sPrev.SM}</td>
+            <td class="px-3 py-3 text-center text-xs font-black text-slate-600 bg-slate-100/60">${sPrev.Total}</td>
+            
+            <!-- Tahun Terkini -->
+            <td class="px-3 py-3 text-center text-xs font-bold text-green-600 bg-green-50/20">${sCurr.SR}</td>
+            <td class="px-3 py-3 text-center text-xs font-bold text-green-600 bg-green-50/20">${sCurr.SM}</td>
+            <td class="px-3 py-3 text-center text-sm font-black text-green-700 bg-green-50/60">${sCurr.Total}</td>
+        </tr>`;
+    });
+}
+
+// 7. FUNGSI SOKONGAN (CSV & DETAIL)
 window.downloadCSV = function() {
     if (!filteredDataForCSV || filteredDataForCSV.length === 0) {
         Swal.fire("Tiada Data", "Sila pilih filter yang mempunyai data.", "info");
@@ -304,7 +387,6 @@ window.downloadCSV = function() {
     document.body.removeChild(link);
 }
 
-// EXPORT KE WINDOW
 window.viewSchoolDetail = function(kod) {
     window.switchTab('semakan');
     const school = processedSchools[kod];
@@ -348,13 +430,11 @@ function populateDetailCard(school) {
     }
 }
 
-// EXPORT KE WINDOW
 window.closeDetail = function() {
     document.getElementById('schoolDetailCard').classList.add('hidden');
 }
 
 // SEARCH
-// EXPORT KE WINDOW
 window.handleSearch = function(query) {
     const resultBox = document.getElementById('searchResults');
     if (query.length < 3) {
@@ -390,14 +470,23 @@ window.handleSearch = function(query) {
     }
 }
 
-// TAB SYSTEM
-// EXPORT KE WINDOW (INI MEMBAIKI ISU UTAMA)
+// TAB SYSTEM (DIKEMASKINI)
 window.switchTab = function(view) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(`btn-${view}`).classList.add('active');
+    // 1. Reset class untuk semua butang tab
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+    });
+    
+    // 2. Aktifkan butang yang ditekan
+    const activeBtn = document.getElementById(`btn-${view}`);
+    if (activeBtn) activeBtn.classList.add('active');
 
+    // 3. Sembunyikan semua section
     document.getElementById('view-analisa').classList.add('hidden');
     document.getElementById('view-semakan').classList.add('hidden');
+    document.getElementById('view-program').classList.add('hidden');
     
-    document.getElementById(`view-${view}`).classList.remove('hidden');
+    // 4. Tunjukkan section yang dipilih
+    const activeView = document.getElementById(`view-${view}`);
+    if (activeView) activeView.classList.remove('hidden');
 }

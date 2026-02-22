@@ -1,7 +1,7 @@
 /**
  * modules/pppdm/script.js
- * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program)
- * Fix: Exact Logic (Dual-Fetch) untuk penentuan sebenar SR / SM melalui jenis_sekolah.
+ * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program & Kad SR/SM)
+ * Fix: Menambah fungsi kad penapis untuk SR Terlibat dan SM Terlibat.
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
@@ -127,6 +127,7 @@ function processData(rawData) {
                 kod: row.kod_sekolah,
                 nama: row.nama_sekolah,
                 parlimen: row.parlimen || "LAIN-LAIN",
+                type: sType, // Simpan jenis sekolah ke dalam objek untuk proses filter SR/SM
                 scores: {}, 
                 activities: []
             };
@@ -189,6 +190,11 @@ function renderDashboard() {
     const totalSchools = globalData.length; 
     const activeSchoolsList = globalData.filter(s => s.activities.length > 0);
     const activeSchoolsCount = activeSchoolsList.length;
+    
+    // KPI SR & SM yang terlibat (Sekurang-kurangnya 1 aktiviti)
+    const srActiveCount = globalData.filter(s => s.type === 'SR' && s.activities.length > 0).length;
+    const smActiveCount = globalData.filter(s => s.type === 'SM' && s.activities.length > 0).length;
+
     const totalActs = globalData.reduce((acc, s) => acc + s.activities.length, 0);
     const currentActiveCount = globalData.filter(s => (s.scores[yearCurrent] || 0) > 0).length;
     const transformCount = globalData.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0)).length;
@@ -201,6 +207,8 @@ function renderDashboard() {
     
     animateValue('kpi-total-schools', totalSchools);
     animateValue('kpi-active-schools', activeSchoolsCount);
+    animateValue('kpi-sr-active', srActiveCount);
+    animateValue('kpi-sm-active', smActiveCount);
     animateValue('kpi-total-acts', totalActs);
     animateValue('kpi-year-curr', currentActiveCount);
     animateValue('kpi-transform', transformCount);
@@ -213,7 +221,7 @@ function renderDashboard() {
 window.setCardFilter = function(type) {
     activeCardFilter = type;
     
-    const cards = ['ALL', 'ACTIVE', 'TOTAL_ACTS', 'CURRENT', 'TRANSFORM', 'ZERO'];
+    const cards = ['ALL', 'ACTIVE', 'SR', 'SM', 'TOTAL_ACTS', 'CURRENT', 'TRANSFORM', 'ZERO'];
     cards.forEach(c => {
         const el = document.getElementById(`card-${c}`);
         if(el) el.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-300', 'active-filter');
@@ -225,6 +233,8 @@ window.setCardFilter = function(type) {
     const statusLabels = {
         'ALL': 'SEMUA SEKOLAH (KESELURUHAN)',
         'ACTIVE': 'SEKOLAH TERLIBAT (ADA REKOD)',
+        'SR': 'SEKOLAH RENDAH TERLIBAT (ADA REKOD)',
+        'SM': 'SEKOLAH MENENGAH TERLIBAT (ADA REKOD)',
         'TOTAL_ACTS': 'SENARAI MENGIKUT JUMLAH PENYERTAAN',
         'CURRENT': `SEKOLAH AKTIF TAHUN ${yearCurrent}`,
         'TRANSFORM': 'SEKOLAH YANG MENINGKAT (TRANSFORMASI)',
@@ -238,6 +248,8 @@ window.setCardFilter = function(type) {
         if (type === 'ZERO') labelEl.classList.add('text-red-600');
         else if (type === 'TRANSFORM') labelEl.classList.add('text-orange-500');
         else if (type === 'CURRENT') labelEl.classList.add('text-green-600');
+        else if (type === 'SR') labelEl.classList.add('text-cyan-600');
+        else if (type === 'SM') labelEl.classList.add('text-fuchsia-600');
         else labelEl.classList.add('text-blue-600');
     }
 
@@ -257,6 +269,14 @@ window.applyFilters = function() {
         filtered = filtered.filter(s => s.activities.length > 0);
         filtered.sort((a, b) => b.activities.length - a.activities.length);
     } 
+    else if (activeCardFilter === 'SR') {
+        filtered = filtered.filter(s => s.type === 'SR' && s.activities.length > 0);
+        filtered.sort((a, b) => b.activities.length - a.activities.length);
+    }
+    else if (activeCardFilter === 'SM') {
+        filtered = filtered.filter(s => s.type === 'SM' && s.activities.length > 0);
+        filtered.sort((a, b) => b.activities.length - a.activities.length);
+    }
     else if (activeCardFilter === 'TOTAL_ACTS') {
         filtered = filtered.filter(s => s.activities.length > 0);
         filtered.sort((a, b) => b.activities.length - a.activities.length);
@@ -324,7 +344,10 @@ function renderTable(dataList) {
             <td class="px-6 py-3 font-mono text-xs font-bold text-slate-500 group-hover:text-indigo-600">${s.kod}</td>
             <td class="px-6 py-3 font-bold text-slate-700 text-xs md:text-sm">
                 ${s.nama}
-                <div class="text-[9px] text-slate-400 uppercase mt-0.5 tracking-wide font-semibold">${s.parlimen}</div>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-[9px] text-slate-400 uppercase tracking-wide font-semibold">${s.parlimen}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-500 font-bold">${s.type}</span>
+                </div>
             </td>
             <td class="px-6 py-3 text-center font-black text-green-600 border-x border-slate-100 text-sm">${sCurr}</td>
             <td class="px-6 py-3 text-center font-bold text-slate-400 text-sm">${sPrev}</td>
@@ -397,7 +420,7 @@ window.downloadCSV = function() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    csvContent += `KOD SEKOLAH,NAMA SEKOLAH,PARLIMEN,SKOR ${yearCurrent},SKOR ${yearPrev},JUMLAH AKTIVITI,STATUS\n`;
+    csvContent += `KOD SEKOLAH,NAMA SEKOLAH,JENIS SEKOLAH,PARLIMEN,SKOR ${yearCurrent},SKOR ${yearPrev},JUMLAH AKTIVITI,STATUS\n`;
 
     filteredDataForCSV.forEach(s => {
         const cleanNama = `"${s.nama.replace(/"/g, '""')}"`;
@@ -409,7 +432,7 @@ window.downloadCSV = function() {
         else if(sCurr > sPrev) status = "NAIK";
         else if(sCurr < sPrev) status = "TURUN";
 
-        csvContent += `${s.kod},${cleanNama},${cleanParlimen},${sCurr},${sPrev},${s.activities.length},${status}\n`;
+        csvContent += `${s.kod},${cleanNama},${s.type},${cleanParlimen},${sCurr},${sPrev},${s.activities.length},${status}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);

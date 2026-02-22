@@ -183,24 +183,24 @@
     </div>
   </header>
 
-  <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
+  <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-[90rem]">
     
     <!-- NAVIGATION TABS -->
-    <!-- FIX: Ditukar kepada overflow-visible relative z-30 untuk mengelakkan dropdown terpotong -->
-    <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border-2 border-slate-100 max-w-5xl mx-auto overflow-visible relative z-30">
-        <a href="#dashboard" class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a href="#analisa" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
-        <a href="#pencapaian" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
-        <a href="#gallery" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
-        <a href="#tempahan" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
-        <a href="#email" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
-        <a href="#helpdesk" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
-        <a href="#admin-users" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
+    <!-- FIX: Ditukar kepada overflow-visible relative z-30 untuk w-full bagi memuatkan semua tab sebaris -->
+    <div class="flex flex-wrap justify-center gap-1.5 mb-6 bg-white p-2 rounded-2xl shadow-lg border-2 border-slate-100 w-full mx-auto overflow-visible relative z-30">
+        <a href="#dashboard" class="tab-active px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="#analisa" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
+        <a href="#pencapaian" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
+        <a href="#gallery" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
+        <a href="#tempahan" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
+        <a href="#email" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
+        <a href="#helpdesk" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
+        <a href="#admin-users" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
         
         <!-- DROPDOWN PAUTAN MODULE -->
         <div class="relative group cursor-pointer">
-            <button class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap">
-                <i class="fas fa-cubes"></i> Pautan Modul <i class="fas fa-chevron-down text-[10px] ml-1"></i>
+            <button class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap">
+                <i class="fas fa-cubes"></i> Pautan Modul <i class="fas fa-chevron-down text-[10px] ml-0.5"></i>
             </button>
             <div class="absolute left-1/2 -translate-x-1/2 top-full pt-2 w-48 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <div class="bg-white border-2 border-slate-100 rounded-xl shadow-xl flex flex-col overflow-hidden">

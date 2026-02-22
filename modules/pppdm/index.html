@@ -32,9 +32,9 @@
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <a href="../../user.html" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200">
+                    <button onclick="kembaliKePortal()" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200">
                         <i class="fas fa-arrow-left"></i> <span class="hidden sm:inline">Portal Utama</span>
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -302,5 +302,13 @@
     </div>
 
     <script type="module" src="script.js"></script>
+
+    <script>
+        // Logik Pintar Navigasi
+        function kembaliKePortal() {
+            const isAdmin = localStorage.getItem('smpid_auth') === 'true';
+            window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+        }
+    </script>
 </body>
 </html>

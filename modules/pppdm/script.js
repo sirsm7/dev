@@ -1,6 +1,7 @@
 /**
  * modules/pppdm/script.js
  * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program)
+ * Fix: yearCurr typo diperbetulkan kepada yearCurrent
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
@@ -331,7 +332,7 @@ function renderProgramTable() {
 
     progArray.forEach((prog, index) => {
         const sPrev = prog.stats[yearPrev] || { SR: 0, SM: 0, Total: 0 };
-        const sCurr = prog.stats[yearCurr] || { SR: 0, SM: 0, Total: 0 };
+        const sCurr = prog.stats[yearCurrent] || { SR: 0, SM: 0, Total: 0 }; // FIX: yearCurrent
         
         // Gelapkan sedikit baris jika program tersebut tiada penyertaan pada tahun terkini
         const rowClass = sCurr.Total === 0 ? 'bg-slate-50/70 opacity-75' : 'bg-white hover:bg-purple-50/30';

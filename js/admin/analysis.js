@@ -241,23 +241,25 @@ window.filterAnalisaTable = function(currYear, prevYear) {
         ? listWithoutPPD.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) 
         : [...listWithoutPPD];
     
-    // 2. Laksana logik susunan (Sorting) jika ada
+    // 2. Laksana logik susunan (Sorting) yang dibaiki integriti datanya
     if (analisaSortState.column) {
         list.sort((a, b) => {
             let valA, valB;
             
             if (analisaSortState.column === 'kod') {
-                valA = a.kod_sekolah; 
-                valB = b.kod_sekolah;
+                // Menormalkan kepada huruf besar bagi teks
+                valA = String(a.kod_sekolah || '').toUpperCase(); 
+                valB = String(b.kod_sekolah || '').toUpperCase();
             } else if (analisaSortState.column === 'nama') {
-                valA = a.nama_sekolah; 
-                valB = b.nama_sekolah;
+                valA = String(a.nama_sekolah || '').toUpperCase(); 
+                valB = String(b.nama_sekolah || '').toUpperCase();
             } else if (analisaSortState.column === 'dcs') {
-                valA = a[`dcs_${currYear}`] || 0; 
-                valB = b[`dcs_${currYear}`] || 0;
+                // Menukarkan string kepada nilai mutlak (nombor apung) untuk perbandingan logik
+                valA = parseFloat(a[`dcs_${currYear}`]) || 0; 
+                valB = parseFloat(b[`dcs_${currYear}`]) || 0;
             } else if (analisaSortState.column === 'aktif') {
-                valA = a[`peratus_aktif_${currYear}`] || 0; 
-                valB = b[`peratus_aktif_${currYear}`] || 0;
+                valA = parseFloat(a[`peratus_aktif_${currYear}`]) || 0; 
+                valB = parseFloat(b[`peratus_aktif_${currYear}`]) || 0;
             }
 
             if (valA < valB) return analisaSortState.direction === 'asc' ? -1 : 1;

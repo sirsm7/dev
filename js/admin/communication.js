@@ -47,11 +47,6 @@ window.initEmailEditor = function() {
     
     // Masukkan ke dalam editor
     quill.clipboard.dangerouslyPasteHTML(defaultContent);
-
-    // Tambah listener untuk update mailto link secara realtime
-    quill.on('text-change', function() {
-        updateMailtoLink();
-    });
 };
 
 window.generateList = function() {
@@ -84,22 +79,25 @@ window.generateList = function() {
     const arr = Array.from(uniqueEmails);
     document.getElementById('countEmail').innerText = arr.length;
     document.getElementById('emailOutput').value = arr.join(', ');
-    
-    updateMailtoLink();
 };
 
-function updateMailtoLink() {
-    if (!quill) return;
+/**
+ * Kemaskini lencana jumlah emel secara automatik apabila pengguna
+ * menaip, menampal (paste), atau memadam emel secara manual di dalam kotak teks.
+ */
+window.kemaskiniKiraanEmel = function() {
+    const emailStr = document.getElementById('emailOutput').value.trim();
+    const countEl = document.getElementById('countEmail');
     
-    const arr = document.getElementById('emailOutput').value.split(', ');
-    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
-    
-    // PENTING: Mailto hanya support plain text. Kita ambil text dari Quill.
-    const plainTextBody = quill.getText(); 
-    const body = encodeURIComponent(plainTextBody);
-    
-    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
-}
+    if (!emailStr) {
+        if (countEl) countEl.innerText = '0';
+        return;
+    }
+
+    // Pisahkan mengikut koma, bersihkan ruang kosong, dan tapis rentetan kosong
+    const emailArray = emailStr.split(',').map(e => e.trim()).filter(e => e);
+    if (countEl) countEl.innerText = emailArray.length;
+};
 
 window.copyEmails = function() {
     const el = document.getElementById("emailOutput");
@@ -116,38 +114,6 @@ window.copyEmails = function() {
     }
 };
 
-window.copyTemplate = function() {
-    // Salin Rich Text (HTML) ke Clipboard untuk Paste dalam Gmail/Outlook
-    if (!quill) return;
-
-    const htmlContent = quill.root.innerHTML;
-    const textContent = quill.getText();
-
-    // Gunakan Clipboard API moden untuk menyokong 'text/html'
-    const blobHtml = new Blob([htmlContent], { type: "text/html" });
-    const blobText = new Blob([textContent], { type: "text/plain" });
-    const data = [new ClipboardItem({ 
-        "text/html": blobHtml, 
-        "text/plain": blobText 
-    })];
-
-    navigator.clipboard.write(data).then(() => {
-        Swal.fire({
-            icon: 'success',
-            title: 'Teks Kaya Disalin!',
-            html: 'Format (Bold/Italic) telah disalin.<br>Sila <b>Paste (Ctrl+V)</b> dalam tetingkap emel anda.',
-            timer: 2000,
-            showConfirmButton: false
-        });
-    }).catch(err => {
-        console.error('Gagal salin rich text:', err);
-        // Fallback ke teks biasa jika browser tidak sokong
-        navigator.clipboard.writeText(textContent).then(() => {
-            Swal.fire('Disalin (Teks Biasa)', 'Format tidak disokong pelayar ini.', 'info');
-        });
-    });
-};
-
 /**
  * API PENGHANTARAN EMEL SISTEM (GAS) - BATCH PROCESSING EDITION
  * Memecahkan senarai kepada kumpulan kecil (Chunks) untuk memintas 
@@ -161,7 +127,7 @@ window.hantarEmelSistem = async function() {
     const htmlBody = quill.root.innerHTML;
 
     if (!emailList) {
-        return Swal.fire('Senarai Kosong', 'Sila jana senarai emel terlebih dahulu.', 'warning');
+        return Swal.fire('Senarai Kosong', 'Sila jana atau taip senarai emel terlebih dahulu.', 'warning');
     }
 
     if (!subject || !quill.getText().trim()) {
@@ -170,6 +136,10 @@ window.hantarEmelSistem = async function() {
 
     const bccArray = emailList.split(',').map(e => e.trim()).filter(e => e);
     
+    if (bccArray.length === 0) {
+        return Swal.fire('Format Tidak Sah', 'Pastikan emel dipisahkan dengan tanda koma (,).', 'warning');
+    }
+
     // PEMPROSESAN KELOMPOK (BATCH CHUNKING)
     // Had selamat Google biasanya 50-100. Kita gunakan 50 sebagai sandaran mutlak.
     const CHUNK_SIZE = 50;

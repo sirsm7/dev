@@ -149,8 +149,9 @@ window.copyTemplate = function() {
 };
 
 /**
- * API PENGHANTARAN EMEL SISTEM (GAS)
- * Menggunakan Google Apps Script untuk menghantar emel secara pukal.
+ * API PENGHANTARAN EMEL SISTEM (GAS) - BATCH PROCESSING EDITION
+ * Memecahkan senarai kepada kumpulan kecil (Chunks) untuk memintas 
+ * had pelayan Google "Limit Exceeded: Email Recipients Per Message".
  */
 window.hantarEmelSistem = async function() {
     if (!quill) return;
@@ -169,9 +170,17 @@ window.hantarEmelSistem = async function() {
 
     const bccArray = emailList.split(',').map(e => e.trim()).filter(e => e);
     
+    // PEMPROSESAN KELOMPOK (BATCH CHUNKING)
+    // Had selamat Google biasanya 50-100. Kita gunakan 50 sebagai sandaran mutlak.
+    const CHUNK_SIZE = 50;
+    const chunks = [];
+    for (let i = 0; i < bccArray.length; i += CHUNK_SIZE) {
+        chunks.push(bccArray.slice(i, i + CHUNK_SIZE));
+    }
+    
     Swal.fire({
         title: 'Sahkan Penghantaran Pukal',
-        html: `Sistem akan menghantar emel ini kepada <b>${bccArray.length}</b> penerima secara serentak (BCC). Teruskan?`,
+        html: `Sistem akan menghantar emel ini kepada <b>${bccArray.length}</b> penerima dalam <b>${chunks.length}</b> fasa untuk memastikan kelancaran pelayan. Teruskan?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#16a34a',
@@ -180,50 +189,78 @@ window.hantarEmelSistem = async function() {
         customClass: { popup: 'rounded-3xl' }
     }).then(async (result) => {
         if (result.isConfirmed) {
-            toggleLoading(true);
             const btn = document.getElementById('btnSendSystemEmail');
             if (btn) btn.disabled = true;
 
-            try {
+            let successCount = 0;
+            let failCount = 0;
+
+            // Paparkan Notifikasi Loading Boleh-Kemas-Kini
+            Swal.fire({
+                title: 'Sedang Memproses...',
+                html: `Menghantar kumpulan 1 daripada ${chunks.length}...`,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Laksanakan Fetch API mengikut susunan (Sequential Async Loop)
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                
+                // Kemaskini teks notifikasi UI
+                Swal.update({ 
+                    html: `Menghantar kumpulan <b>${i + 1}</b> daripada <b>${chunks.length}</b>...<br><br><small class="text-slate-500">Sila jangan tutup tetingkap pelayar ini.</small>` 
+                });
+
                 const payload = {
-                    bcc: bccArray.join(','),
+                    bcc: chunk.join(','),
                     subject: subject,
                     htmlBody: htmlBody,
                     name: "Admin SMPID"
                 };
 
-                const response = await fetch(APP_CONFIG.API.GAS_EMAIL_URL, {
-                    method: 'POST',
-                    // Gunakan text/plain untuk bypass Preflight CORS (OPTIONS)
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const resultData = await response.json();
-
-                toggleLoading(false);
-                if (btn) btn.disabled = false;
-
-                if (resultData.status === 'success') {
-                    Swal.fire({
-                        icon: 'success', 
-                        title: 'Berjaya Dihantar', 
-                        text: resultData.message,
-                        customClass: { popup: 'rounded-3xl' }
+                try {
+                    const response = await fetch(APP_CONFIG.API.GAS_EMAIL_URL, {
+                        method: 'POST',
+                        // Gunakan text/plain untuk bypass Preflight CORS (OPTIONS)
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify(payload)
                     });
-                } else {
-                    throw new Error(resultData.message || 'Ralat tidak diketahui.');
+
+                    const resultData = await response.json();
+
+                    if (resultData.status === 'success') {
+                        successCount += chunk.length;
+                    } else {
+                        failCount += chunk.length;
+                        console.error("Batch API Error:", resultData.message);
+                    }
+                } catch (error) {
+                    failCount += chunk.length;
+                    console.error("Batch Network Error:", error);
                 }
-            } catch (error) {
-                toggleLoading(false);
-                if (btn) btn.disabled = false;
-                console.error("Email API Error:", error);
+            }
+
+            if (btn) btn.disabled = false;
+
+            // Berikan Laporan Akhir Kepada Pentadbir
+            if (failCount === 0) {
                 Swal.fire({
-                    icon: 'error', 
-                    title: 'Gagal Menghantar', 
-                    text: 'Ralat pelayan: ' + error.message,
+                    icon: 'success', 
+                    title: 'Penghantaran Selesai', 
+                    html: `Kesemua <b>${successCount}</b> emel telah berjaya diproses oleh pelayan Google.`,
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning', 
+                    title: 'Selesai Dengan Ralat', 
+                    html: `Berjaya: <b>${successCount}</b> emel<br>Gagal: <b>${failCount}</b> emel<br><br><span class="text-xs text-slate-500">Ralat "Limit Exceeded" atau kerosakan rangkaian mungkin berlaku pada kumpulan tertentu.</span>`,
                     customClass: { popup: 'rounded-3xl' }
                 });
             }

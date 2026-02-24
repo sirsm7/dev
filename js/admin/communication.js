@@ -27,7 +27,7 @@ window.initEmailEditor = function() {
 
     // Tetapkan kandungan default (Format HTML)
     const defaultContent = `
-        <p>Salam Sejahtera Tuan/Puan,</p>
+        <p>Assalamualaikum & Salam Sejahtera Tuan/Puan,</p>
         <p><br></p>
         <p>Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.</p>
         <p><br></p>
@@ -124,6 +124,7 @@ window.hantarEmelSistem = async function() {
 
     const emailList = document.getElementById('emailOutput').value.trim();
     const subject = document.getElementById('msgSubject').value.trim();
+    const senderName = document.getElementById('msgSenderName') ? document.getElementById('msgSenderName').value.trim() : "Admin SMPID";
     const htmlBody = quill.root.innerHTML;
 
     if (!emailList) {
@@ -189,7 +190,7 @@ window.hantarEmelSistem = async function() {
                     bcc: chunk.join(','),
                     subject: subject,
                     htmlBody: htmlBody,
-                    name: "Admin SMPID"
+                    name: senderName || "Admin SMPID"
                 };
 
                 try {

@@ -1,5 +1,6 @@
 import { SupportService } from '../services/support.service.js';
 import { toggleLoading } from '../core/helpers.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 let quill;
 
@@ -144,6 +145,89 @@ window.copyTemplate = function() {
         navigator.clipboard.writeText(textContent).then(() => {
             Swal.fire('Disalin (Teks Biasa)', 'Format tidak disokong pelayar ini.', 'info');
         });
+    });
+};
+
+/**
+ * API PENGHANTARAN EMEL SISTEM (GAS)
+ * Menggunakan Google Apps Script untuk menghantar emel secara pukal.
+ */
+window.hantarEmelSistem = async function() {
+    if (!quill) return;
+
+    const emailList = document.getElementById('emailOutput').value.trim();
+    const subject = document.getElementById('msgSubject').value.trim();
+    const htmlBody = quill.root.innerHTML;
+
+    if (!emailList) {
+        return Swal.fire('Senarai Kosong', 'Sila jana senarai emel terlebih dahulu.', 'warning');
+    }
+
+    if (!subject || !quill.getText().trim()) {
+        return Swal.fire('Mesej Kosong', 'Sila isi tajuk dan kandungan mesej.', 'warning');
+    }
+
+    const bccArray = emailList.split(',').map(e => e.trim()).filter(e => e);
+    
+    Swal.fire({
+        title: 'Sahkan Penghantaran Pukal',
+        html: `Sistem akan menghantar emel ini kepada <b>${bccArray.length}</b> penerima secara serentak (BCC). Teruskan?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        confirmButtonText: 'Ya, Hantar Sekarang',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            const btn = document.getElementById('btnSendSystemEmail');
+            if (btn) btn.disabled = true;
+
+            try {
+                const payload = {
+                    bcc: bccArray.join(','),
+                    subject: subject,
+                    htmlBody: htmlBody,
+                    name: "Admin SMPID"
+                };
+
+                const response = await fetch(APP_CONFIG.API.GAS_EMAIL_URL, {
+                    method: 'POST',
+                    // Gunakan text/plain untuk bypass Preflight CORS (OPTIONS)
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const resultData = await response.json();
+
+                toggleLoading(false);
+                if (btn) btn.disabled = false;
+
+                if (resultData.status === 'success') {
+                    Swal.fire({
+                        icon: 'success', 
+                        title: 'Berjaya Dihantar', 
+                        text: resultData.message,
+                        customClass: { popup: 'rounded-3xl' }
+                    });
+                } else {
+                    throw new Error(resultData.message || 'Ralat tidak diketahui.');
+                }
+            } catch (error) {
+                toggleLoading(false);
+                if (btn) btn.disabled = false;
+                console.error("Email API Error:", error);
+                Swal.fire({
+                    icon: 'error', 
+                    title: 'Gagal Menghantar', 
+                    text: 'Ralat pelayan: ' + error.message,
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            }
+        }
     });
 };
 

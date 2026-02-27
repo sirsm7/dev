@@ -1,15 +1,16 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPREHENSIVE V3.0)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPREHENSIVE V3.1 TABLE VIEW)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
- * --- UPDATE V3.0 ---
- * 1. UI: Kad profil dinaik taraf kepada grid 4 lajur (PGB | GPK | ICT | ADM) beserta pautan WhatsApp.
- * 2. Carian: Menyokong carian terus menggunakan nama PGB dan GPK.
- * 3. Eksport: Format CSV diperluas untuk memasukkan profil pengurusan tertinggi sekolah.
+ * --- UPDATE V3.1 (TABLE REWRITE) ---
+ * 1. UI: Kad grid dirombak sepenuhnya menjadi jadual data komprehensif (12 Lajur).
+ * 2. Carian: Menyokong carian terus nama PGB dan GPK.
+ * 3. Logik: Penambahan butang WhatsApp bertingkat dan butang Reset Password individu (Bypass Auth).
  */
 
 import { SchoolService } from '../services/school.service.js';
 import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
+import { getDatabaseClient } from '../core/db.js'; // Disuntik untuk direct DB query
 
 let dashboardData = [];
 let currentFilteredList = [];
@@ -157,6 +158,24 @@ function updateBadgeCounts() {
     setTxt('cntBerbeza', context.filter(i => i.is_berbeza).length);
 }
 
+// --- RENDERING TABLE (TABLE VIEW INJECTION) ---
+function renderWaBtn(nama, tel, label) {
+    const link = generateWhatsAppLink(nama, tel, true);
+    if (link) {
+        return `<a href="${link}" target="_blank" onclick="event.stopPropagation()" class="px-2 py-1.5 bg-green-50 text-green-700 hover:bg-green-500 hover:text-white rounded-lg text-[9px] font-black border border-green-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full uppercase tracking-wider"><i class="fab fa-whatsapp text-sm"></i> ${label}</a>`;
+    } else {
+        return `<span class="px-2 py-1.5 bg-slate-50 text-slate-400 rounded-lg text-[9px] font-bold border border-slate-200 cursor-not-allowed flex items-center justify-center gap-1.5 w-full uppercase"><i class="fab fa-whatsapp text-sm"></i> TIADA TEL</span>`;
+    }
+}
+
+function renderResetBtn(emel, peranan, label) {
+    if (emel) {
+        return `<button onclick="event.stopPropagation(); resetPasswordSpesifik('${emel}', '${peranan}')" class="px-2 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white rounded-lg text-[9px] font-black border border-amber-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full uppercase tracking-wider"><i class="fas fa-key"></i> ${label}</button>`;
+    } else {
+        return `<span class="px-2 py-1.5 bg-slate-50 text-slate-400 rounded-lg text-[9px] font-bold border border-slate-200 cursor-not-allowed flex items-center justify-center gap-1.5 w-full uppercase"><i class="fas fa-key"></i> TIADA EMEL</span>`;
+    }
+}
+
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     if (!wrapper) return;
@@ -167,78 +186,106 @@ function renderGrid(data) {
         return; 
     }
 
-    const groups = data.reduce((acc, i) => { (acc[i.jenis] = acc[i.jenis] || []).push(i); return acc; }, {});
+    // Suntikan pembungkus (wrapper) membatalkan kesan grid ibu (col-span-full) dan membina jadual tatalan x (overflow-x-auto)
+    let tableHTML = `
+    <div class="col-span-full overflow-x-auto bg-white rounded-3xl border border-slate-200 shadow-xl custom-scrollbar relative">
+        <table class="w-full text-xs text-left whitespace-nowrap">
+            <thead class="text-[10px] text-slate-500 uppercase bg-slate-100 border-b-2 border-slate-200 sticky top-0 z-10 tracking-widest font-black">
+                <tr>
+                    <th class="px-4 py-4 text-center border-r border-slate-200">BIL</th>
+                    <th class="px-4 py-4 border-r border-slate-200">JENIS SEKOLAH</th>
+                    <th class="px-4 py-4 border-r border-slate-200 text-brand-600">KOD SEKOLAH</th>
+                    <th class="px-5 py-4 border-r border-slate-200 min-w-[250px]">NAMA SEKOLAH</th>
+                    <th class="px-4 py-4 border-r border-slate-200 text-center">DAERAH</th>
+                    <th class="px-4 py-4 border-r border-slate-200 min-w-[160px]">NAMA PENGARAH KV /<br>PGB</th>
+                    <th class="px-4 py-4 border-r border-slate-200 min-w-[160px]">NAMA TIMB PENGARAH KV /<br>GPK PENTADBIRAN</th>
+                    <th class="px-4 py-4 border-r border-slate-200 min-w-[160px]">NAMA GPICT</th>
+                    <th class="px-4 py-4 border-r border-slate-200 min-w-[160px]">NAMA ADMIN DELIMa</th>
+                    <th class="px-4 py-4 text-center border-r border-slate-200 w-36">RESET PASSWORD</th>
+                    <th class="px-4 py-4 text-center border-r border-slate-200 w-36">LINK WHATSAPP</th>
+                    <th class="px-4 py-4 text-center w-32">EDIT REKOD</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+    `;
 
-    Object.keys(groups).sort().forEach(jenis => {
-        const items = groups[jenis];
-        
-        let html = `<div class="col-span-full mt-6 mb-2 border-b border-slate-200 pb-2"><h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div> ${jenis} (${items.length})</h3></div>`;
-        
-        items.forEach(s => {
-            const statusBadge = s.is_lengkap 
-                ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-200"><i class="fas fa-check"></i> LENGKAP</span>` 
-                : `<span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-200"><i class="fas fa-times"></i> BELUM</span>`;
+    data.forEach((s, index) => {
+        // Jana susunan bertingkat untuk WhatsApp
+        const btnWaPGB = renderWaBtn(s.nama_pgb, s.no_telefon_pgb, 'PGB');
+        const btnWaGPK = renderWaBtn(s.nama_gpk, s.no_telefon_gpk, 'GPK');
+        const btnWaICT = renderWaBtn(s.nama_gpict, s.no_telefon_gpict, 'GPICT');
+        const btnWaADM = renderWaBtn(s.nama_admin_delima, s.no_telefon_admin_delima, 'ADMIN');
+
+        // Jana susunan bertingkat untuk Reset
+        const btnResetPGB = renderResetBtn(s.emel_delima_pgb, 'PGB', 'PGB');
+        const btnResetGPK = renderResetBtn(s.emel_delima_gpk, 'GPK', 'GPK');
+        const btnResetICT = renderResetBtn(s.emel_delima_gpict, 'GPICT', 'GPICT');
+        const btnResetADM = renderResetBtn(s.emel_delima_admin_delima, 'Admin DELIMa', 'ADMIN');
+
+        // Status Penanda Visual
+        const rowClass = s.is_lengkap ? "bg-white hover:bg-emerald-50/30" : "bg-red-50/10 hover:bg-red-50/50";
+
+        tableHTML += `
+        <tr class="${rowClass} transition-colors group">
+            <td class="px-4 py-4 text-center font-mono font-bold text-slate-400 border-r border-slate-100 align-top">${index + 1}</td>
             
-            // Jana Pautan WhatsApp untuk ke-4 profil (Suntikan Parameter)
-            const linkPGB = generateWhatsAppLink(s.nama_pgb, s.no_telefon_pgb, true);
-            const linkGPK = generateWhatsAppLink(s.nama_gpk, s.no_telefon_gpk, true);
-            const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
-            const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
+            <td class="px-4 py-4 font-black text-slate-600 border-r border-slate-100 align-top">${s.jenis || '-'}</td>
+            
+            <td class="px-4 py-4 border-r border-slate-100 align-top">
+                <span class="inline-block bg-brand-50 text-brand-700 font-mono font-black px-2 py-1 rounded border border-brand-200 shadow-sm">${s.kod_sekolah}</span>
+            </td>
+            
+            <td class="px-5 py-4 font-bold text-slate-800 whitespace-normal leading-relaxed border-r border-slate-100 align-top">${s.nama_sekolah}</td>
+            
+            <td class="px-4 py-4 font-bold text-slate-500 border-r border-slate-100 align-top text-center uppercase tracking-wider">${s.daerah || 'ALOR GAJAH'}</td>
+            
+            <td class="px-4 py-4 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 whitespace-normal leading-snug text-xs">${s.nama_pgb || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
+            <td class="px-4 py-4 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 whitespace-normal leading-snug text-xs">${s.nama_gpk || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
+            <td class="px-4 py-4 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 whitespace-normal leading-snug text-xs">${s.nama_gpict || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
+            <td class="px-4 py-4 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 whitespace-normal leading-snug text-xs">${s.nama_admin_delima || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
 
-            // Logik Komponen Butang WhatsApp Padat
-            const renderActions = (linkRaw, hasTele) => {
-                let btns = '<div class="flex items-center gap-1.5 justify-center">';
-                if(hasTele) btns += `<span class="text-blue-500 text-[10px]" title="Bot: Berdaftar"><i class="fas fa-check-circle"></i></span>`;
-                else btns += `<span class="text-slate-300 text-[10px]" title="Bot: Belum"><i class="fas fa-circle"></i></span>`;
-                
-                if(linkRaw) {
-                    btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="w-5 h-5 rounded bg-slate-200 hover:bg-green-100 hover:text-green-600 text-slate-500 flex items-center justify-center transition" title="WhatsApp Terus"><i class="fab fa-whatsapp text-[10px]"></i></a>`;
-                } else {
-                    btns += `<span class="w-5 h-5 rounded bg-slate-100 text-slate-300 flex items-center justify-center cursor-not-allowed" title="Tiada Nombor"><i class="fab fa-whatsapp text-[10px]"></i></span>`;
-                }
-                btns += '</div>';
-                return btns;
-            };
+            <td class="px-3 py-3 border-r border-slate-100 align-top bg-slate-50/50">
+                <div class="flex flex-col gap-2 w-full">
+                    ${btnResetPGB}
+                    ${btnResetGPK}
+                    ${btnResetICT}
+                    ${btnResetADM}
+                </div>
+            </td>
 
-            html += `
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-full" onclick="viewSchoolProfile('${s.kod_sekolah}')">
-                <div class="p-5 flex-grow">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <span class="text-xs font-black text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">${s.kod_sekolah}</span>
-                        </div>
-                        ${statusBadge}
-                    </div>
-                    <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-brand-600 transition mb-1 whitespace-normal">${s.nama_sekolah}</h4>
-                    
-                    <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="text-[10px] font-bold text-amber-500 hover:text-amber-600 flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
-                        <i class="fas fa-key"></i> Reset Password
-                    </button>
+            <td class="px-3 py-3 border-r border-slate-100 align-top bg-slate-50/50">
+                <div class="flex flex-col gap-2 w-full">
+                    ${btnWaPGB}
+                    ${btnWaGPK}
+                    ${btnWaICT}
+                    ${btnWaADM}
                 </div>
-                
-                <!-- Grid Bawah (Footer) - Naik Taraf 4 Lajur -->
-                <div class="bg-slate-50 border-t border-slate-100 p-2 grid grid-cols-4 divide-x divide-slate-200 mt-auto">
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_pgb || 'PGB'}">PGB</span>
-                        ${renderActions(linkPGB, s.telegram_id_pgb)}
-                    </div>
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_gpk || 'GPK'}">GPK</span>
-                        ${renderActions(linkGPK, s.telegram_id_gpk)}
-                    </div>
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_gpict || 'GPICT'}">ICT</span>
-                        ${renderActions(linkG, s.telegram_id_gpict)}
-                    </div>
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_admin_delima || 'ADMIN'}">ADM</span>
-                        ${renderActions(linkA, s.telegram_id_admin)}
-                    </div>
-                </div>
-            </div>`;
-        });
-        wrapper.innerHTML += html;
+            </td>
+
+            <td class="px-4 py-4 text-center align-top">
+                <button onclick="viewSchoolProfile('${s.kod_sekolah}')" class="px-4 py-3 bg-slate-800 hover:bg-brand-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 w-full transform active:scale-95">
+                    <i class="fas fa-edit"></i> EDIT REKOD
+                </button>
+            </td>
+        </tr>
+        `;
     });
+
+    tableHTML += `
+            </tbody>
+        </table>
+    </div>
+    `;
+
+    wrapper.innerHTML = tableHTML;
 }
 
 // --- UTILS & EXPORTS ---
@@ -248,9 +295,60 @@ function renderGrid(data) {
  * Menggunakan localStorage untuk integriti data silang modul.
  */
 window.viewSchoolProfile = function(kod) {
-    // SULAM (Surgical Injection): Tukar sessionStorage -> localStorage
     localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, kod);
     window.location.href = 'user.html'; 
+};
+
+/**
+ * NEW: Modul Penetapan Semula Kata Laluan Berdasarkan Emel Peranan
+ * Bypass kepada pangkalan data pengguna (smpid_users).
+ */
+window.resetPasswordSpesifik = async function(emel, peranan) {
+    if (!emel || emel === 'undefined') {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Tiada Rekod Emel',
+            text: `Sila pastikan maklumat profil ${peranan} dilengkapkan dengan emel terlebih dahulu sebelum menetapkan semula kata laluan.`
+        });
+    }
+
+    Swal.fire({
+        title: `Reset Password ${peranan}?`,
+        html: `Kata laluan untuk akaun <b>${emel}</b> akan ditetapkan semula kepada kata laluan lalai: <br><br><span class="font-mono bg-slate-100 px-3 py-1 rounded text-brand-600 font-bold border border-slate-200">ppdag@12345</span>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        confirmButtonText: 'Ya, Sahkan Reset',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then(async (r) => {
+        if (r.isConfirmed) {
+            toggleLoading(true);
+            try {
+                // Initialize database client on the fly for admin override
+                const db = getDatabaseClient();
+                const { error } = await db
+                    .from('smpid_users')
+                    .update({ password: APP_CONFIG.DEFAULTS.PASSWORD })
+                    .eq('email', emel.toLowerCase());
+                
+                toggleLoading(false);
+                
+                if (error) throw error;
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berjaya Direset',
+                    text: `Kata laluan untuk ${peranan} berjaya dikembalikan kepada lalai.`,
+                    confirmButtonColor: '#10b981',
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat Sistem', 'Gagal menetapkan semula kata laluan di pangkalan data.', 'error');
+            }
+        }
+    });
 };
 
 window.eksportDataTapis = function() {

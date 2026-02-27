@@ -5,11 +5,13 @@
  * 1. UI: Jadual dipadatkan secara ekstrem (Compact Mode) untuk muat tanpa scroll mendatar.
  * 2. Teks: Menggunakan whitespace-normal, leading-tight, dan text-[10px].
  * 3. Logik: 4 butang reset dihapuskan, digantikan dengan 1 butang RESET KOD per baris.
+ * 4. Tambahan (Baru): Butang Reset Filter untuk mengembalikan carian dan saringan ke keadaan asal.
  */
 
 import { SchoolService } from '../services/school.service.js';
 import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
+import { getDatabaseClient } from '../core/db.js'; // Disuntik untuk direct DB query
 
 let dashboardData = [];
 let currentFilteredList = [];
@@ -78,8 +80,11 @@ function renderFilters() {
             </button>
 
           </div>
-          <div class="w-full md:w-auto">
-            <select class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
+          <div class="flex gap-2 w-full md:w-auto">
+            <select id="filterTypeSelect" class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
+            <button onclick="resetDashboardFilters()" class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-2 rounded-lg border border-slate-200 hover:border-red-200 transition-colors shadow-sm" title="Reset Semua Filter">
+                <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
         </div>`;
     }
@@ -88,6 +93,33 @@ function renderFilters() {
 window.setFilter = function(s) { activeStatus = s; window.runFilter(); }
 window.setType = function(t) { activeType = t; window.runFilter(); }
 window.handleSearch = function(val) { searchTerm = val.toUpperCase().trim(); window.runFilter(); }
+
+// --- FUNGSI RESET FILTER ---
+window.resetDashboardFilters = function() {
+    activeStatus = 'ALL';
+    activeType = 'ALL';
+    searchTerm = '';
+    
+    // Kosongkan kotak carian jika wujud
+    const searchInput = document.getElementById('adminSearchInput');
+    if (searchInput) searchInput.value = '';
+    
+    // Kembalikan pilihan dropdown ke 'ALL'
+    const typeSelect = document.getElementById('filterTypeSelect');
+    if (typeSelect) typeSelect.value = 'ALL';
+    
+    window.runFilter();
+    
+    // Notifikasi senyap kecil
+    Swal.fire({
+        icon: 'success',
+        title: 'Filter Direset',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1000
+    });
+};
 
 window.runFilter = function() {
     const filtered = dashboardData.filter(i => {

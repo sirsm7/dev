@@ -5,7 +5,7 @@
  */
 
 import { SupportService } from '../../js/services/support.service.js';
-import { DelimaService } from '../../js/services/delima.service.js';
+import { DelimaService } from './delima.service.js';
 import { APP_CONFIG } from '../../js/config/app.config.js';
 
 document.addEventListener('DOMContentLoaded', () => {

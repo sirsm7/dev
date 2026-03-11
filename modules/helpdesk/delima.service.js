@@ -4,7 +4,7 @@
  * Mempunyai fungsi CRUD lengkap untuk portal sekolah dan panel Admin.
  */
 
-import { getDatabaseClient } from '../core/db.js';
+import { getDatabaseClient } from '../../js/core/db.js';
 
 const db = getDatabaseClient();
 

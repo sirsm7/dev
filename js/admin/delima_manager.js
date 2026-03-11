@@ -4,7 +4,7 @@
  * Fungsi ini dipanggil dari panel 'Pusat Sokongan Terkumpul' (admin.html).
  */
 
-import { DelimaService } from '../services/delima.service.js';
+import { DelimaService } from '../../modules/helpdesk/delima.service.js';
 import { toggleLoading } from '../core/helpers.js';
 
 window.loadSenaraiDelimaAdmin = async function(kategori) {
@@ -58,8 +58,8 @@ window.loadSenaraiDelimaAdmin = async function(kategori) {
 
             return `
             <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
-                <td class="px-6 py-5 text-center font-mono font-bold text-slate-400 text-xs align-top pt-6">${index + 1}</td>
-                <td class="px-6 py-5 align-top">
+                <td class="px-6 py-4 w-12 text-center font-mono font-bold text-slate-400 text-xs align-top pt-6">${index + 1}</td>
+                <td class="px-6 py-4 w-1/4 align-top pt-6">
                     <div class="flex items-center gap-2 mb-1.5">
                         <span class="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded font-bold tracking-widest shadow-sm">${item.kod_sekolah}</span>
                     </div>
@@ -67,12 +67,12 @@ window.loadSenaraiDelimaAdmin = async function(kategori) {
                     <div class="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-1 rounded-md inline-block border border-slate-200 shadow-sm">${item.id_delima}</div>
                     <div class="text-[9px] text-slate-400 mt-2 font-semibold tracking-wider"><i class="far fa-calendar-alt mr-1"></i> Dihantar: ${new Date(item.created_at).toLocaleDateString('ms-MY')}</div>
                 </td>
-                <td class="px-6 py-5 align-top pt-6">
+                <td class="px-6 py-4 w-1/4 align-top pt-6">
                     <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 line-clamp-2">${schoolName}</div>
                     <div class="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 inline-block">${item.unit_organisasi_asal}</div>
                 </td>
-                <td class="px-6 py-5 align-top pt-6">${detailsHtml}</td>
-                <td class="px-6 py-5 text-center align-top pt-6">${actionArea}</td>
+                <td class="px-6 py-4 w-1/4 align-top pt-6">${detailsHtml}</td>
+                <td class="px-6 py-4 text-center w-32 align-top pt-6">${actionArea}</td>
             </tr>`;
         }).join('');
         

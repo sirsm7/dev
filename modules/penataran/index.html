@@ -128,7 +128,7 @@
                     <div class="pt-6 border-t border-slate-100 mt-4">
                         <div onclick="switchTab('tab-analisis', this); updateAnalysisView();" class="nav-item flex items-center px-4 py-3 text-slate-700 hover:bg-blue-50 rounded-lg group transition-colors">
                             <i class="fas fa-chart-pie w-6 text-emerald-600"></i>
-                            <span class="text-sm font-bold">3. Laporan & Hantar</span>
+                            <span class="text-sm font-bold">3. Semak & Selesai</span>
                         </div>
                     </div>
                 </nav>
@@ -142,12 +142,12 @@
         <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 relative">
             <form id="digitalForm" onsubmit="event.preventDefault(); submitForm();" class="max-w-4xl mx-auto pb-20">
                 
-                <!-- STATUS BAR -->
+                <!-- STATUS BAR: Auto-Save Active Info -->
                 <div id="statusBar" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                    <i class="fas fa-info-circle text-blue-500 text-xl"></i>
+                    <i class="fas fa-save text-blue-500 text-2xl"></i>
                     <div>
-                        <p class="text-xs font-bold text-blue-800 uppercase tracking-wide">Pemberitahuan</p>
-                        <p class="text-sm text-blue-600 font-medium">Data anda pernah dihantar pada <span id="statusLastUpdate" class="font-bold">...</span>. Penyerahan baharu akan menimpa (overwrite) data lama.</p>
+                        <p class="text-xs font-bold text-blue-800 uppercase tracking-wide">Sistem Auto-Simpan Aktif</p>
+                        <p class="text-sm text-blue-600 font-medium">Data anda disimpan secara automatik. Kemas kini terakhir pada <span id="statusLastUpdate" class="font-bold text-blue-800">...</span>.</p>
                     </div>
                 </div>
 
@@ -278,7 +278,7 @@
                         
                         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-slate-900 p-6 rounded-2xl relative z-10 shadow-inner">
                             <div class="text-center md:text-left mb-6 md:mb-0 w-full md:w-1/3">
-                                <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Jumlah Skor</p>
+                                <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Skor Diperoleh</p>
                                 <h2 class="text-4xl md:text-5xl font-black text-white" id="displayScore">0 / 120</h2>
                             </div>
                             <div class="text-center md:text-left mb-6 md:mb-0 w-full md:w-1/3 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8">
@@ -316,13 +316,14 @@
                             </div>
                         </div>
                         
+                        <!-- BUTANG TINDAKAN (Auto-Save Edition) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
                             <button type="button" onclick="generatePDF()" class="w-full bg-slate-800 text-white font-black py-5 rounded-2xl hover:bg-slate-900 transition shadow-xl flex justify-center items-center gap-3 uppercase tracking-widest text-xs transform active:scale-95">
                                 <i class="fas fa-file-pdf text-red-400 text-lg"></i> Eksport PDF Laporan
                             </button>
-                            <button type="submit" id="submitBtn" class="w-full bg-emerald-600 text-white font-black py-5 rounded-2xl hover:bg-emerald-700 transition shadow-xl shadow-emerald-500/30 flex justify-center items-center gap-3 uppercase tracking-widest text-xs transform active:scale-95">
-                                <span id="btnText">Hantar Pangkalan Data</span>
-                                <i class="fas fa-cloud-upload-alt text-emerald-200 text-lg" id="btnIcon"></i>
+                            <button type="button" onclick="submitForm()" id="submitBtn" class="w-full bg-emerald-600 text-white font-black py-5 rounded-2xl hover:bg-emerald-700 transition shadow-xl shadow-emerald-500/30 flex justify-center items-center gap-3 uppercase tracking-widest text-xs transform active:scale-95">
+                                <span id="btnText">Selesai & Keluar</span>
+                                <i class="fas fa-check-circle text-emerald-200 text-lg" id="btnIcon"></i>
                             </button>
                         </div>
                     </section>

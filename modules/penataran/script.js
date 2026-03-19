@@ -1,6 +1,6 @@
 /**
- * PENATARAN DIGITAL CONTROLLER (V1.0)
- * Logik pemarkahan, janaan UI rubrik dinamik, carta radar, dan serahan Supabase.
+ * PENATARAN DIGITAL CONTROLLER (V2.0 - AUTO-SAVE EDITION)
+ * Logik pemarkahan dinamik, janaan UI rubrik, carta radar, dan enjin auto-simpan.
  */
 
 import { PenataranService } from '../../js/services/penataran.service.js';
@@ -8,8 +8,8 @@ import { SchoolService } from '../../js/services/school.service.js';
 import { APP_CONFIG } from '../../js/config/app.config.js';
 
 // KONFIGURASI ASAS
-const MAX_SCORE = 120;
 let radarChartInstance = null;
+let autoSaveTimeout = null;
 
 // DEFINISI RUBRIK
 const rubricTitles = { 
@@ -21,11 +21,10 @@ const rubricTitles = {
     d6_1:"6.1 Kolaboratif / Jaringan / Jalinan Luar", d6_2:"6.2 Pembinaan Portal Sekolah / Google Sites", d6_3:"6.3 Inovasi Digital Pendidikan", d6_4:"6.4 Pencapaian dan Anugerah Peringkat Tinggi", d6_5:"6.5 Penghasilan Bahan Digital PdP" 
 };
 
-// DATA UNTUK POPUP INFO (Dipermudahkan untuk contoh penuh)
+// DATA UNTUK POPUP INFO
 const rubricData = { 
     d1_1:{title:"1.1 Fail DELIMa",4:"Fail sangat lengkap dan kemas kini",3:"Fail lengkap tapi kurang kemas kini",2:"Fail separa lengkap",1:"Ada fail tapi tidak terurus"},
     d1_2:{title:"1.2 Perancangan Strategik",4:"Terdapat Pelan Strategik, Taktikal & Operasi lengkap",3:"Ada perancangan tapi kurang terperinci",2:"Hanya ada pelan asas",1:"Tiada perancangan jelas"}
-    // Boleh ditambah perincian penuh mengikut keperluan rubrik asal PPD
 };
 
 // INISIALISASI
@@ -61,15 +60,13 @@ async function initPenataran() {
             document.getElementById('gpdelimaId').value = schoolData.emel_delima_admin_delima || '';
             document.getElementById('gpdelimaTel').value = schoolData.no_telefon_admin_delima || '';
             
-            // Nama PGB untuk PDF
             const pdfNamaPGB = document.getElementById('pdf-namaPGB');
             if (pdfNamaPGB) pdfNamaPGB.innerText = schoolData.nama_pgb || "Pengetua / Guru Besar";
         }
 
-        // 2. Semak Jika Pernah Hantar Laporan Penataran
+        // 2. Semak Jika Pernah Mempunyai Laporan/Deraf Terkini
         const existingReport = await PenataranService.getBySchool(kodSekolah);
         if (existingReport) {
-            // Tunjuk status bar
             const sb = document.getElementById('statusBar');
             const slu = document.getElementById('statusLastUpdate');
             if (sb) sb.classList.remove('hidden');
@@ -83,10 +80,12 @@ async function initPenataran() {
                     if (radio) radio.checked = true;
                 }
             }
+            // Kemaskini Visual Semasa
+            calculateScore(true); // silent calculate without triggering save
         }
     } catch (e) {
         console.error("[Penataran] Init error:", e);
-        Swal.fire('Amaran Sistem', 'Tidak dapat menarik profil sekolah sepenuhnya. Anda boleh teruskan pengisian ruang kosong.', 'warning');
+        Swal.fire('Amaran Sistem', 'Tidak dapat menarik profil penuh. Anda boleh teruskan pengisian.', 'warning');
     } finally {
         toggleLoadingLocal(false);
     }
@@ -109,8 +108,6 @@ function setupRubricUI() {
 
         items.forEach(name => {
             const title = rubricTitles[name] || name;
-            
-            // HTML untuk setiap item baris
             container.innerHTML += `
             <div class="bg-slate-50 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-slate-100 hover:bg-slate-100 transition hover:border-slate-200">
                 <label class="flex items-center text-sm font-bold text-slate-700 leading-snug">
@@ -137,13 +134,16 @@ function setupRubricUI() {
     }
 }
 
-// KIRAN PENGATURCARAAN & KEMASKINI UI
-window.calculateScore = function() {
+// KIRAN PENGATURCARAAN (DINAMIK) & KEMASKINI UI
+window.calculateScore = function(isSilentInit = false) {
     let total = 0;
     let dimensionScores = { d1:0, d2:0, d3:0, d4:0, d5:0, d6:0 };
     let detailScores = {};
 
-    document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+    const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
+    const answeredCount = checkedRadios.length;
+
+    checkedRadios.forEach(radio => {
         let val = parseInt(radio.value) || 0;
         total += val;
         detailScores[radio.name] = val;
@@ -156,55 +156,213 @@ window.calculateScore = function() {
         if(radio.name.startsWith('d6')) dimensionScores.d6 += val;
     });
 
-    const percent = (total / MAX_SCORE) * 100;
-    document.getElementById('displayScore').innerText = `${total} / ${MAX_SCORE}`;
-    document.getElementById('displayPercent').innerText = `${percent.toFixed(1)}%`;
+    // PENGIRAAN DINAMIK: Mengikut soalan yang telah dijawab sahaja
+    const dynamicMaxScore = answeredCount > 0 ? (answeredCount * 4) : 120;
+    const percent = answeredCount > 0 ? (total / dynamicMaxScore) * 100 : 0;
+    
+    const displayScoreEl = document.getElementById('displayScore');
+    const displayPercentEl = document.getElementById('displayPercent');
+    
+    if (displayScoreEl) displayScoreEl.innerText = `${total} / ${dynamicMaxScore}`;
+    if (displayPercentEl) displayPercentEl.innerText = `${percent.toFixed(1)}%`;
     
     let ratingText = '';
     let starsHTML = '';
-    const starCount = percent >= 90 ? 5 : percent >= 80 ? 4 : percent >= 60 ? 3 : percent >= 40 ? 2 : 1;
+    
+    // Logik bintang berdasarkan purata respons (Dynamic Average)
+    let starCount = 0;
+    if (answeredCount > 0) {
+        if (percent >= 90) starCount = 5;
+        else if (percent >= 80) starCount = 4;
+        else if (percent >= 60) starCount = 3;
+        else if (percent >= 40) starCount = 2;
+        else starCount = 1;
+    }
     
     if (starCount === 5) ratingText = '5 Bintang (Cemerlang)';
     else if (starCount === 4) ratingText = '4 Bintang (Baik)';
     else if (starCount === 3) ratingText = '3 Bintang (Harapan)';
     else if (starCount === 2) ratingText = '2 Bintang (Sederhana)';
-    else ratingText = '1 Bintang (Lemah)';
+    else if (starCount === 1) ratingText = '1 Bintang (Lemah)';
+    else ratingText = 'Belum Dinilai';
 
     for(let i=0; i<5; i++) {
-        starsHTML += i < starCount ? '<i class="fas fa-star drop-shadow-sm"></i>' : '<i class="far fa-star opacity-40"></i>';
+        starsHTML += i < starCount ? '<i class="fas fa-star drop-shadow-sm text-amber-400"></i>' : '<i class="far fa-star opacity-40 text-amber-400"></i>';
     }
     
-    document.getElementById('displayRating').innerHTML = starsHTML + `<div class='text-xs text-amber-200 mt-2 font-black uppercase tracking-widest drop-shadow-sm'>${ratingText}</div>`;
+    const displayRatingEl = document.getElementById('displayRating');
+    if (displayRatingEl) {
+        displayRatingEl.innerHTML = starsHTML + `<div class='text-xs text-amber-200 mt-2 font-black uppercase tracking-widest drop-shadow-sm'>${ratingText}</div>`;
+    }
+
+    const calcResult = { total, percent, ratingText, dimensionScores, detailScores, dynamicMaxScore };
+
+    // PENYIMPANAN AUTO (DEBOUNCE)
+    if (!isSilentInit && answeredCount > 0) {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            triggerAutoSave(calcResult);
+        }, 1500); // Tunggu 1.5 saat selepas pengguna berhenti klik sebelum menyimpan
+    }
+
+    return calcResult;
+}
+
+// ENJIN PENYIMPANAN AUTO LATAR BELAKANG
+async function triggerAutoSave(calcResult) {
+    const kodSekolah = document.getElementById('kodSekolah').value;
+    const namaSekolah = document.getElementById('namaSekolah').value;
+    if (!kodSekolah) return;
+
+    showAutoSaveIndicator(true);
+
+    const skorJSON = {
+        d1: calcResult.dimensionScores.d1, d2: calcResult.dimensionScores.d2, d3: calcResult.dimensionScores.d3,
+        d4: calcResult.dimensionScores.d4, d5: calcResult.dimensionScores.d5, d6: calcResult.dimensionScores.d6,
+        details: calcResult.detailScores
+    };
+
+    const payload = {
+        kod_sekolah: kodSekolah,
+        nama_sekolah: namaSekolah,
+        jumlah_skor: calcResult.total,
+        peratus: calcResult.percent.toFixed(2) + "%",
+        penarafan: calcResult.ratingText,
+        skor_dimensi: skorJSON
+    };
+
+    try {
+        await PenataranService.submitReport(payload);
+        const slu = document.getElementById('statusLastUpdate');
+        const sb = document.getElementById('statusBar');
+        if (sb) sb.classList.remove('hidden');
+        if (slu) slu.innerText = new Date().toLocaleString('ms-MY');
+        showAutoSaveIndicator(false, true);
+    } catch (err) {
+        console.error("Auto-save failed:", err);
+        showAutoSaveIndicator(false, false);
+    }
+}
+
+// PENUNJUK VISUAL PENYIMPANAN AUTO
+function showAutoSaveIndicator(isSaving, isSuccess = true) {
+    let indicator = document.getElementById('autoSaveToast');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'autoSaveToast';
+        indicator.className = 'fixed top-4 right-4 text-[10px] font-bold px-4 py-2 rounded-full shadow-lg z-50 transition-all duration-300 flex items-center gap-2 pointer-events-none transform -translate-y-10 opacity-0';
+        document.body.appendChild(indicator);
+    }
     
-    return { total, percent, ratingText, dimensionScores, detailScores };
+    if (isSaving) {
+        indicator.className = 'fixed top-4 right-4 text-[10px] font-bold px-4 py-2 rounded-full shadow-lg z-50 transition-all duration-300 flex items-center gap-2 pointer-events-none transform translate-y-0 bg-blue-600 text-white opacity-100';
+        indicator.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menyimpan Auto...';
+    } else {
+        if (isSuccess) {
+            indicator.className = 'fixed top-4 right-4 text-[10px] font-bold px-4 py-2 rounded-full shadow-lg z-50 transition-all duration-300 flex items-center gap-2 pointer-events-none transform translate-y-0 bg-emerald-500 text-white opacity-100';
+            indicator.innerHTML = '<i class="fas fa-check-circle"></i> Tersimpan';
+        } else {
+            indicator.className = 'fixed top-4 right-4 text-[10px] font-bold px-4 py-2 rounded-full shadow-lg z-50 transition-all duration-300 flex items-center gap-2 pointer-events-none transform translate-y-0 bg-red-500 text-white opacity-100';
+            indicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Gagal Menyimpan';
+        }
+        setTimeout(() => {
+            indicator.classList.replace('translate-y-0', '-translate-y-10');
+            indicator.classList.replace('opacity-100', 'opacity-0');
+        }, 2000);
+    }
+}
+
+// LOGIK KESAHAN (VALIDATION) PENUKARAN TAB
+function validateCurrentTab() {
+    const activeTab = document.querySelector('.tab-content:not(.hidden-section)');
+    if (!activeTab) return true;
+
+    const tabId = activeTab.id; // contoh: 'tab-d1'
+    if (!tabId.startsWith('tab-d')) return true;
+
+    const dimensionPrefix = tabId.split('-')[1]; // dapat 'd1'
+
+    // Kira jumlah soalan untuk dimensi semasa
+    const allRadios = Array.from(document.querySelectorAll(`input[type="radio"][name^="${dimensionPrefix}"]`));
+    const uniqueNames = new Set(allRadios.map(r => r.name));
+    const totalQuestions = uniqueNames.size;
+
+    // Kira bilangan soalan yang dijawab
+    const answeredQuestions = document.querySelectorAll(`input[type="radio"][name^="${dimensionPrefix}"]:checked`).length;
+
+    // Jika telah bermula, WAJIB diselesaikan. Jika kosong (0), dibenarkan lompat (skip).
+    if (answeredQuestions > 0 && answeredQuestions < totalQuestions) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Bahagian Belum Lengkap',
+            text: `Anda telah menjawab ${answeredQuestions} daripada ${totalQuestions} item dalam bahagian ini. Sila lengkapkan kesemua penilaian sebelum beralih ke dimensi lain.`,
+            confirmButtonColor: '#f59e0b',
+            customClass: { popup: 'rounded-3xl' }
+        });
+        return false;
+    }
+
+    return true;
+}
+
+// NAVIGASI UI
+window.switchTab = function(tabId, navElement) {
+    if (!validateCurrentTab()) {
+        return; // Halang penukaran tab jika tidak melepasi pengesahan
+    }
+
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden-section'));
+    document.getElementById(tabId).classList.remove('hidden-section');
+    
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    navElement.classList.add('active');
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    if(window.innerWidth < 768) { 
+        document.getElementById('sidebar').classList.add('-translate-x-full'); 
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+    }
+    
+    // Paksa auto-save jika menukar tab
+    const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
+    if (checkedRadios.length > 0) {
+        clearTimeout(autoSaveTimeout);
+        triggerAutoSave(calculateScore(true));
+    }
 }
 
 window.updateAnalysisView = function() {
-    const result = calculateScore();
+    const result = calculateScore(true); // Gunakan silent calculate
     const tbody = document.getElementById('analysisTableBody');
     tbody.innerHTML = '';
     
     const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
-    checkedRadios.forEach(radio => {
-        const name = radio.name; 
-        const score = parseInt(radio.value); 
-        const title = rubricTitles[name] || name;
-        
-        let badgeClass = score === 4 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 
-                         score === 3 ? 'bg-blue-100 text-blue-800 border-blue-200' : 
-                         score === 2 ? 'bg-amber-100 text-amber-800 border-amber-200' : 
-                         'bg-red-100 text-red-800 border-red-200';
-        let statusText = score === 4 ? 'Cemerlang' : score === 3 ? 'Baik' : score === 2 ? 'Sederhana' : 'Lemah';
-        
-        tbody.innerHTML += `
-        <tr class="bg-white border-b border-slate-100 hover:bg-slate-50 transition">
-            <td class="px-6 py-4 font-bold text-slate-700 leading-snug border-r border-slate-100">${title}</td>
-            <td class="px-6 py-4 text-center font-black text-slate-800 border-r border-slate-100 bg-slate-50/50">${score}</td>
-            <td class="px-6 py-4 text-center">
-                <span class="${badgeClass} border px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm inline-block min-w-[90px]">${statusText}</span>
-            </td>
-        </tr>`;
-    });
+    
+    if (checkedRadios.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-slate-400 font-bold">Tiada data penilaian direkodkan lagi.</td></tr>`;
+    } else {
+        checkedRadios.forEach(radio => {
+            const name = radio.name; 
+            const score = parseInt(radio.value); 
+            const title = rubricTitles[name] || name;
+            
+            let badgeClass = score === 4 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 
+                             score === 3 ? 'bg-blue-100 text-blue-800 border-blue-200' : 
+                             score === 2 ? 'bg-amber-100 text-amber-800 border-amber-200' : 
+                             'bg-red-100 text-red-800 border-red-200';
+            let statusText = score === 4 ? 'Cemerlang' : score === 3 ? 'Baik' : score === 2 ? 'Sederhana' : 'Lemah';
+            
+            tbody.innerHTML += `
+            <tr class="bg-white border-b border-slate-100 hover:bg-slate-50 transition">
+                <td class="px-6 py-4 font-bold text-slate-700 leading-snug border-r border-slate-100">${title}</td>
+                <td class="px-6 py-4 text-center font-black text-slate-800 border-r border-slate-100 bg-slate-50/50">${score}</td>
+                <td class="px-6 py-4 text-center">
+                    <span class="${badgeClass} border px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm inline-block min-w-[90px]">${statusText}</span>
+                </td>
+            </tr>`;
+        });
+    }
     
     updateRadarChart(result.dimensionScores);
 }
@@ -256,27 +414,23 @@ function updateRadarChart(scores) {
 
 // JANA PDF MENGGUNAKAN TEMPLAT TERSEMBUNYI
 window.generatePDF = function() {
-    // Kemaskini Data Header
     document.getElementById('pdf-namaSekolah').innerText = document.getElementById('namaSekolah').value || "-";
     document.getElementById('pdf-kodSekolah').innerText = document.getElementById('kodSekolah').value || "-";
     document.getElementById('pdf-tarikh').innerText = new Date().toLocaleDateString('ms-MY', { day: '2-digit', month: 'long', year: 'numeric' });
     
-    const calc = calculateScore();
+    const calc = calculateScore(true);
     document.getElementById('pdf-skor').innerText = calc.total;
     document.getElementById('pdf-peratus').innerText = calc.percent.toFixed(2) + "%";
     document.getElementById('pdf-penarafan').innerText = calc.ratingText;
     
-    // Tawan Gambar Radar Chart
     document.getElementById('pdf-chart-img').src = document.getElementById('radarChart').toDataURL("image/png");
     
-    // Jadual Rubrik
     const pdfTable = document.getElementById('pdf-table-body'); 
     pdfTable.innerHTML = "";
     document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
         pdfTable.innerHTML += `<tr><td style="padding:5px;">${rubricTitles[radio.name] || radio.name}</td><td style="text-align:center; font-weight:bold; padding:5px;">${radio.value}</td></tr>`;
     });
 
-    // Panggil Engine html2pdf
     const element = document.getElementById('pdf-template');
     element.style.display = 'block';
     const kodSek = document.getElementById('kodSekolah').value || 'SEKOLAH';
@@ -293,88 +447,28 @@ window.generatePDF = function() {
     });
 }
 
-// HANTAR DATA KE SUPABASE
+// HANTAR (SIMPAN AKHIR & KELUAR)
 window.submitForm = async function() {
-    const kodSekolah = document.getElementById('kodSekolah').value;
-    const namaSekolah = document.getElementById('namaSekolah').value;
-    const btn = document.getElementById('submitBtn'); 
-    const btnIcon = document.getElementById('btnIcon');
-    const btnText = document.getElementById('btnText');
-    
-    // Semakan Asas
-    if (!kodSekolah) return Swal.fire('Ralat Pengenalan', 'Kod sekolah tidak sah. Sila muat semula halaman.', 'error');
-    
-    // Semak sama ada semua 30 soalan telah dijawab
     const checkedCount = document.querySelectorAll('input[type="radio"]:checked').length;
+    
     if (checkedCount < 30) {
-        return Swal.fire('Borang Tidak Lengkap', `Anda hanya menjawab ${checkedCount} daripada 30 kriteria penilaian. Sila semak semua bahagian a hingga f.`, 'warning');
-    }
-
-    const calc = calculateScore();
-
-    // Sediakan Payload Supabase JSONB
-    const skorJSON = {
-        d1: calc.dimensionScores.d1,
-        d2: calc.dimensionScores.d2,
-        d3: calc.dimensionScores.d3,
-        d4: calc.dimensionScores.d4,
-        d5: calc.dimensionScores.d5,
-        d6: calc.dimensionScores.d6,
-        details: calc.detailScores
-    };
-
-    const payload = {
-        kod_sekolah: kodSekolah,
-        nama_sekolah: namaSekolah,
-        jumlah_skor: calc.total,
-        peratus: calc.percent.toFixed(2) + "%",
-        penarafan: calc.ratingText,
-        skor_dimensi: skorJSON
-    };
-
-    // UI Loading State
-    btn.disabled = true; 
-    btn.classList.add('opacity-75');
-    btnText.innerText = "MENYIMPAN...";
-    btnIcon.className = "fas fa-circle-notch fa-spin text-emerald-200 text-lg";
-
-    try {
-        await PenataranService.submitReport(payload);
-        
         Swal.fire({
-            icon: 'success', 
-            title: 'Laporan Diterima', 
-            text: 'Data penataran sekolah digital anda telah berjaya direkodkan di peringkat PPD.',
-            confirmButtonColor: '#059669'
-        }).then(() => kembaliKePortal());
-
-    } catch (err) {
-        console.error("Gagal simpan penataran:", err);
-        Swal.fire('Ralat Sistem', 'Sistem tidak dapat memproses serahan data. Sila semak capaian internet.', 'error');
-    } finally {
-        // Reset UI State
-        btn.disabled = false; 
-        btn.classList.remove('opacity-75');
-        btnText.innerText = "Hantar Pangkalan Data";
-        btnIcon.className = "fas fa-cloud-upload-alt text-emerald-200 text-lg";
+            title: 'Selesai Lebih Awal?',
+            text: `Anda baru menjawab ${checkedCount} daripada 30 kriteria. Walau bagaimanapun, data yang anda isi telah pun disimpan oleh sistem. Anda boleh menyambungnya kelak.`,
+            icon: 'info',
+            confirmButtonText: 'Kembali Ke Portal',
+            confirmButtonColor: '#2563eb'
+        }).then(() => window.location.href = '../../user.html');
+        return;
     }
-}
 
-// Navigasi UI
-window.switchTab = function(tabId, navElement) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden-section'));
-    document.getElementById(tabId).classList.remove('hidden-section');
-    
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    navElement.classList.add('active');
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    // Auto-tutup sidebar jika di skrin kecil
-    if(window.innerWidth < 768) { 
-        document.getElementById('sidebar').classList.add('-translate-x-full'); 
-        document.getElementById('sidebarOverlay').classList.add('hidden');
-    }
+    Swal.fire({
+        icon: 'success', 
+        title: 'Penilaian Selesai', 
+        text: 'Kesemua data penataran sekolah digital anda telah berjaya direkodkan sepenuhnya.',
+        confirmButtonColor: '#059669',
+        confirmButtonText: 'Tutup'
+    }).then(() => window.location.href = '../../user.html');
 }
 
 window.showRubricInfo = function(id) {

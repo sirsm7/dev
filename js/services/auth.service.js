@@ -2,6 +2,7 @@
  * AUTHENTICATION SERVICE
  * Menguruskan log masuk, pendaftaran admin, dan reset kata laluan.
  * * UPDATE V1.1: Pembuangan hardcode M030 pada createAdmin untuk sokongan pelbagai daerah.
+ * * UPDATE V1.2: Memasukkan peranan JPNMEL ke dalam pertanyaan (query) senarai admin.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -41,7 +42,7 @@ export const AuthService = {
         const { data, error } = await db
             .from('smpid_users')
             .select('id, email, role, kod_sekolah') // Exclude password
-            .in('role', ['SUPER_ADMIN', 'ADMIN', 'PPD_UNIT'])
+            .in('role', ['SUPER_ADMIN', 'JPNMEL', 'ADMIN', 'PPD_UNIT'])
             .order('role', { ascending: true }); // Sort by role priority visually if possible, or email
 
         if (error) throw error;

@@ -2,10 +2,9 @@
  * ADMIN MODULE: SETTINGS (STRICT RBAC & BATCH IMPORT EDITION)
  * Menguruskan pangkalan data pengguna pentadbir, kawalan akses sistem,
  * dan modul Import Data Pukal (Super Admin).
- * --- UPDATE V2.0 (BATCH IMPORT) ---
- * Logic: Menambah pemprosesan fail CSV di pihak klien menggunakan PapaParse.
- * --- UPDATE V2.1 (MULTI-PPD SUPPORT) ---
- * Logic: Menyuntik dropdown PPD secara dinamik dan menghantar kodSekolah ke AuthService.
+ * --- UPDATE V2.5 (JPNMEL ROLE SUPPORT) ---
+ * Logic: Membersihkan manipulasi DOM tab import (dipindah ke main.js).
+ * Logic: Menyuntik peranan JPNMEL ke dalam dropdown dan lencana jadual pengguna.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -69,17 +68,7 @@ window.loadAdminList = async function() {
             }
 
         } else {
-            addUserForm.classList.add('hidden'); // Sembunyi jika Admin/Unit PPD
-        }
-    }
-
-    // Kawalan Paparan Tab Import Data
-    const importTabBtn = document.getElementById('import-data-tab');
-    if (importTabBtn) {
-        if (currentUserRole === 'SUPER_ADMIN') {
-            importTabBtn.classList.remove('hidden');
-        } else {
-            importTabBtn.classList.add('hidden');
+            addUserForm.classList.add('hidden'); // Sembunyi jika Admin/Unit PPD/JPN
         }
     }
 
@@ -118,6 +107,8 @@ window.loadAdminList = async function() {
             let roleBadge = '';
             if (user.role === 'SUPER_ADMIN') {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-red-100 text-red-700 border border-red-200 shadow-sm">SUPER ADMIN</span>`;
+            } else if (user.role === 'JPNMEL') {
+                roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 shadow-sm">JPN MELAKA</span>`;
             } else if (user.role === 'ADMIN') {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">MOD ADMIN</span>`;
             } else {
@@ -143,12 +134,12 @@ window.loadAdminList = async function() {
                 </button>`;
             } 
 
-            // B. RESET PASSWORD (Hirarki Kuasa)
+            // B. RESET PASSWORD (Hirarki Kuasa yang dikemaskini)
             let canForceReset = false;
-            if (user.role !== 'SUPER_ADMIN') {
-                if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') {
-                    canForceReset = true;
-                }
+            if (currentUserRole === 'SUPER_ADMIN') {
+                canForceReset = true; // Super admin boleh reset sesiapa kecuali diri sendiri (isSelf)
+            } else if ((currentUserRole === 'ADMIN' || currentUserRole === 'JPNMEL') && user.role !== 'SUPER_ADMIN' && user.role !== 'JPNMEL') {
+                canForceReset = true; // Admin/JPN boleh reset Unit PPD atau peringkat bawahan
             }
 
             if (canForceReset && !isSelf) {
@@ -294,13 +285,16 @@ function updateRoleDropdown(currentUserRole) {
 
     select.innerHTML = '';
     const opts = [
-        { val: 'ADMIN', txt: 'MOD ADMIN (Pengurusan Data)' },
+        { val: 'ADMIN', txt: 'MOD ADMIN (Pengurusan Data PPD)' },
         { val: 'PPD_UNIT', txt: 'UNIT PPD (Pencapaian Sahaja)' }
     ];
 
-    // Hanya Super Admin boleh lantik Super Admin lain
+    // Hanya Super Admin boleh lantik Super Admin lain dan JPNMEL
     if (currentUserRole === 'SUPER_ADMIN') {
-        opts.unshift({ val: 'SUPER_ADMIN', txt: 'SUPER ADMIN (Kuasa Mutlak)' });
+        opts.unshift(
+            { val: 'SUPER_ADMIN', txt: 'SUPER ADMIN (Kuasa Mutlak)' },
+            { val: 'JPNMEL', txt: 'JPN MELAKA (Akses Penuh Negeri)' }
+        );
     }
 
     opts.forEach(opt => {

@@ -4,6 +4,7 @@
  * Menggunakan: AuthService, toggleLoading
  * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
  * * UPDATE V1.2: Pembersihan hardcode M030, menyokong UI mod=admin.
+ * * UPDATE V1.3: Sokongan laluan log masuk untuk peranan JPNMEL (Akses Negeri).
  */
 
 import { AuthService } from './services/auth.service.js';
@@ -85,8 +86,8 @@ window.prosesLogin = async function() {
         toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
 
-        // Redirect Logic - PPD & ADMIN
-        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT' || user.role === 'SUPER_ADMIN') {
+        // Redirect Logic - PPD, JPN & ADMIN
+        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT' || user.role === 'SUPER_ADMIN' || user.role === 'JPNMEL') {
             localStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'true');
             
             let welcomeTitle = 'Admin Disahkan';
@@ -98,6 +99,9 @@ window.prosesLogin = async function() {
             } else if (user.role === 'SUPER_ADMIN') {
                 welcomeTitle = 'Akses Super Admin';
                 welcomeMsg = 'Log masuk dengan kuasa penuh.';
+            } else if (user.role === 'JPNMEL') {
+                welcomeTitle = 'Akses JPN Melaka';
+                welcomeMsg = 'Log masuk pentadbir peringkat negeri.';
             }
 
             Swal.fire({

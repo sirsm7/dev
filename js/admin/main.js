@@ -1,9 +1,10 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.4 - BATCH IMPORT GATEKEEPER)
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.5 - JPNMEL & BATCH IMPORT GATEKEEPER)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.4 ---
- * Integrasi Modul Import Data Pukal: Menambah sekatan tab 'import-data'
- * khusus untuk Super Admin sahaja melalui Gatekeeper RBAC.
+ * --- UPDATE V2.5 ---
+ * 1. Integrasi Modul Import Data Pukal: Mengalih sekatan tab 'import-data'
+ * ke fungsi inisialisasi awal untuk menutup kelompongan UI.
+ * 2. Menyokong peranan JPNMEL (Akses Penuh Negeri) dalam logik lencana UI dan gatekeeper.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -39,6 +40,9 @@ async function initAdminPanel() {
         if (userRole === 'SUPER_ADMIN') {
             displayRole.innerText = 'SUPER ADMIN';
             displayRole.classList.add('text-red-400', 'font-black'); // Visual Khas
+        } else if (userRole === 'JPNMEL') {
+            displayRole.innerText = 'JPN MELAKA';
+            displayRole.classList.add('text-fuchsia-400', 'font-black'); // Visual Khas JPN
         } else if (userRole === 'PPD_UNIT') {
             displayRole.innerText = 'UNIT PPD';
         } else {
@@ -46,12 +50,22 @@ async function initAdminPanel() {
         }
     }
 
-    // 3. Konfigurasi Modul Mengikut Peranan (Strict Mode)
+    // 3. Kawalan Paparan Tab Import Data (Di awalkan ke initialization)
+    const importTabBtn = document.getElementById('import-data-tab');
+    if (importTabBtn) {
+        if (userRole === 'SUPER_ADMIN') {
+            importTabBtn.classList.remove('hidden');
+        } else {
+            importTabBtn.classList.add('hidden');
+        }
+    }
+
+    // 4. Konfigurasi Modul Mengikut Peranan (Strict Mode)
     if (userRole === 'PPD_UNIT') {
         setupUnitView();
     } 
 
-    // 4. Mulakan Routing (Hash Handler)
+    // 5. Mulakan Routing (Hash Handler)
     // Semak hash URL semasa atau default ke 'dashboard' (atau 'pencapaian' untuk Unit PPD)
     let initialTab = window.location.hash.replace('#', '');
     
@@ -70,7 +84,7 @@ async function initAdminPanel() {
         switchAdminTab(hash);
     });
 
-    // 5. Muat data Dashboard secara automatik (hanya jika bukan Unit PPD)
+    // 6. Muat data Dashboard secara automatik (hanya jika bukan Unit PPD)
     if (userRole !== 'PPD_UNIT' && window.fetchDashboardData) {
         window.fetchDashboardData();
     }
@@ -90,7 +104,7 @@ function switchAdminTab(tabId, event) {
     }
 
     // SEMAKAN KESELAMATAN (GATEKEEPER)
-    // Pastikan Unit PPD tidak boleh akses tab dilarang walaupun tukar hash manual
+    // Pastikan peranan tidak boleh akses tab dilarang walaupun tukar hash manual
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data'];
     const forbiddenForMod = ['import-data']; // Hanya Super Admin boleh Import
@@ -99,8 +113,8 @@ function switchAdminTab(tabId, event) {
         // Redirect senyap ke pencapaian
         tabId = 'pencapaian'; 
         history.replaceState(null, null, '#pencapaian');
-    } else if (userRole === 'ADMIN' && forbiddenForMod.includes(tabId)) {
-        // Redirect senyap ke dashboard jika Mod Admin cuba buka tab import
+    } else if (['ADMIN', 'JPNMEL'].includes(userRole) && forbiddenForMod.includes(tabId)) {
+        // Redirect senyap ke dashboard jika Mod Admin atau JPN cuba buka tab import
         tabId = 'dashboard';
         history.replaceState(null, null, '#dashboard');
     }

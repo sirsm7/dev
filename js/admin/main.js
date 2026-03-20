@@ -1,10 +1,10 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.5 - JPNMEL & BATCH IMPORT GATEKEEPER)
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.5.1 - UI FIX)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.5 ---
- * 1. Integrasi Modul Import Data Pukal: Mengalih sekatan tab 'import-data'
- * ke fungsi inisialisasi awal untuk menutup kelompongan UI.
- * 2. Menyokong peranan JPNMEL (Akses Penuh Negeri) dalam logik lencana UI dan gatekeeper.
+ * --- UPDATE V2.5.1 ---
+ * 1. Pembaikan Bug UI: Menggantikan manipulasi statik className kepada classList
+ * bagi memastikan kelas 'hidden' untuk tab sekuriti (cth: Import) tidak tertimpa.
+ * 2. Integrasi Modul Import Data Pukal & Sokongan JPNMEL.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -133,16 +133,17 @@ function switchAdminTab(tabId, event) {
     }
 
     // 3. Kemaskini butang navigasi (Active State)
+    // PENYELESAIAN BUG: Menggunakan classList untuk mengekalkan kelas utiliti lain (spt 'hidden')
     const allButtons = document.querySelectorAll('[id$="-tab"]');
     allButtons.forEach(btn => {
-        // Reset ke style inactive
-        btn.className = "tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+        btn.classList.remove('tab-active');
+        btn.classList.add('tab-inactive');
     });
 
     const activeButton = document.getElementById(tabId + '-tab');
     if (activeButton) {
-        // Set ke style active
-        activeButton.className = "tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+        activeButton.classList.remove('tab-inactive');
+        activeButton.classList.add('tab-active');
     }
 
     // 4. Lazy Load Data (Muat data hanya bila tab dibuka)

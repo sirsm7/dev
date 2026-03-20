@@ -540,7 +540,7 @@ window.mulaImportCSV = async function() {
                     if (!existingKods.has(kod)) {
                         newUsers.push({
                             id: crypto.randomUUID(),
-                            email: `${kod.toLowerCase()}@moe-dl.edu.my`,
+                            email: `${kod.toLowerCase()}@moe.gov.my`,
                             password: APP_CONFIG.DEFAULTS.PASSWORD || 'ppdag@12345',
                             role: 'SEKOLAH',
                             kod_sekolah: kod

@@ -1,6 +1,7 @@
 /**
  * AUTHENTICATION SERVICE
  * Menguruskan log masuk, pendaftaran admin, dan reset kata laluan.
+ * * UPDATE V1.1: Pembuangan hardcode M030 pada createAdmin untuk sokongan pelbagai daerah.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -48,15 +49,15 @@ export const AuthService = {
     },
 
     /**
-     * Tambah admin baru
+     * Tambah admin baru dengan sokongan pelbagai PPD
      */
-    async createAdmin(email, password, role) {
+    async createAdmin(email, password, role, kodSekolah = 'M030') {
         const newId = crypto.randomUUID();
         const { error } = await db
             .from('smpid_users')
             .insert([{
                 id: newId,
-                kod_sekolah: 'M030', // PPD Code
+                kod_sekolah: kodSekolah,
                 email: email,
                 password: password,
                 role: role

@@ -3,6 +3,7 @@
  * Menguruskan interaksi UI untuk halaman log masuk.
  * Menggunakan: AuthService, toggleLoading
  * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
+ * * UPDATE V1.2: Pembersihan hardcode M030, menyokong UI mod=admin.
  */
 
 import { AuthService } from './services/auth.service.js';
@@ -20,12 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState(null, null, window.location.href);
     console.log("🔒 [Auth] Sesi localStorage dibersihkan.");
 
-    // Auto-detect Kod Sekolah dari URL (?kod=M030)
+    // Auto-detect Parameter dari URL
     const params = new URLSearchParams(window.location.search);
     const kod = params.get('kod');
-    if (kod) {
-        const titleEl = document.getElementById('loginTitle');
-        if (titleEl) titleEl.innerHTML = `LOG MASUK <span class="text-primary">${kod.toUpperCase()}</span>`;
+    const mod = params.get('mod');
+    
+    const titleEl = document.getElementById('loginTitle');
+    if (titleEl) {
+        if (mod === 'admin') {
+            titleEl.innerHTML = `<i class="fas fa-user-shield mr-2"></i>LOG MASUK PENTADBIR`;
+        } else if (kod) {
+            titleEl.innerHTML = `LOG MASUK <span class="text-brand-600">${kod.toUpperCase()}</span>`;
+        }
     }
 });
 

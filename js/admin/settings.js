@@ -403,8 +403,7 @@ window.muatTurunTemplatCSV = function() {
         "nama_pgb", "no_telefon_pgb", "emel_delima_pgb", 
         "nama_gpk", "no_telefon_gpk", "emel_delima_gpk", 
         "nama_gpict", "no_telefon_gpict", "emel_delima_gpict", 
-        "nama_admin_delima", "no_telefon_admin_delima", "emel_delima_admin_delima", 
-        "bil_guru", "bil_murid"
+        "nama_admin_delima", "no_telefon_admin_delima", "emel_delima_admin_delima"
     ];
     
     // Menambah BOM (Byte Order Mark) untuk menyokong karakter khas (UTF-8) di MS Excel
@@ -530,9 +529,7 @@ window.mulaImportCSV = async function() {
                     emel_delima_gpict: row.emel_delima_gpict?.trim() || null,
                     nama_admin_delima: row.nama_admin_delima?.trim().toUpperCase() || null,
                     no_telefon_admin_delima: row.no_telefon_admin_delima?.trim() || null,
-                    emel_delima_admin_delima: row.emel_delima_admin_delima?.trim() || null,
-                    bil_guru: parseInt(row.bil_guru) || 0,
-                    bil_murid: parseInt(row.bil_murid) || 0
+                    emel_delima_admin_delima: row.emel_delima_admin_delima?.trim() || null
                 }));
 
                 // Penyediaan profil pendaftaran baharu untuk jadual smpid_users

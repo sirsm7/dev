@@ -4,6 +4,7 @@
  * --- UPDATE V6.2 (RBAC DAERAH) ---
  * 1. Menyuntik tapisan global supaya data kalendar dan senarai selari dengan daerah admin.
  * 2. Mengurus logik agregasi secara dinamik di Controller.
+ * 3. Menyesuaikan paparan lencana (badge) kunci tarikh untuk menggunakan Kod PPD (Repurposed admin_email).
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -176,11 +177,13 @@ window.renderAdminBookingCalendar = async function() {
             }
         });
 
+        // Susun kunci tarikh ke dalam objek mengikut tarikh (ISO string)
         const lockedDetails = {};
         allLocks.forEach(l => {
             if (l.tarikh >= startStr && l.tarikh <= endStr) {
                 const dateOnly = l.tarikh.split('T')[0];
-                lockedDetails[dateOnly] = l.komen;
+                // Tambahan: Papar kod PPD kepada Super Admin untuk kenal pasti pemilik kunci
+                lockedDetails[dateOnly] = userRole === 'SUPER_ADMIN' ? `[${l.admin_email}] ${l.komen}` : l.komen;
             }
         });
         
@@ -317,6 +320,8 @@ window.renderAdminBookingCalendar = async function() {
  * Mengawal tindakan kunci/buka tarikh. 
  */
 window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings) {
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+    
     // 1. KES BUKA KUNCI (UNLOCK)
     if (currentlyLocked) {
         Swal.fire({
@@ -333,8 +338,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings)
             if (r.isConfirmed) {
                 toggleLoading(true);
                 try {
-                    const adminId = localStorage.getItem(APP_CONFIG.SESSION.USER_ID) || 'ADMIN';
-                    await BookingService.toggleDateLock(iso, '', adminId);
+                    await BookingService.toggleDateLock(iso, '', userKod);
                     toggleLoading(false);
                     adminSelectedDate = null;
                     window.renderAdminBookingCalendar();
@@ -389,8 +393,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings)
         if (note) {
             toggleLoading(true);
             try {
-                const adminId = localStorage.getItem(APP_CONFIG.SESSION.USER_ID) || 'ADMIN';
-                await BookingService.toggleDateLock(iso, note, adminId);
+                await BookingService.toggleDateLock(iso, note, userKod);
                 toggleLoading(false);
                 adminSelectedDate = null;
                 window.renderAdminBookingCalendar();
@@ -495,7 +498,7 @@ window.loadAdminBookingList = async function() {
                             </div>
                         </td>
                         <td class="px-8 py-6 align-top">
-                            <div class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">OLEH PENTADBIR:</div>
+                            <div class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">DIKUNCI OLEH (KOD PPD):</div>
                             <div class="font-mono text-[10px] text-indigo-600 font-bold break-all">${item.admin_email || 'ADMIN PPD'}</div>
                         </td>
                         <td class="px-8 py-6 text-center align-top">

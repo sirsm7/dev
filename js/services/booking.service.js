@@ -1,11 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 7.2 (Statewide Schema Optimization & Accurate Audit Trail)
- * --- UPDATE V7.2 ---
- * 1. Memperbaiki ralat kemaskini (UPDATE) dengan menggunakan klausa `existingScope`.
- * 2. Menyuntik carian e-mel dari jadual smpid_users untuk melengkapkan lajur `admin_email`.
- * 3. Mengekalkan format lajur `dikunci_oleh` untuk paparan visual.
+ * Version: 8.0 (Multi-District Array Handling Optimization)
+ * --- UPDATE V8.0 ---
+ * 1. Menerima sokongan kunci pelbagai daerah menggunakan tatasusunan (array).
+ * 2. Pemadaman rekod lama (existingScopes) yang tepat untuk memudahkan fungsi Kemaskini.
+ * 3. Menjana baris baharu (Batch Insert) secara automatik bagi setiap skop berbeza.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -309,25 +309,21 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Menguruskan kunci tarikh secara anjal.
-     * Boleh mengunci (LOCK), buka kunci (UNLOCK), atau kemaskini ulasan (UPDATE).
-     * Menggunakan lajur 'kod_ppd' dan menyimpan rekod auditable 'dikunci_oleh' beserta 'admin_email'.
+     * Admin Function: Menguruskan kunci tarikh dengan sokongan berbilang kawasan (Multi-District Array).
+     * Kaedah ini lebih kebal kerana ia memadamkan kunci terdahulu (existingScopes) 
+     * sebelum melaksanakan sisipan (Batch Insert) bagi kunci baharu.
      * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
-     * @param {Array<string>} ppdCodes - Senarai kod PPD.
-     * @param {string} existingScope - Pilihan skop rekod sedia ada (untuk kemaskini silang skop).
+     * @param {Array<string>} targetPpds - Senarai kod PPD baharu untuk dikunci (contoh: ['M010', 'M020'] atau ['ALL']).
+     * @param {Array<string>} existingScopes - Pilihan skop rekod sedia ada (Digunakan untuk penghapusan tepat).
      */
-    async manageDateLock(action, tarikh, note, ppdCodes, existingScope = 'ALL') {
+    async manageDateLock(action, tarikh, note, targetPpds, existingScopes = ['ALL']) {
         const db = getDatabaseClient();
 
-        // Logik Penentuan Skop Keseluruhan Negeri vs Daerah Spesifik
-        let scope = 'M030';
-        if (Array.isArray(ppdCodes)) {
-            // Jika array mengandungi pelbagai PPD (lebih dari 1), anggap ia adalah 'ALL'
-            if (ppdCodes.length > 1) scope = 'ALL';
-            else if (ppdCodes.length === 1) scope = ppdCodes[0];
-        }
+        // 1. Format perlindungan pembolehubah kepada tatasusunan (Array Fallback Safety)
+        let finalTargetPpds = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
+        if (finalTargetPpds.includes('ALL')) finalTargetPpds = ['ALL'];
 
         // Dapatkan Identiti Pentadbir untuk Jejak Audit
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'ADMIN';
@@ -345,54 +341,48 @@ export const BookingService = {
             }
         }
 
+        // TINDAKAN A: BUKA KUNCI
         if (action === 'UNLOCK') {
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
                 .eq('tarikh', tarikh)
-                .eq('kod_ppd', existingScope);
+                .in('kod_ppd', finalTargetPpds); // Padam tepat pada sasaran yang dipilih sahaja
             
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
         }
 
-        if (action === 'UPDATE') {
-            const { error } = await db
-                .from('smpid_bb_kunci')
-                .update({ 
-                    komen: note,
-                    kod_ppd: scope, // Kemaskini kepada skop baharu sekiranya diubah pada modal
-                    dikunci_oleh: dikunciOlehIdentifier,
-                    admin_email: adminEmail
-                })
-                .eq('tarikh', tarikh)
-                .eq('kod_ppd', existingScope); // Carian menggunakan skop terdahulu yang sah
+        // TINDAKAN B: KEMASKINI ATAU KUNCI BAHARU
+        if (action === 'UPDATE' || action === 'LOCK') {
             
+            // Langkah 1: Buang kunci sedia ada untuk menghalang pertindihan.
+            // Untuk 'UPDATE', kita buang rekod lama (existingScopes) supaya digantikan sepenuhnya dengan yang baru.
+            // Untuk 'LOCK', kita bersihkan juga sasaran (finalTargetPpds) untuk mengelak ralat duplikasi DB.
+            const scopesToDelete = action === 'UPDATE' ? existingScopes : finalTargetPpds;
+            
+            if (scopesToDelete && scopesToDelete.length > 0) {
+                await db.from('smpid_bb_kunci')
+                        .delete()
+                        .eq('tarikh', tarikh)
+                        .in('kod_ppd', scopesToDelete);
+            }
+
+            // Langkah 2: Jana susunan (Payload Array) untuk Sisipan Pukal (Batch Insert)
+            const inserts = finalTargetPpds.map(ppd => ({
+                tarikh: tarikh,
+                komen: note,
+                kod_ppd: ppd,
+                dikunci_oleh: dikunciOlehIdentifier,
+                admin_email: adminEmail,
+                created_at: new Date().toISOString()
+            }));
+
+            // Langkah 3: Melaksanakan Sisipan ke Pangkalan Data
+            const { error } = await db.from('smpid_bb_kunci').insert(inserts);
+
             if (error) throw error;
-            return { success: true, action: 'UPDATED' };
-        }
-
-        if (action === 'LOCK') {
-            // Buang kunci sedia ada untuk skop yang sama bagi mengelak duplikasi pangkalan data
-            await db
-                .from('smpid_bb_kunci')
-                .delete()
-                .eq('tarikh', tarikh)
-                .eq('kod_ppd', scope);
-
-            const { error } = await db
-                .from('smpid_bb_kunci')
-                .insert([{
-                    tarikh: tarikh,
-                    komen: note,
-                    kod_ppd: scope,
-                    dikunci_oleh: dikunciOlehIdentifier,
-                    admin_email: adminEmail,
-                    created_at: new Date().toISOString()
-                }]);
-
-            if (error) throw error;
-            return { success: true, action: 'LOCKED' };
+            return { success: true, action: action === 'LOCK' ? 'LOCKED' : 'UPDATED' };
         }
         
         throw new Error("Tindakan pengurusan kunci tarikh tidak sah.");

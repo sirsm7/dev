@@ -1,10 +1,11 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V6.2 SECURE LOCK)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V6.3 SECURE LOCK)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V6.2 (RBAC DAERAH) ---
- * 1. Menyuntik tapisan global supaya data kalendar dan senarai selari dengan daerah admin.
- * 2. Mengurus logik agregasi secara dinamik di Controller.
- * 3. Menyesuaikan paparan lencana (badge) kunci tarikh untuk menggunakan Kod PPD (Repurposed admin_email).
+ * --- UPDATE V6.3 (STATEWIDE RBAC & DYNAMIC UPDATE) ---
+ * 1. Menerapkan antaramuka dinamik bagi membolehkan SUPER ADMIN mengunci tarikh 
+ * secara serentak untuk seluruh negeri atau daerah tertentu.
+ * 2. Menyokong operasi Kemaskini (Update) dan Buka Kunci (Unlock) terus dari UI.
+ * 3. Menyesuaikan integrasi dengan fungsi manageDateLock dari Service.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -152,40 +153,8 @@ window.renderAdminBookingCalendar = async function() {
         const startStr = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}-01`;
         const endStr = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}-${pad(daysInMonth)}`;
 
-        // Ambil data mentah dari pangkalan data
-        let allBookings = await BookingService.getAllActiveBookings();
-        const allLocks = await BookingService.getAllLocks();
-
-        // --- RBAC FILTERING (SUNTIKAN DAERAH) ---
-        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-
-        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
-            const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
-            validSchoolCodes.push(userKod); // Benarkan PPD sendiri
-            allBookings = allBookings.filter(b => validSchoolCodes.includes(b.kod_sekolah));
-        }
-        // ----------------------------------------
-
-        // Lakukan agregasi bulanan secara lokal
-        const bookedSlots = {};
-        allBookings.forEach(b => {
-            if (b.tarikh >= startStr && b.tarikh <= endStr) {
-                const dateOnly = b.tarikh.split('T')[0];
-                if (!bookedSlots[dateOnly]) bookedSlots[dateOnly] = [];
-                bookedSlots[dateOnly].push(b.masa);
-            }
-        });
-
-        // Susun kunci tarikh ke dalam objek mengikut tarikh (ISO string)
-        const lockedDetails = {};
-        allLocks.forEach(l => {
-            if (l.tarikh >= startStr && l.tarikh <= endStr) {
-                const dateOnly = l.tarikh.split('T')[0];
-                // Tambahan: Papar kod PPD kepada Super Admin untuk kenal pasti pemilik kunci
-                lockedDetails[dateOnly] = userRole === 'SUPER_ADMIN' ? `[${l.admin_email}] ${l.komen}` : l.komen;
-            }
-        });
+        // Ambil data agregat melalui service yang telah menguruskan tapisan RBAC Daerah
+        const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(adminCurrentYear, adminCurrentMonth);
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -292,13 +261,13 @@ window.renderAdminBookingCalendar = async function() {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, isLocked, hasBookings);
+                    window.handleAdminDateAction(dateString, isLocked, hasBookings, lockedDetails[dateString] || '');
                 };
             } else if (!isPast && isLocked) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, true, false);
+                    window.handleAdminDateAction(dateString, true, false, lockedDetails[dateString] || '');
                 };
             }
 
@@ -317,28 +286,116 @@ window.renderAdminBookingCalendar = async function() {
 };
 
 /**
- * Mengawal tindakan kunci/buka tarikh. 
+ * Mengawal tindakan kunci/buka tarikh dan kemaskini skop negeri. 
  */
-window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings) {
+window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings, currentNote = '') {
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
     
-    // 1. KES BUKA KUNCI (UNLOCK)
-    if (currentlyLocked) {
+    // --- SECURITY CHECK V6.1 ---
+    // Halang pentadbir daripada mengunci tarikh yang telah ada tempahan
+    if (!currentlyLocked && hasBookings) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Halangan Keselamatan',
+            html: `<div class="text-center">
+                     <p class="text-sm font-bold text-red-600 mb-2">TARIKH INI MEMPUNYAI TEMPAHAN AKTIF.</p>
+                     <p class="text-xs text-slate-500">Anda tidak boleh mengunci tarikh yang telah ditempah oleh sekolah. Sila batalkan tempahan sekolah tersebut dahulu di senarai bawah.</p>
+                   </div>`,
+            confirmButtonColor: '#ef4444',
+            customClass: { popup: 'rounded-3xl' }
+        });
+        adminSelectedDate = null;
+        window.renderAdminBookingCalendar();
+        return; 
+    }
+
+    // Bina Ruang Dropdown Pemilihan Skop Kunci (Hanya untuk Super Admin)
+    let scopeHtml = '';
+    if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+        let options = `<option value="ALL">SEMUA DAERAH (NEGERI MELAKA)</option>`;
+        if (APP_CONFIG.PPD_MAPPING) {
+            for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
+                options += `<option value="${k}">${v} (${k})</option>`;
+            }
+        }
+        scopeHtml = `
+            <div class="mt-4 text-left px-4">
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Skop Kunci Tarikh</label>
+                <select id="swal-scope" class="w-full p-3 rounded-xl border-2 border-slate-200 font-bold text-sm outline-none focus:border-purple-500 text-slate-700 bg-slate-50">
+                    ${options}
+                </select>
+            </div>
+        `;
+    }
+
+    const titleText = currentlyLocked ? 'Pengurusan Kunci Tarikh' : 'Kunci Tarikh Ini?';
+    const confirmText = currentlyLocked ? 'KEMASKINI CATATAN' : 'KUNCI SEKARANG';
+
+    // Pembolehubah untuk menangkap nilai skop walaupun paparan ditutup (Deny)
+    let capturedScope = userKod;
+
+    const result = await Swal.fire({
+        title: titleText,
+        html: `
+            <div class="text-center mb-4"><span class="text-3xl font-black text-purple-600">${iso}</span></div>
+            <p class="text-sm text-slate-500 mb-4 px-4 font-medium">Nyatakan sebab atau catatan rasmi di bawah.</p>
+            <div class="px-4">
+                <input id="swal-note" class="w-full p-3 rounded-xl border-2 border-slate-200 font-bold uppercase text-sm outline-none focus:border-purple-500 text-slate-800" placeholder="Contoh: CUTI UMUM / BENGKEL..." value="${currentNote}">
+            </div>
+            ${scopeHtml}
+        `,
+        showCancelButton: true,
+        showDenyButton: currentlyLocked,
+        confirmButtonColor: '#7c3aed',
+        denyButtonColor: '#10b981', // Hijau Emerald untuk Buka Kunci
+        cancelButtonColor: '#64748b',
+        confirmButtonText: confirmText,
+        denyButtonText: 'BUKA KUNCI',
+        cancelButtonText: 'BATAL',
+        customClass: { 
+            popup: 'rounded-3xl border-2 border-slate-100', 
+            confirmButton: 'font-bold tracking-wider', 
+            denyButton: 'font-bold tracking-wider', 
+            cancelButton: 'font-bold tracking-wider' 
+        },
+        preDeny: () => {
+            // Tangkap nilai skop sejurus sebelum tetingkap dimusnahkan
+            const scopeEl = document.getElementById('swal-scope');
+            if (scopeEl) capturedScope = scopeEl.value;
+            return true;
+        },
+        preConfirm: () => {
+            const note = document.getElementById('swal-note').value.trim().toUpperCase();
+            if (!note) {
+                Swal.showValidationMessage('Sebab atau catatan wajib diisi.');
+                return false;
+            }
+            const scopeEl = document.getElementById('swal-scope');
+            if (scopeEl) capturedScope = scopeEl.value;
+            return { note, scopeVal: capturedScope };
+        }
+    });
+
+    // Logik jika butang "BUKA KUNCI" ditekan
+    if (result.isDenied) {
+        let targetPpd = capturedScope === 'ALL' ? Object.keys(APP_CONFIG.PPD_MAPPING || {'M010':'', 'M020':'', 'M030':''}) : [capturedScope];
+        
         Swal.fire({
             title: 'Buka Kunci Tarikh?',
-            html: `<div class="text-center mb-4"><span class="text-3xl font-black text-slate-800">${iso}</span></div>
-                   <p class="text-sm text-slate-500 font-medium">Adakah anda pasti mahu membuka semula tarikh ini untuk tempahan sekolah?</p>`,
-            icon: 'question',
+            text: "Tarikh ini akan dibuka semula untuk tempahan sekolah bagi kawasan yang dipilih.",
+            icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
             confirmButtonText: 'Ya, Buka Akses',
             cancelButtonText: 'Batal',
-            customClass: { popup: 'rounded-3xl border-2 border-slate-100' }
+            customClass: { popup: 'rounded-3xl' }
         }).then(async (r) => {
             if (r.isConfirmed) {
                 toggleLoading(true);
                 try {
-                    await BookingService.toggleDateLock(iso, '', userKod);
+                    await BookingService.manageDateLock('UNLOCK', iso, '', targetPpd);
                     toggleLoading(false);
                     adminSelectedDate = null;
                     window.renderAdminBookingCalendar();
@@ -354,59 +411,27 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings)
             }
         });
     } 
-    // 2. KES KUNCI TARIKH (LOCK)
-    else {
-        // --- SECURITY CHECK V6.1 ---
-        if (hasBookings) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Halangan Keselamatan',
-                html: `<div class="text-center">
-                         <p class="text-sm font-bold text-red-600 mb-2">TARIKH INI MEMPUNYAI TEMPAHAN AKTIF.</p>
-                         <p class="text-xs text-slate-500">Anda tidak boleh mengunci tarikh yang telah ditempah oleh sekolah. Sila batalkan tempahan sekolah tersebut dahulu di senarai bawah.</p>
-                       </div>`,
-                confirmButtonColor: '#ef4444',
-                customClass: { popup: 'rounded-3xl' }
-            });
+    // Logik jika butang "KEMASKINI" atau "KUNCI SEKARANG" ditekan
+    else if (result.isConfirmed) {
+        const { note, scopeVal } = result.value;
+        let targetPpd = scopeVal === 'ALL' ? Object.keys(APP_CONFIG.PPD_MAPPING || {'M010':'', 'M020':'', 'M030':''}) : [scopeVal];
+        const action = currentlyLocked ? 'UPDATE' : 'LOCK';
+
+        toggleLoading(true);
+        try {
+            await BookingService.manageDateLock(action, iso, note, targetPpd);
+            toggleLoading(false);
             adminSelectedDate = null;
             window.renderAdminBookingCalendar();
-            return; 
+            window.loadAdminBookingList();
+            Swal.fire({ icon: 'success', title: currentlyLocked ? 'Dikemaskini' : 'Dikunci', timer: 1000, showConfirmButton: false });
+        } catch (err) {
+            toggleLoading(false);
+            Swal.fire('Ralat', err.message || 'Gagal memproses kunci tarikh.', 'error');
         }
-
-        const { value: note } = await Swal.fire({
-            title: 'Kunci Tarikh Ini?',
-            html: `<div class="text-center mb-4"><span class="text-3xl font-black text-purple-600">${iso}</span></div>
-                   <p class="text-sm text-slate-500 mb-4 px-4 font-medium">Nyatakan sebab (Contoh: CUTI UMUM). Tempahan sekolah akan disekat.</p>`,
-            input: 'text',
-            inputPlaceholder: 'Sila masukkan sebab kunci...',
-            showCancelButton: true,
-            confirmButtonColor: '#7c3aed',
-            confirmButtonText: 'KUNCI SEKARANG',
-            cancelButtonText: 'Batal',
-            customClass: { popup: 'rounded-3xl border-2 border-slate-100', input: 'rounded-xl font-bold uppercase mx-4 shadow-sm border-2 border-slate-200' },
-            preConfirm: (val) => {
-                if (!val) return Swal.showValidationMessage('Sebab atau catatan wajib diisi.');
-                return val.toUpperCase();
-            }
-        });
-
-        if (note) {
-            toggleLoading(true);
-            try {
-                await BookingService.toggleDateLock(iso, note, userKod);
-                toggleLoading(false);
-                adminSelectedDate = null;
-                window.renderAdminBookingCalendar();
-                window.loadAdminBookingList();
-                Swal.fire({ icon: 'success', title: 'Dikunci', timer: 1000, showConfirmButton: false });
-            } catch (err) {
-                toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal mengunci tarikh.', 'error');
-            }
-        } else {
-            adminSelectedDate = null;
-            window.renderAdminBookingCalendar();
-        }
+    } else {
+        adminSelectedDate = null;
+        window.renderAdminBookingCalendar();
     }
 };
 
@@ -483,6 +508,7 @@ window.loadAdminBookingList = async function() {
                     </tr>
                 `;
             } else {
+                const escapedNote = (item.komen || '').replace(/'/g, "\\'");
                 return `
                     <tr class="bg-indigo-50/40 hover:bg-indigo-50 transition-all border-l-4 border-l-indigo-500">
                         <td class="px-8 py-6 align-top">
@@ -502,8 +528,8 @@ window.loadAdminBookingList = async function() {
                             <div class="font-mono text-[10px] text-indigo-600 font-bold break-all">${item.admin_email || 'ADMIN PPD'}</div>
                         </td>
                         <td class="px-8 py-6 text-center align-top">
-                            <button onclick="handleAdminDateAction('${item.tarikh}', true, false)" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Buka Kunci Melalui Kalendar">
-                                <i class="fas fa-unlock"></i>
+                            <button onclick="handleAdminDateAction('${item.tarikh}', true, false, '${escapedNote}')" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Urus Kunci Tarikh">
+                                <i class="fas fa-cog"></i>
                             </button>
                         </td>
                     </tr>

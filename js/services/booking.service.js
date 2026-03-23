@@ -1,11 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 6.1 (Full Day Logic + RBAC Daerah Integration)
- * --- UPDATE V6.1 ---
- * 1. Tapisan Daerah: Semua semakan pertindihan masa (overlap) kini membezakan sekolah mengikut daerah.
- * 2. Kunci Tarikh (Date Lock): Menunggang (repurpose) kolum `admin_email` untuk menyimpan Kod PPD.
- * Ini membolehkan PPD yang berbeza mengurus kalendar daerah masing-masing tanpa gangguan.
+ * Version: 6.2 (Statewide Lock & Update Integration)
+ * --- UPDATE V6.2 ---
+ * 1. Penggantian fungsi `toggleDateLock` kepada `manageDateLock` untuk menyokong
+ * operasi pelbagai daerah secara serentak (Array of PPD Codes).
+ * 2. Menyokong tindakan spesifik: LOCK, UNLOCK, dan UPDATE.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -308,47 +308,65 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Menukar status kunci pada tarikh tertentu (Toggle).
+     * Admin Function: Menguruskan kunci tarikh secara anjal (Anjal = Flexible).
+     * Boleh mengunci (LOCK), buka kunci (UNLOCK), atau kemaskini ulasan (UPDATE).
+     * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
-     * @param {string} adminEmail - Identiti asal (Diabaikan, diganti dengan Kod PPD).
+     * @param {Array<string>} ppdCodes - Senarai kod PPD yang terlibat (Cth: ['M010', 'M020', 'M030']).
      */
-    async toggleDateLock(tarikh, note, adminEmail) {
+    async manageDateLock(action, tarikh, note, ppdCodes) {
         const db = getDatabaseClient();
-        
-        // Repurpose kolum 'admin_email' untuk memegang Kod PPD supaya tapisan daerah berfungsi
-        const ppdOwner = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || adminEmail;
-        
-        // Semak jika kunci sudah wujud untuk tarikh dan PPD ini
-        const { data: existing } = await db
-            .from('smpid_bb_kunci')
-            .select('id')
-            .eq('tarikh', tarikh)
-            .eq('admin_email', ppdOwner)
-            .maybeSingle();
 
-        if (existing) {
-            // Jika wujud, lakukan operasi padam (Buka Kunci)
+        if (!ppdCodes || ppdCodes.length === 0) {
+            throw new Error("Sila tetapkan sekurang-kurangnya satu daerah (PPD).");
+        }
+
+        if (action === 'UNLOCK') {
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
-                .eq('id', existing.id);
+                .eq('tarikh', tarikh)
+                .in('admin_email', ppdCodes);
             
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
-        } else {
-            // Jika tiada, lakukan operasi tambah (Kunci Tarikh)
+        }
+
+        if (action === 'UPDATE') {
             const { error } = await db
                 .from('smpid_bb_kunci')
-                .insert([{
-                    tarikh: tarikh,
-                    komen: note,
-                    admin_email: ppdOwner,
-                    created_at: new Date().toISOString()
-                }]);
+                .update({ komen: note })
+                .eq('tarikh', tarikh)
+                .in('admin_email', ppdCodes);
+            
+            if (error) throw error;
+            return { success: true, action: 'UPDATED' };
+        }
+
+        if (action === 'LOCK') {
+            // Buang kunci sedia ada untuk PPD terlibat sebelum insert baru bagi mengelak duplikasi
+            await db
+                .from('smpid_bb_kunci')
+                .delete()
+                .eq('tarikh', tarikh)
+                .in('admin_email', ppdCodes);
+
+            const insertData = ppdCodes.map(ppd => ({
+                tarikh: tarikh,
+                komen: note,
+                admin_email: ppd,
+                created_at: new Date().toISOString()
+            }));
+
+            const { error } = await db
+                .from('smpid_bb_kunci')
+                .insert(insertData);
 
             if (error) throw error;
             return { success: true, action: 'LOCKED' };
         }
+        
+        throw new Error("Tindakan pengurusan kunci tarikh tidak sah.");
     }
 };

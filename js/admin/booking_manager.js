@@ -1,11 +1,11 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V6.3 SECURE LOCK)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V7.1 AUDIT TRAIL)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V6.3 (STATEWIDE RBAC & DYNAMIC UPDATE) ---
- * 1. Menerapkan antaramuka dinamik bagi membolehkan SUPER ADMIN mengunci tarikh 
- * secara serentak untuk seluruh negeri atau daerah tertentu.
- * 2. Menyokong operasi Kemaskini (Update) dan Buka Kunci (Unlock) terus dari UI.
- * 3. Menyesuaikan integrasi dengan fungsi manageDateLock dari Service.
+ * --- UPDATE V7.1 (SCHEMA ALIGNMENT & UI ENHANCEMENT) ---
+ * 1. Mengintegrasikan skema 'kod_ppd' dan 'dikunci_oleh' ke dalam UI Kalendar.
+ * 2. Memaparkan lencana (badge) "KUNCI NEGERI" atau "KUNCI DAERAH" pada jubin kalendar.
+ * 3. Menapis paparan Senarai Aktif supaya memaparkan tarikh TERKINI dan AKAN DATANG sahaja.
+ * 4. Memaparkan jejak audit (dikunci oleh siapa) secara terperinci.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -81,13 +81,17 @@ window.initAdminBooking = async function() {
 
                 <div id="adminBookingListView" class="hidden animate-fade-up">
                     <div class="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-sm">
+                        <div class="p-4 bg-amber-50 border-b border-amber-100 flex items-start gap-3">
+                            <i class="fas fa-info-circle text-amber-500 mt-0.5"></i>
+                            <p class="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Hanya tempahan dan kunci tarikh bagi hari ini dan akan datang sahaja dipaparkan.</p>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left">
                                 <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase border-b-2 border-slate-100">
                                     <tr>
                                         <th class="px-8 py-5">Tarikh & Masa</th>
                                         <th class="px-8 py-5">Sekolah / Maklumat Kunci</th>
-                                        <th class="px-8 py-5">PIC / Admin</th>
+                                        <th class="px-8 py-5">PIC / Log Admin</th>
                                         <th class="px-8 py-5 text-center">Tindakan</th>
                                     </tr>
                                 </thead>
@@ -122,6 +126,9 @@ window.switchAdminBookingView = function(view) {
         btnCal.className = "px-6 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-600 border-2 border-transparent transition-all";
         viewList.classList.remove('hidden');
         viewCal.classList.add('hidden');
+        
+        // Muat semula senarai apabila tab dibuka
+        window.loadAdminBookingList();
     }
 };
 
@@ -131,7 +138,7 @@ window.switchAdminWeek = function(weekNum) {
 };
 
 /**
- * Membina Grid Kalendar (Admin Side) dengan Sokongan Penapisan Daerah
+ * Membina Grid Kalendar (Admin Side) dengan Sokongan Pengecaman Skop Kunci
  */
 window.renderAdminBookingCalendar = async function() {
     const grid = document.getElementById('adminCalendarGrid');
@@ -150,11 +157,16 @@ window.renderAdminBookingCalendar = async function() {
     try {
         const daysInMonth = new Date(adminCurrentYear, adminCurrentMonth + 1, 0).getDate();
         const pad = (n) => n.toString().padStart(2, '0');
-        const startStr = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}-01`;
-        const endStr = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}-${pad(daysInMonth)}`;
+        const monthPrefix = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}`;
 
-        // Ambil data agregat melalui service yang telah menguruskan tapisan RBAC Daerah
-        const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(adminCurrentYear, adminCurrentMonth);
+        // Ambil data bulan semasa dan senarai kunci global untuk UI Lencana
+        const [{ bookedSlots }, allLocks] = await Promise.all([
+            BookingService.getMonthlyData(adminCurrentYear, adminCurrentMonth),
+            BookingService.getAllLocks()
+        ]);
+        
+        // Tapis kunci tarikh untuk bulan paparan semasa
+        const activeMonthLocks = allLocks.filter(l => l.tarikh.startsWith(monthPrefix));
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -177,13 +189,17 @@ window.renderAdminBookingCalendar = async function() {
         let hasContent = false;
 
         for (let d = startDay; d <= endDay; d++) {
-            const dateString = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}-${pad(d)}`;
+            const dateString = `${monthPrefix}-${pad(d)}`;
             const dateObj = new Date(adminCurrentYear, adminCurrentMonth, d);
             dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay(); 
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
-            const isLocked = lockedDetails.hasOwnProperty(dateString);
+            
+            // Pencarian objek kunci yang lebih pintar
+            const lockObj = activeMonthLocks.find(l => l.tarikh.split('T')[0] === dateString);
+            const isLocked = !!lockObj;
+            
             const slotsTaken = bookedSlots[dateString] || [];
             const isPast = dateObj < today;
 
@@ -192,7 +208,7 @@ window.renderAdminBookingCalendar = async function() {
             let statusIcon = 'fa-check-circle';
             const maxCapacity = (dayOfWeek === 6) ? 1 : 2;
 
-            // --- LOGIK BARU ADMIN: CHECK 1 HARI ---
+            // LOGIK KAPASITI
             const isFullDayTaken = slotsTaken.includes('1 HARI');
             let filledCount = slotsTaken.length;
             if (isFullDayTaken) filledCount = 2;
@@ -229,10 +245,22 @@ window.renderAdminBookingCalendar = async function() {
             if (status === 'partial') iconColor = 'text-amber-600 bg-amber-100';
             if (status === 'closed') iconColor = 'text-slate-400 bg-slate-200';
 
-            const lockedMsg = isLocked ? `<div class="text-[9px] text-purple-600 font-black mt-1 uppercase wrap-safe leading-tight bg-purple-50 p-1 rounded border border-purple-100">${lockedDetails[dateString] || 'ADMIN LOCK'}</div>` : '';
+            // PAPARAN NOTA KUNCI YANG KAYA (RICH UI)
+            let lockedMsg = '';
+            if (isLocked && lockObj) {
+                const scopeLabel = lockObj.kod_ppd === 'ALL' ? 'KUNCI NEGERI' : `KUNCI DAERAH (${lockObj.kod_ppd})`;
+                const scopeClass = lockObj.kod_ppd === 'ALL' ? 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-purple-200 text-purple-800 border-purple-300';
+                
+                lockedMsg = `
+                <div class="mt-1.5 flex flex-col gap-1">
+                    <span class="${scopeClass} px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest w-fit border shadow-sm">${scopeLabel}</span>
+                    <div class="text-[9px] text-purple-700 font-bold uppercase wrap-safe leading-tight bg-purple-50 p-1.5 rounded border border-purple-200">
+                        ${lockObj.komen || 'TIADA CATATAN'}
+                    </div>
+                </div>`;
+            }
+
             const isSelected = (dateString === adminSelectedDate);
-            
-            // --- SECURITY FLAG: ADAKAH TARIKH INI ADA TEMPAHAN? ---
             const hasBookings = (filledCount > 0); 
 
             const card = document.createElement('div');
@@ -257,17 +285,19 @@ window.renderAdminBookingCalendar = async function() {
                 </div>
             `;
 
+            const clickNote = lockObj ? lockObj.komen : '';
+
             if (!isPast && isAllowedDay) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, isLocked, hasBookings, lockedDetails[dateString] || '');
+                    window.handleAdminDateAction(dateString, isLocked, hasBookings, clickNote);
                 };
             } else if (!isPast && isLocked) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, true, false, lockedDetails[dateString] || '');
+                    window.handleAdminDateAction(dateString, true, false, clickNote);
                 };
             }
 
@@ -292,7 +322,6 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
     
-    // --- SECURITY CHECK V6.1 ---
     // Halang pentadbir daripada mengunci tarikh yang telah ada tempahan
     if (!currentlyLocked && hasBookings) {
         Swal.fire({
@@ -437,6 +466,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
 
 /**
  * Memproses senarai bersepadu (Tempahan + Kunci) dalam satu jadual.
+ * Menapis tarikh lampau untuk memastikan senarai pengurusan sentiasa bersih.
  */
 window.loadAdminBookingList = async function() {
     const tbody = document.getElementById('adminBookingTableBody');
@@ -448,7 +478,7 @@ window.loadAdminBookingList = async function() {
             BookingService.getAllLocks()
         ]);
 
-        // --- RBAC FILTERING (SUNTIKAN DAERAH) ---
+        // --- RBAC FILTERING (SUNTIKAN DAERAH UNTUK TEMPAHAN) ---
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
 
@@ -457,19 +487,23 @@ window.loadAdminBookingList = async function() {
             validSchoolCodes.push(userKod); // Benarkan PPD sendiri
             bookings = bookings.filter(b => validSchoolCodes.includes(b.kod_sekolah));
         }
-        // ----------------------------------------
 
-        // Gabungkan kedua-dua array dan berikan tagging jenis data
+        // Tapis hanya paparan untuk Hari Ini dan Akan Datang
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Gabungkan kedua-dua array dan tapis
         const masterList = [
             ...bookings.map(b => ({ ...b, type: 'BOOKING' })),
             ...locks.map(l => ({ ...l, type: 'LOCK' }))
-        ];
-
-        // Susun mengikut tarikh paling awal di atas
-        masterList.sort((a, b) => new Date(a.tarikh) - new Date(b.tarikh));
+        ].filter(item => {
+            const itemDate = new Date(item.tarikh);
+            itemDate.setHours(0, 0, 0, 0);
+            return itemDate >= today;
+        }).sort((a, b) => new Date(a.tarikh) - new Date(b.tarikh)); // Susun mengikut tarikh terawal
 
         if (masterList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="p-24 text-center text-slate-400 font-medium italic bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">Tiada permohonan tempahan atau tarikh dikunci buat masa ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="p-24 text-center text-slate-400 font-medium italic bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">Tiada permohonan tempahan atau tarikh dikunci bermula hari ini.</td></tr>`;
             return;
         }
 
@@ -509,6 +543,9 @@ window.loadAdminBookingList = async function() {
                 `;
             } else {
                 const escapedNote = (item.komen || '').replace(/'/g, "\\'");
+                const scopeBadgeLabel = item.kod_ppd === 'ALL' ? 'NEGERI (SEMUA DAERAH)' : `DAERAH (${item.kod_ppd})`;
+                const scopeBadgeColor = item.kod_ppd === 'ALL' ? 'text-fuchsia-600 border-fuchsia-200 bg-fuchsia-50' : 'text-slate-600 border-slate-200 bg-white';
+
                 return `
                     <tr class="bg-indigo-50/40 hover:bg-indigo-50 transition-all border-l-4 border-l-indigo-500">
                         <td class="px-8 py-6 align-top">
@@ -524,8 +561,11 @@ window.loadAdminBookingList = async function() {
                             </div>
                         </td>
                         <td class="px-8 py-6 align-top">
-                            <div class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">DIKUNCI OLEH (KOD PPD):</div>
-                            <div class="font-mono text-[10px] text-indigo-600 font-bold break-all">${item.admin_email || 'ADMIN PPD'}</div>
+                            <div class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">DIKUNCI OLEH:</div>
+                            <div class="font-mono text-[10px] text-indigo-600 font-bold break-all mb-2">${item.dikunci_oleh || 'PENTADBIR SISTEM'}</div>
+                            <div class="text-[8px] font-bold text-slate-400 uppercase tracking-wider px-2 py-0.5 rounded inline-block border ${scopeBadgeColor}">
+                                Skop: <span class="font-black">${scopeBadgeLabel}</span>
+                            </div>
                         </td>
                         <td class="px-8 py-6 text-center align-top">
                             <button onclick="handleAdminDateAction('${item.tarikh}', true, false, '${escapedNote}')" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Urus Kunci Tarikh">

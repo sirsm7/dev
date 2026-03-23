@@ -1,11 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 6.2 (Statewide Lock & Update Integration)
- * --- UPDATE V6.2 ---
- * 1. Penggantian fungsi `toggleDateLock` kepada `manageDateLock` untuk menyokong
- * operasi pelbagai daerah secara serentak (Array of PPD Codes).
- * 2. Menyokong tindakan spesifik: LOCK, UNLOCK, dan UPDATE.
+ * Version: 7.0 (Statewide Schema Optimization & Audit Trail)
+ * --- UPDATE V7.0 ---
+ * 1. Menggantikan penggunaan `admin_email` kepada `kod_ppd` ('ALL' atau kod daerah) untuk kunci tarikh.
+ * 2. Menambah jejak audit menggunakan lajur `dikunci_oleh`.
+ * 3. Logik pengesahan silang yang dioptimumkan menggunakan klausa `.or()`.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -66,13 +66,13 @@ export const BookingService = {
             throw errB;
         }
 
-        // 2. Ambil Kunci Tarikh Admin (Ditapis mengikut PPD pentadbir daerah)
+        // 2. Ambil Kunci Tarikh Admin (Statewide 'ALL' atau Spesifik PPD)
         const { data: locks, error: errL } = await db
             .from('smpid_bb_kunci')
             .select('*')
             .gte('tarikh', startStr)
             .lte('tarikh', endStr)
-            .eq('admin_email', ppdOwner); // Repurposed column untuk Kod PPD
+            .or(`kod_ppd.eq.ALL,kod_ppd.eq.${ppdOwner}`); 
 
         if (errL) {
             console.error("[BookingService] Ralat mengambil data kunci:", errL);
@@ -138,16 +138,16 @@ export const BookingService = {
         const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
         const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
 
-        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (PPD Daerah ini sahaja)
+        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini)
         const { data: isLocked } = await db
             .from('smpid_bb_kunci')
             .select('id')
             .eq('tarikh', tarikh)
-            .eq('admin_email', ppdOwner) 
+            .or(`kod_ppd.eq.ALL,kod_ppd.eq.${ppdOwner}`)
             .maybeSingle();
         
         if (isLocked) {
-            throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi daerah.");
+            throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi jabatan.");
         }
 
         // Validasi 4: Konflik Masa & Kapasiti (Saringan Khusus Daerah)
@@ -254,7 +254,7 @@ export const BookingService = {
 
     /**
      * Admin Function: Mengambil semua data tarikh yang dikunci secara global.
-     * Ditapis mengikut PPD supaya kalendar setiap PPD kekal peribadi.
+     * Ditapis mengikut PPD supaya paparan senarai terkawal.
      */
     async getAllLocks() {
         const db = getDatabaseClient();
@@ -264,8 +264,9 @@ export const BookingService = {
         let query = db.from('smpid_bb_kunci').select('*').order('tarikh', { ascending: true });
 
         // Tapis mengikut PPD jika pengguna bukan Super Admin / JPNMEL
+        // Tambahkan klausa '.or' untuk melihat kunci 'ALL' dan PPD sendiri sahaja
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod) {
-            query = query.eq('admin_email', userKod);
+            query = query.or(`kod_ppd.eq.ALL,kod_ppd.eq.${userKod}`);
         }
 
         const { data, error } = await query;
@@ -308,26 +309,36 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Menguruskan kunci tarikh secara anjal (Anjal = Flexible).
+     * Admin Function: Menguruskan kunci tarikh secara anjal.
      * Boleh mengunci (LOCK), buka kunci (UNLOCK), atau kemaskini ulasan (UPDATE).
+     * Menggunakan lajur 'kod_ppd' dan menyimpan rekod auditable 'dikunci_oleh'.
      * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
-     * @param {Array<string>} ppdCodes - Senarai kod PPD yang terlibat (Cth: ['M010', 'M020', 'M030']).
+     * @param {Array<string>} ppdCodes - Senarai kod PPD.
      */
     async manageDateLock(action, tarikh, note, ppdCodes) {
         const db = getDatabaseClient();
 
-        if (!ppdCodes || ppdCodes.length === 0) {
-            throw new Error("Sila tetapkan sekurang-kurangnya satu daerah (PPD).");
+        // Logik Penentuan Skop Keseluruhan Negeri vs Daerah Spesifik
+        let scope = 'M030';
+        if (Array.isArray(ppdCodes)) {
+            // Jika array mengandungi pelbagai PPD (lebih dari 1), anggap ia adalah 'ALL'
+            if (ppdCodes.length > 1) scope = 'ALL';
+            else if (ppdCodes.length === 1) scope = ppdCodes[0];
         }
+
+        // Dapatkan Identiti Pentadbir untuk Jejak Audit
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'ADMIN';
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'PPD';
+        const dikunciOlehIdentifier = `${userRole} (${userKod})`;
 
         if (action === 'UNLOCK') {
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
                 .eq('tarikh', tarikh)
-                .in('admin_email', ppdCodes);
+                .eq('kod_ppd', scope);
             
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
@@ -336,32 +347,34 @@ export const BookingService = {
         if (action === 'UPDATE') {
             const { error } = await db
                 .from('smpid_bb_kunci')
-                .update({ komen: note })
+                .update({ 
+                    komen: note,
+                    dikunci_oleh: dikunciOlehIdentifier
+                })
                 .eq('tarikh', tarikh)
-                .in('admin_email', ppdCodes);
+                .eq('kod_ppd', scope);
             
             if (error) throw error;
             return { success: true, action: 'UPDATED' };
         }
 
         if (action === 'LOCK') {
-            // Buang kunci sedia ada untuk PPD terlibat sebelum insert baru bagi mengelak duplikasi
+            // Buang kunci sedia ada untuk skop yang sama bagi mengelak duplikasi pangkalan data
             await db
                 .from('smpid_bb_kunci')
                 .delete()
                 .eq('tarikh', tarikh)
-                .in('admin_email', ppdCodes);
-
-            const insertData = ppdCodes.map(ppd => ({
-                tarikh: tarikh,
-                komen: note,
-                admin_email: ppd,
-                created_at: new Date().toISOString()
-            }));
+                .eq('kod_ppd', scope);
 
             const { error } = await db
                 .from('smpid_bb_kunci')
-                .insert(insertData);
+                .insert([{
+                    tarikh: tarikh,
+                    komen: note,
+                    kod_ppd: scope,
+                    dikunci_oleh: dikunciOlehIdentifier,
+                    created_at: new Date().toISOString()
+                }]);
 
             if (error) throw error;
             return { success: true, action: 'LOCKED' };

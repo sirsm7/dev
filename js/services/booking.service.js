@@ -1,11 +1,12 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.0 (Multi-District Array Handling Optimization)
- * --- UPDATE V8.0 ---
- * 1. Menerima sokongan kunci pelbagai daerah menggunakan tatasusunan (array).
- * 2. Pemadaman rekod lama (existingScopes) yang tepat untuk memudahkan fungsi Kemaskini.
- * 3. Menjana baris baharu (Batch Insert) secara automatik bagi setiap skop berbeza.
+ * Version: 8.1 (Single-Row Database Constraint Fix)
+ * --- UPDATE V8.1 ---
+ * 1. Menggabungkan tatasusunan (array) pilihan daerah menjadi satu rentetan teks (String Join)
+ * bagi menyokong Kekangan Unik (Unique Constraint) pada lajur 'tarikh'.
+ * 2. Mengubah klausa tapisan dari `.eq` / `.in` kepada `.ilike` untuk ketepatan carian masa nyata
+ * merentas rentetan (string) yang mengandungi pelbagai kod.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -66,13 +67,13 @@ export const BookingService = {
             throw errB;
         }
 
-        // 2. Ambil Kunci Tarikh Admin (Statewide 'ALL' atau Spesifik PPD)
+        // 2. Ambil Kunci Tarikh Admin (Statewide 'ALL' atau Spesifik PPD - Menggunakan iLike untuk Pencarian String)
         const { data: locks, error: errL } = await db
             .from('smpid_bb_kunci')
             .select('*')
             .gte('tarikh', startStr)
             .lte('tarikh', endStr)
-            .or(`kod_ppd.eq.ALL,kod_ppd.eq.${ppdOwner}`); 
+            .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
 
         if (errL) {
             console.error("[BookingService] Ralat mengambil data kunci:", errL);
@@ -138,12 +139,12 @@ export const BookingService = {
         const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
         const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
 
-        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini)
+        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
         const { data: isLocked } = await db
             .from('smpid_bb_kunci')
             .select('id')
             .eq('tarikh', tarikh)
-            .or(`kod_ppd.eq.ALL,kod_ppd.eq.${ppdOwner}`)
+            .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`)
             .maybeSingle();
         
         if (isLocked) {
@@ -254,7 +255,7 @@ export const BookingService = {
 
     /**
      * Admin Function: Mengambil semua data tarikh yang dikunci secara global.
-     * Ditapis mengikut PPD supaya paparan senarai terkawal.
+     * Ditapis mengikut PPD supaya paparan senarai terkawal (Menggunakan iLike).
      */
     async getAllLocks() {
         const db = getDatabaseClient();
@@ -264,9 +265,14 @@ export const BookingService = {
         let query = db.from('smpid_bb_kunci').select('*').order('tarikh', { ascending: true });
 
         // Tapis mengikut PPD jika pengguna bukan Super Admin / JPNMEL
-        // Tambahkan klausa '.or' untuk melihat kunci 'ALL' dan PPD sendiri sahaja
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod) {
-            query = query.or(`kod_ppd.eq.ALL,kod_ppd.eq.${userKod}`);
+            let ppdOwner = userKod;
+            if (APP_CONFIG.PPD_MAPPING) {
+                // Cuba dapatkan kunci tepat sekiranya mereka menggunakan ID selain yang ada dalam senarai
+                const foundKey = Object.keys(APP_CONFIG.PPD_MAPPING).find(k => k === userKod);
+                if (foundKey) ppdOwner = foundKey; 
+            }
+            query = query.or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`);
         }
 
         const { data, error } = await query;
@@ -309,21 +315,23 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Menguruskan kunci tarikh dengan sokongan berbilang kawasan (Multi-District Array).
-     * Kaedah ini lebih kebal kerana ia memadamkan kunci terdahulu (existingScopes) 
-     * sebelum melaksanakan sisipan (Batch Insert) bagi kunci baharu.
+     * Admin Function: Menguruskan kunci tarikh menggunakan *Single-Row Storage String*.
+     * Kaedah ini lebih berkesan menangani kekangan pangkalan data (Constraint) dengan
+     * memadamkan baris tarikh dan memasukkannya semula sebagai satu rentetan gabungan (String Join).
      * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
      * @param {Array<string>} targetPpds - Senarai kod PPD baharu untuk dikunci (contoh: ['M010', 'M020'] atau ['ALL']).
-     * @param {Array<string>} existingScopes - Pilihan skop rekod sedia ada (Digunakan untuk penghapusan tepat).
      */
-    async manageDateLock(action, tarikh, note, targetPpds, existingScopes = ['ALL']) {
+    async manageDateLock(action, tarikh, note, targetPpds) {
         const db = getDatabaseClient();
 
-        // 1. Format perlindungan pembolehubah kepada tatasusunan (Array Fallback Safety)
+        // 1. Format Perlindungan Array ke String Keseluruhan
         let finalTargetPpds = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
         if (finalTargetPpds.includes('ALL')) finalTargetPpds = ['ALL'];
+        
+        // Gabungkan tatasusunan menjadi rentetan tunggal yang dipisahkan koma
+        const joinedScopes = finalTargetPpds.join(','); // Contoh hasil: "M010,M020" atau "ALL"
 
         // Dapatkan Identiti Pentadbir untuk Jejak Audit
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'ADMIN';
@@ -341,13 +349,13 @@ export const BookingService = {
             }
         }
 
-        // TINDAKAN A: BUKA KUNCI
+        // TINDAKAN A: BUKA KUNCI KESELURUHAN PADA TARIKH TERSEBUT
         if (action === 'UNLOCK') {
+            // Kerana "Unique Constraint", kita hanya perlu memadam baris berasaskan tarikh sahaja.
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
-                .eq('tarikh', tarikh)
-                .in('kod_ppd', finalTargetPpds); // Padam tepat pada sasaran yang dipilih sahaja
+                .eq('tarikh', tarikh);
             
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
@@ -356,30 +364,18 @@ export const BookingService = {
         // TINDAKAN B: KEMASKINI ATAU KUNCI BAHARU
         if (action === 'UPDATE' || action === 'LOCK') {
             
-            // Langkah 1: Buang kunci sedia ada untuk menghalang pertindihan.
-            // Untuk 'UPDATE', kita buang rekod lama (existingScopes) supaya digantikan sepenuhnya dengan yang baru.
-            // Untuk 'LOCK', kita bersihkan juga sasaran (finalTargetPpds) untuk mengelak ralat duplikasi DB.
-            const scopesToDelete = action === 'UPDATE' ? existingScopes : finalTargetPpds;
-            
-            if (scopesToDelete && scopesToDelete.length > 0) {
-                await db.from('smpid_bb_kunci')
-                        .delete()
-                        .eq('tarikh', tarikh)
-                        .in('kod_ppd', scopesToDelete);
-            }
+            // Langkah 1: Buang kunci sedia ada pada tarikh ini untuk mengelak pelanggaran Unique Key
+            await db.from('smpid_bb_kunci').delete().eq('tarikh', tarikh);
 
-            // Langkah 2: Jana susunan (Payload Array) untuk Sisipan Pukal (Batch Insert)
-            const inserts = finalTargetPpds.map(ppd => ({
+            // Langkah 2: Laksanakan Sisipan Baris Tunggal (Single-Row Insert) dengan Rentetan Kombo
+            const { error } = await db.from('smpid_bb_kunci').insert([{
                 tarikh: tarikh,
                 komen: note,
-                kod_ppd: ppd,
+                kod_ppd: joinedScopes, // Hantar sebagai rentetan (String)
                 dikunci_oleh: dikunciOlehIdentifier,
                 admin_email: adminEmail,
                 created_at: new Date().toISOString()
-            }));
-
-            // Langkah 3: Melaksanakan Sisipan ke Pangkalan Data
-            const { error } = await db.from('smpid_bb_kunci').insert(inserts);
+            }]);
 
             if (error) throw error;
             return { success: true, action: action === 'LOCK' ? 'LOCKED' : 'UPDATED' };

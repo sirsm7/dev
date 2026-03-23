@@ -1,11 +1,11 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V8.0 MULTI-DISTRICT LOCK)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V8.1 SINGLE-ROW CONSTRAINT FIX)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V8.0 (MULTI-DISTRICT LOCK) ---
- * 1. Menggantikan antaramuka "Dropdown" dengan "Checkboxes" untuk membenarkan
- * SUPER_ADMIN/JPNMEL memilih lebih daripada 1 daerah serentak.
- * 2. Logik kalendar dan senarai dinaik taraf untuk mengumpulkan (group) kunci
- * tarikh yang sama dan memaparkan senarai daerah secara berangkai.
+ * --- UPDATE V8.1 (CONSTRAINT FIX) ---
+ * 1. Menghapuskan logik pengumpulan (grouping) yang lama kerana pangkalan data
+ * kini menggunakan "Single-Row Storage" (1 Tarikh = 1 Baris sahaja).
+ * 2. Memecahkan rentetan kod_ppd (cth: "M010,M020") kepada tatasusunan (array) 
+ * secara masa nyata untuk paparan UI lencana dan kotak semak.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -196,9 +196,9 @@ window.renderAdminBookingCalendar = async function() {
             const dayOfWeek = dateObj.getDay(); 
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             
-            // Dapatkan semua kunci untuk tarikh ini
-            const locksForDate = activeMonthLocks.filter(l => l.tarikh.split('T')[0] === dateString);
-            const isLocked = locksForDate.length > 0;
+            // Dapatkan kunci untuk tarikh ini (Kini sentiasa hanya maksimum 1 baris)
+            const lockObj = activeMonthLocks.find(l => l.tarikh.split('T')[0] === dateString);
+            const isLocked = !!lockObj;
             
             const slotsTaken = bookedSlots[dateString] || [];
             const isPast = dateObj < today;
@@ -250,13 +250,13 @@ window.renderAdminBookingCalendar = async function() {
             let existingScopes = ['ALL'];
             
             if (isLocked) {
-                existingScopes = locksForDate.map(l => l.kod_ppd);
+                // Ekstrak rentetan menjadi tatasusunan (Array) untuk logik seterusnya
+                existingScopes = (lockObj.kod_ppd || 'ALL').split(',');
+                
                 const isAll = existingScopes.includes('ALL');
                 const scopeLabel = isAll ? 'KUNCI NEGERI' : `KUNCI DAERAH (${existingScopes.join(', ')})`;
                 const scopeClass = isAll ? 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-purple-200 text-purple-800 border-purple-300';
-                
-                // Gunakan komen dari rekod pertama
-                const displayNote = locksForDate[0].komen || 'TIADA CATATAN';
+                const displayNote = lockObj.komen || 'TIADA CATATAN';
                 
                 lockedMsg = `
                 <div class="mt-1.5 flex flex-col gap-1">
@@ -292,7 +292,7 @@ window.renderAdminBookingCalendar = async function() {
                 </div>
             `;
 
-            const clickNote = isLocked ? locksForDate[0].komen : '';
+            const clickNote = isLocked ? lockObj.komen : '';
 
             if (!isPast && isAllowedDay) {
                 card.onclick = () => {
@@ -346,7 +346,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
         return; 
     }
 
-    // Format penangkapan skop (Boleh berupa tatasusunan (array) atau rentetan (string) bergabung)
+    // Format penangkapan skop ke dalam tatasusunan yang selamat
     let existingScopeArray = Array.isArray(existingScopesParam) ? existingScopesParam : (typeof existingScopesParam === 'string' ? existingScopesParam.split(',') : ['ALL']);
     let capturedScopes = currentlyLocked ? existingScopeArray : [userKod];
 
@@ -458,7 +458,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
             if (r.isConfirmed) {
                 toggleLoading(true);
                 try {
-                    await BookingService.manageDateLock('UNLOCK', iso, '', capturedScopes, existingScopeArray);
+                    await BookingService.manageDateLock('UNLOCK', iso, '', capturedScopes);
                     toggleLoading(false);
                     adminSelectedDate = null;
                     window.renderAdminBookingCalendar();
@@ -481,7 +481,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
 
         toggleLoading(true);
         try {
-            await BookingService.manageDateLock(action, iso, note, targetScopes, existingScopeArray);
+            await BookingService.manageDateLock(action, iso, note, targetScopes);
             toggleLoading(false);
             adminSelectedDate = null;
             window.renderAdminBookingCalendar();
@@ -521,19 +521,12 @@ window.loadAdminBookingList = async function() {
             bookings = bookings.filter(b => validSchoolCodes.includes(b.kod_sekolah));
         }
 
-        // Kumpulkan Kunci (Group Locks) mengikut tarikh supaya jadual tidak berserabut
-        const groupedLocksMap = {};
-        locks.forEach(l => {
-            const dateOnly = l.tarikh.split('T')[0];
-            if (!groupedLocksMap[dateOnly]) {
-                groupedLocksMap[dateOnly] = { ...l, kod_ppd: [l.kod_ppd], type: 'LOCK' };
-            } else {
-                if (!groupedLocksMap[dateOnly].kod_ppd.includes(l.kod_ppd)) {
-                    groupedLocksMap[dateOnly].kod_ppd.push(l.kod_ppd);
-                }
-            }
-        });
-        const groupedLocksArray = Object.values(groupedLocksMap);
+        // Format semula locks untuk keseragaman paparan dengan tempahan (Menukar String kepada Array)
+        const processedLocks = locks.map(l => ({
+            ...l,
+            kod_ppd: l.kod_ppd ? l.kod_ppd.split(',') : ['ALL'],
+            type: 'LOCK'
+        }));
 
         // Tapis hanya paparan untuk Hari Ini dan Akan Datang
         const today = new Date();
@@ -542,7 +535,7 @@ window.loadAdminBookingList = async function() {
         // Gabungkan kedua-dua array dan tapis
         const masterList = [
             ...bookings.map(b => ({ ...b, type: 'BOOKING' })),
-            ...groupedLocksArray
+            ...processedLocks
         ].filter(item => {
             const itemDate = new Date(item.tarikh);
             itemDate.setHours(0, 0, 0, 0);

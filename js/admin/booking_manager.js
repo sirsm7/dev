@@ -1,11 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V7.1 AUDIT TRAIL)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V7.2 AUDIT TRAIL & FIXES)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V7.1 (SCHEMA ALIGNMENT & UI ENHANCEMENT) ---
- * 1. Mengintegrasikan skema 'kod_ppd' dan 'dikunci_oleh' ke dalam UI Kalendar.
- * 2. Memaparkan lencana (badge) "KUNCI NEGERI" atau "KUNCI DAERAH" pada jubin kalendar.
- * 3. Menapis paparan Senarai Aktif supaya memaparkan tarikh TERKINI dan AKAN DATANG sahaja.
- * 4. Memaparkan jejak audit (dikunci oleh siapa) secara terperinci.
+ * --- UPDATE V7.2 (UI ENHANCEMENT & BUG FIXES) ---
+ * 1. Membaiki ralat kemaskini kunci tarikh dari Senarai Aktif dengan memformat tarikh (split 'T').
+ * 2. Menyuntik parameter existingScope agar dropdown mengingat skop asal ketika edit.
+ * 3. Menyokong aliran parameter yang betul ke BookingService untuk elak ralat gagal jumpa rekod.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -247,7 +246,9 @@ window.renderAdminBookingCalendar = async function() {
 
             // PAPARAN NOTA KUNCI YANG KAYA (RICH UI)
             let lockedMsg = '';
+            let existingScope = 'ALL';
             if (isLocked && lockObj) {
+                existingScope = lockObj.kod_ppd;
                 const scopeLabel = lockObj.kod_ppd === 'ALL' ? 'KUNCI NEGERI' : `KUNCI DAERAH (${lockObj.kod_ppd})`;
                 const scopeClass = lockObj.kod_ppd === 'ALL' ? 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-purple-200 text-purple-800 border-purple-300';
                 
@@ -291,13 +292,13 @@ window.renderAdminBookingCalendar = async function() {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, isLocked, hasBookings, clickNote);
+                    window.handleAdminDateAction(dateString, isLocked, hasBookings, clickNote, existingScope);
                 };
             } else if (!isPast && isLocked) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    window.handleAdminDateAction(dateString, true, false, clickNote);
+                    window.handleAdminDateAction(dateString, true, false, clickNote, existingScope);
                 };
             }
 
@@ -318,7 +319,7 @@ window.renderAdminBookingCalendar = async function() {
 /**
  * Mengawal tindakan kunci/buka tarikh dan kemaskini skop negeri. 
  */
-window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings, currentNote = '') {
+window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings, currentNote = '', existingScope = 'ALL') {
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
     
@@ -339,13 +340,16 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
         return; 
     }
 
+    // Pembolehubah untuk menangkap nilai skop walaupun paparan ditutup (Deny)
+    let capturedScope = currentlyLocked ? existingScope : userKod;
+
     // Bina Ruang Dropdown Pemilihan Skop Kunci (Hanya untuk Super Admin)
     let scopeHtml = '';
     if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
-        let options = `<option value="ALL">SEMUA DAERAH (NEGERI MELAKA)</option>`;
+        let options = `<option value="ALL" ${capturedScope === 'ALL' ? 'selected' : ''}>SEMUA DAERAH (NEGERI MELAKA)</option>`;
         if (APP_CONFIG.PPD_MAPPING) {
             for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
-                options += `<option value="${k}">${v} (${k})</option>`;
+                options += `<option value="${k}" ${capturedScope === k ? 'selected' : ''}>${v} (${k})</option>`;
             }
         }
         scopeHtml = `
@@ -360,9 +364,6 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
 
     const titleText = currentlyLocked ? 'Pengurusan Kunci Tarikh' : 'Kunci Tarikh Ini?';
     const confirmText = currentlyLocked ? 'KEMASKINI CATATAN' : 'KUNCI SEKARANG';
-
-    // Pembolehubah untuk menangkap nilai skop walaupun paparan ditutup (Deny)
-    let capturedScope = userKod;
 
     const result = await Swal.fire({
         title: titleText,
@@ -424,7 +425,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
             if (r.isConfirmed) {
                 toggleLoading(true);
                 try {
-                    await BookingService.manageDateLock('UNLOCK', iso, '', targetPpd);
+                    await BookingService.manageDateLock('UNLOCK', iso, '', targetPpd, existingScope);
                     toggleLoading(false);
                     adminSelectedDate = null;
                     window.renderAdminBookingCalendar();
@@ -448,7 +449,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
 
         toggleLoading(true);
         try {
-            await BookingService.manageDateLock(action, iso, note, targetPpd);
+            await BookingService.manageDateLock(action, iso, note, targetPpd, existingScope);
             toggleLoading(false);
             adminSelectedDate = null;
             window.renderAdminBookingCalendar();
@@ -543,6 +544,7 @@ window.loadAdminBookingList = async function() {
                 `;
             } else {
                 const escapedNote = (item.komen || '').replace(/'/g, "\\'");
+                const dateOnly = item.tarikh.split('T')[0];
                 const scopeBadgeLabel = item.kod_ppd === 'ALL' ? 'NEGERI (SEMUA DAERAH)' : `DAERAH (${item.kod_ppd})`;
                 const scopeBadgeColor = item.kod_ppd === 'ALL' ? 'text-fuchsia-600 border-fuchsia-200 bg-fuchsia-50' : 'text-slate-600 border-slate-200 bg-white';
 
@@ -568,7 +570,7 @@ window.loadAdminBookingList = async function() {
                             </div>
                         </td>
                         <td class="px-8 py-6 text-center align-top">
-                            <button onclick="handleAdminDateAction('${item.tarikh}', true, false, '${escapedNote}')" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Urus Kunci Tarikh">
+                            <button onclick="handleAdminDateAction('${dateOnly}', true, false, '${escapedNote}', '${item.kod_ppd}')" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Urus Kunci Tarikh">
                                 <i class="fas fa-cog"></i>
                             </button>
                         </td>

@@ -1,11 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 7.0 (Statewide Schema Optimization & Audit Trail)
- * --- UPDATE V7.0 ---
- * 1. Menggantikan penggunaan `admin_email` kepada `kod_ppd` ('ALL' atau kod daerah) untuk kunci tarikh.
- * 2. Menambah jejak audit menggunakan lajur `dikunci_oleh`.
- * 3. Logik pengesahan silang yang dioptimumkan menggunakan klausa `.or()`.
+ * Version: 7.2 (Statewide Schema Optimization & Accurate Audit Trail)
+ * --- UPDATE V7.2 ---
+ * 1. Memperbaiki ralat kemaskini (UPDATE) dengan menggunakan klausa `existingScope`.
+ * 2. Menyuntik carian e-mel dari jadual smpid_users untuk melengkapkan lajur `admin_email`.
+ * 3. Mengekalkan format lajur `dikunci_oleh` untuk paparan visual.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -311,13 +311,14 @@ export const BookingService = {
     /**
      * Admin Function: Menguruskan kunci tarikh secara anjal.
      * Boleh mengunci (LOCK), buka kunci (UNLOCK), atau kemaskini ulasan (UPDATE).
-     * Menggunakan lajur 'kod_ppd' dan menyimpan rekod auditable 'dikunci_oleh'.
+     * Menggunakan lajur 'kod_ppd' dan menyimpan rekod auditable 'dikunci_oleh' beserta 'admin_email'.
      * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
      * @param {Array<string>} ppdCodes - Senarai kod PPD.
+     * @param {string} existingScope - Pilihan skop rekod sedia ada (untuk kemaskini silang skop).
      */
-    async manageDateLock(action, tarikh, note, ppdCodes) {
+    async manageDateLock(action, tarikh, note, ppdCodes, existingScope = 'ALL') {
         const db = getDatabaseClient();
 
         // Logik Penentuan Skop Keseluruhan Negeri vs Daerah Spesifik
@@ -331,14 +332,25 @@ export const BookingService = {
         // Dapatkan Identiti Pentadbir untuk Jejak Audit
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'ADMIN';
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'PPD';
+        const userId = localStorage.getItem(APP_CONFIG.SESSION.USER_ID);
+        
         const dikunciOlehIdentifier = `${userRole} (${userKod})`;
+        let adminEmail = null;
+
+        // Tarik emel admin dari pangkalan data (smpid_users) untuk direkodkan
+        if (userId) {
+            const { data: userData } = await db.from('smpid_users').select('email').eq('id', userId).maybeSingle();
+            if (userData && userData.email) {
+                adminEmail = userData.email;
+            }
+        }
 
         if (action === 'UNLOCK') {
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
                 .eq('tarikh', tarikh)
-                .eq('kod_ppd', scope);
+                .eq('kod_ppd', existingScope);
             
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
@@ -349,10 +361,12 @@ export const BookingService = {
                 .from('smpid_bb_kunci')
                 .update({ 
                     komen: note,
-                    dikunci_oleh: dikunciOlehIdentifier
+                    kod_ppd: scope, // Kemaskini kepada skop baharu sekiranya diubah pada modal
+                    dikunci_oleh: dikunciOlehIdentifier,
+                    admin_email: adminEmail
                 })
                 .eq('tarikh', tarikh)
-                .eq('kod_ppd', scope);
+                .eq('kod_ppd', existingScope); // Carian menggunakan skop terdahulu yang sah
             
             if (error) throw error;
             return { success: true, action: 'UPDATED' };
@@ -373,6 +387,7 @@ export const BookingService = {
                     komen: note,
                     kod_ppd: scope,
                     dikunci_oleh: dikunciOlehIdentifier,
+                    admin_email: adminEmail,
                     created_at: new Date().toISOString()
                 }]);
 

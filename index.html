@@ -1,344 +1,150 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log Masuk | HEUTAGOGI@TEAM_MELAKA</title>
-    
-    <link rel="icon" type="image/png" href="https://drive.google.com/thumbnail?id=1Z6NJUFyNTGY961_5kOBpEzF9Gn5pYMgg&sz=w64">
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- FontAwesome & Libraries -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
-                    colors: {
-                        melaka: {
-                            red: '#ED1C24',
-                            yellow: '#FFC20E',
-                            blue: '#0033A0',
-                            light: '#F8FAFC',
-                            dark: '#0F172A'
-                        }
-                    }
-                }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NADIM - Portal Utama</title>
+  
+  <meta name="theme-color" content="#198754">
+  <link rel="icon" href="icoppdag.png">
+  
+  <!-- TAILWIND CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FONTAWESOME -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- GOOGLE FONTS -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- KONFIGURASI TAILWIND -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e', // Hijau PPD
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
             }
+          }
         }
-    </script>
-    <style>
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .bg-pattern { background-image: url('data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%230033A0" fill-opacity="0.05" fill-rule="evenodd"%3E%3Ccircle cx="3" cy="3" r="3"/%3E%3Ccircle cx="13" cy="13" r="3"/%3E%3C/g%3E%3C/svg%3E'); }
-    </style>
-</head>
-<body class="bg-melaka-light text-slate-800 antialiased min-h-screen flex flex-col selection:bg-melaka-yellow selection:text-melaka-dark bg-pattern">
+      }
+    }
+  </script>
 
-    <!-- OVERLAY LOADING -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm transition-opacity">
-        <div class="text-center text-white">
-            <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-melaka-yellow"></i>
-            <p class="font-bold tracking-wide uppercase text-sm animate-pulse" id="loadingText">Sedang Memproses...</p>
+  <!-- STYLE TAMBAHAN -->
+  <style>
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+    }
+    .fade-up { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+    @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+    .hidden { display: none !important; }
+  </style>
+
+  <!-- Library JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body id="page-landing" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- LOADING OVERLAY -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+    <div class="text-center text-white">
+      <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
+      <p class="font-bold tracking-wide animate-pulse">Memuatkan Data Sekolah...</p>
+    </div>
+  </div>
+
+  <!-- HEADER HERO -->
+  <div class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-24 pt-16 px-4 shadow-xl relative overflow-hidden">
+    <!-- Decorative Circle -->
+    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl pointer-events-none"></div>
+    
+    <!-- Top Right Controls (Live Counter & Dokumentasi) -->
+    <div class="absolute top-4 right-4 md:top-6 md:right-6 flex flex-col md:flex-row items-end md:items-center gap-3 z-20">
+        
+        <!-- Live Counter Badge -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/40 border border-slate-700/50 text-emerald-100 text-[10px] font-black tracking-widest backdrop-blur-md shadow-lg cursor-default" title="Pengunjung Sedang Aktif di Portal">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span id="liveCounterVal" class="text-white text-xs">1</span> AKTIF
+        </div>
+
+        <!-- Pautan Dokumentasi -->
+        <a href="about.html" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20 backdrop-blur-sm">
+            <i class="fas fa-info-circle"></i> Mengenai Sistem
+        </a>
+    </div>
+    
+    <div class="relative z-10 max-w-4xl mx-auto text-center mt-6 md:mt-0">
+        <!-- Logo PPD -->
+        <img src="icoppdag.png" alt="Logo PPD" class="mx-auto mb-6 w-48 h-auto drop-shadow-lg transform hover:scale-105 transition duration-500">
+        
+        <h1 class="text-3xl md:text-5xl font-bold text-white mb-2 tracking-tight">
+            NADIM
+        </h1>
+        <p class="text-emerald-100 text-sm md:text-base font-medium tracking-wide uppercase opacity-90 mb-10">
+            Nadi Analitik, Digital & Inovasi Melaka
+        </p>
+
+        <!-- SEARCH BAR HERO -->
+        <div class="relative max-w-xl mx-auto group">
+            <div class="absolute inset-0 bg-brand-400 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
+            <div class="relative">
+                <i class="fas fa-search absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400 text-lg group-hover:text-brand-600 transition"></i>
+                <input type="text" id="mainSearch" list="schoolList" 
+                       class="w-full pl-14 pr-6 py-4 rounded-full bg-white border-2 border-transparent focus:border-brand-300 focus:ring-4 focus:ring-brand-500/20 shadow-2xl text-lg font-semibold text-slate-700 placeholder-slate-400 outline-none transition-all" 
+                       placeholder="Cari Kod (MBA0001) atau Nama Sekolah..." autocomplete="off">
+                <datalist id="schoolList"></datalist>
+            </div>
         </div>
     </div>
+  </div>
 
-    <!-- HEADER LOGO -->
-    <header class="py-6 sm:py-10 text-center">
-        <div class="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-full p-1.5 shadow-xl mb-4 border-4 border-white">
-            <img src="https://drive.google.com/thumbnail?id=1Z6NJUFyNTGY961_5kOBpEzF9Gn5pYMgg&sz=w800" alt="Logo" class="w-full h-full object-contain rounded-full">
+  <!-- MAIN CONTENT CONTAINER -->
+  <div class="container mx-auto px-4 -mt-16 relative z-20 pb-20">
+    <div class="max-w-4xl mx-auto">
+
+        <!-- KAD DINAMIK (Muncul bila sekolah dipilih) -->
+        <div id="schoolCardContainer" class="hidden">
+            <!-- Diisi oleh JavaScript (landing.js) -->
         </div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-            HEUTAGOGI<span class="text-melaka-blue">@</span>TEAM_MELAKA
-        </h1>
-        <p class="text-slate-500 font-medium text-sm mt-1">Platform Pembelajaran Pintar Alaf Baru</p>
-    </header>
 
-    <!-- AUTHENTICATION CONTAINER -->
-    <main class="flex-grow flex items-start justify-center px-4 pb-12">
-        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full border border-slate-100 relative fade-in">
+        <!-- NOTA KAKI / PANDUAN RINGKAS (Default View) -->
+        <div id="welcomeMessage" class="text-center mt-20 fade-up">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-6 text-slate-300 border border-slate-100">
+                <i class="fas fa-search fa-3x"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-600 mb-2">Mula Carian Anda</h3>
+            <p class="text-slate-500 text-sm max-w-md mx-auto mb-10">
+                Sila taip kod sekolah atau nama sekolah di ruang carian di atas untuk mengakses menu serahan data, galeri, dan log masuk.
+            </p>
             
-            <!-- DECORATIVE TOP STRIP -->
-            <div class="h-2 w-full flex">
-                <div class="w-1/3 bg-melaka-blue"></div>
-                <div class="w-1/3 bg-melaka-yellow"></div>
-                <div class="w-1/3 bg-melaka-red"></div>
-            </div>
-
-            <!-- TOGGLE TABS -->
-            <div class="flex border-b border-slate-100 bg-slate-50">
-                <button onclick="toggleForm('login')" id="tabLogin" class="flex-1 py-4 text-sm font-bold text-melaka-blue bg-white border-b-2 border-melaka-blue transition-colors focus:outline-none">
-                    Log Masuk
-                </button>
-                <button onclick="toggleForm('register')" id="tabRegister" class="flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors focus:outline-none">
-                    Daftar Akaun
-                </button>
-            </div>
-
-            <div class="p-8">
-                <!-- FORM: LOG MASUK -->
-                <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5 block fade-in">
-                    <div class="text-center mb-6">
-                        <h2 class="text-xl font-bold text-slate-800">Selamat Kembali!</h2>
-                        <p class="text-xs text-slate-500 mt-1">Log masuk untuk menyambung pembelajaran.</p>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Alamat Emel</label>
-                        <div class="relative">
-                            <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="email" id="loginEmail" required class="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-melaka-blue focus:ring-4 focus:ring-melaka-blue/10 outline-none transition font-medium text-slate-700 bg-slate-50 focus:bg-white" placeholder="emel@anda.com">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Kata Laluan</label>
-                        <div class="relative">
-                            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="password" id="loginPassword" required class="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-melaka-blue focus:ring-4 focus:ring-melaka-blue/10 outline-none transition font-medium text-slate-700 bg-slate-50 focus:bg-white" placeholder="••••••••">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-melaka-blue hover:bg-blue-900 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-blue-900/20 flex justify-center items-center gap-2 mt-4 transform hover:-translate-y-0.5">
-                        Log Masuk <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-
-                <!-- FORM: DAFTAR AKAUN -->
-                <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden fade-in">
-                    <div class="text-center mb-6">
-                        <h2 class="text-xl font-bold text-slate-800">Cipta Akaun Baharu</h2>
-                        <p class="text-xs text-slate-500 mt-1">Sertai komuniti pembelajaran kami hari ini.</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Nama Penuh</label>
-                        <div class="relative">
-                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="regName" required oninput="this.value = this.value.toUpperCase()" class="w-full pl-11 pr-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-melaka-red focus:ring-4 focus:ring-melaka-red/10 outline-none transition font-bold text-slate-700 bg-slate-50 focus:bg-white uppercase" placeholder="NAMA PENUH ANDA">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Kumpulan Pengguna</label>
-                        <div class="relative">
-                            <i class="fas fa-users absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></i>
-                            <select id="regRole" required class="w-full pl-11 pr-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-melaka-red focus:ring-4 focus:ring-melaka-red/10 outline-none transition font-medium text-slate-700 bg-slate-50 focus:bg-white appearance-none">
-                                <option value="" disabled selected>-- Pilih Kumpulan --</option>
-                                <option value="MURID">Murid</option>
-                                <option value="GURU">Guru</option>
-                                <option value="IBU BAPA">Ibu Bapa</option>
-                            </select>
-                            <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Alamat Emel</label>
-                        <div class="relative">
-                            <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="email" id="regEmail" required class="w-full pl-11 pr-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-melaka-red focus:ring-4 focus:ring-melaka-red/10 outline-none transition font-medium text-slate-700 bg-slate-50 focus:bg-white" placeholder="emel@anda.com">
-                        </div>
-                        <p class="text-[9px] text-slate-400 mt-1 ml-1">*Guru/Murid: @moe-dl.edu.my | Ibu Bapa: @gmail.com</p>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Kata Laluan</label>
-                        <div class="relative">
-                            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="password" id="regPassword" required minlength="6" class="w-full pl-11 pr-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-melaka-red focus:ring-4 focus:ring-melaka-red/10 outline-none transition font-medium text-slate-700 bg-slate-50 focus:bg-white" placeholder="Minimum 6 aksara">
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-melaka-red hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-red-900/20 flex justify-center items-center gap-2 mt-4 transform hover:-translate-y-0.5">
-                        Daftar Sekarang <i class="fas fa-user-plus"></i>
-                    </button>
-                </form>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="login.html?mod=admin" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-slate-800 text-white font-bold text-sm hover:bg-slate-900 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
+                    <i class="fas fa-user-shield"></i> Log Masuk Pentadbir
+                </a>
+                <a href="about.html" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white border-2 border-slate-200 text-slate-600 font-bold text-sm hover:border-brand-500 hover:text-brand-600 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
+                    <i class="fas fa-book-open"></i> Mengenai Sistem
+                </a>
             </div>
         </div>
-    </main>
 
-    <footer class="mt-auto py-6 text-center text-slate-500 text-xs">
-        <p>&copy; 2026 HEUTAGOGI@TEAM_MELAKA.</p>
-    </footer>
+    </div>
+  </div>
 
-    <script>
-        // INIT SUPABASE
-        const supabaseUrl = 'https://app.tech4ag.my';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
-        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+  <!-- MODULAR JAVASCRIPT -->
+  <script type="module" src="js/landing.js"></script>
 
-        // CHECK SESSION ON LOAD (PENGHALAAN AUTOMATIK KETAT)
-        document.addEventListener("DOMContentLoaded", () => {
-            const currentUserId = sessionStorage.getItem('heuta_user_id');
-            const currentUserRole = sessionStorage.getItem('heuta_user_role');
-            
-            if (currentUserId) {
-                if (currentUserRole === 'SUPER ADMIN') {
-                    window.location.replace('admin_heuta.html');
-                } else {
-                    window.location.replace('dashboard_pengguna.html');
-                }
-            }
-        });
-
-        // UI HELPER: TOGGLE TABS
-        function toggleForm(formType) {
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            const tabLogin = document.getElementById('tabLogin');
-            const tabRegister = document.getElementById('tabRegister');
-
-            if (formType === 'login') {
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-                
-                tabLogin.className = "flex-1 py-4 text-sm font-bold text-melaka-blue bg-white border-b-2 border-melaka-blue transition-colors focus:outline-none";
-                tabRegister.className = "flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600 bg-slate-50 transition-colors focus:outline-none";
-            } else {
-                loginForm.classList.add('hidden');
-                registerForm.classList.remove('hidden');
-                
-                tabRegister.className = "flex-1 py-4 text-sm font-bold text-melaka-red bg-white border-b-2 border-melaka-red transition-colors focus:outline-none";
-                tabLogin.className = "flex-1 py-4 text-sm font-bold text-slate-400 hover:text-slate-600 bg-slate-50 transition-colors focus:outline-none";
-            }
-        }
-
-        // UI HELPER: LOADER
-        function toggleLoading(show, text = 'Sedang Memproses...') {
-            const el = document.getElementById('loadingOverlay');
-            document.getElementById('loadingText').innerText = text;
-            if (show) el.classList.remove('hidden');
-            else el.classList.add('hidden');
-        }
-
-        // LOGIC: LOG MASUK
-        async function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-            const password = document.getElementById('loginPassword').value;
-
-            toggleLoading(true, 'Mengesahkan Kredensial...');
-
-            try {
-                const { data: user, error } = await supabaseClient
-                    .from('heuta_users')
-                    .select('*')
-                    .eq('email', email)
-                    .eq('password', password)
-                    .single();
-
-                if (error || !user) {
-                    throw new Error('Emel atau kata laluan tidak tepat.');
-                }
-
-                // Berjaya Log Masuk - Simpan Sesi
-                sessionStorage.setItem('heuta_user_id', user.id);
-                sessionStorage.setItem('heuta_user_email', user.email);
-                sessionStorage.setItem('heuta_user_name', user.full_name);
-                sessionStorage.setItem('heuta_user_role', user.role);
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Log Masuk Berjaya!',
-                    text: `Selamat kembali, ${user.full_name}`,
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    // Redirect mengikut peranan
-                    if (user.role === 'SUPER ADMIN') {
-                        window.location.href = 'admin_heuta.html';
-                    } else {
-                        window.location.href = 'dashboard_pengguna.html';
-                    }
-                });
-
-            } catch (err) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Akses Ditolak',
-                    text: err.message,
-                    confirmButtonColor: '#ED1C24'
-                });
-            } finally {
-                toggleLoading(false);
-            }
-        }
-
-        // LOGIC: DAFTAR AKAUN
-        async function handleRegister(e) {
-            e.preventDefault();
-            const fullName = document.getElementById('regName').value.trim().toUpperCase();
-            const role = document.getElementById('regRole').value;
-            const email = document.getElementById('regEmail').value.trim().toLowerCase();
-            const password = document.getElementById('regPassword').value;
-
-            // VALIDASI EMEL KETAT
-            if (role === 'MURID' || role === 'GURU') {
-                if (!email.endsWith('@moe-dl.edu.my')) {
-                    Swal.fire('Ralat Emel', `Kumpulan ${role} wajib menggunakan emel berakhir dengan @moe-dl.edu.my sahaja.`, 'error');
-                    return;
-                }
-            } else if (role === 'IBU BAPA') {
-                if (!email.endsWith('@gmail.com')) {
-                    Swal.fire('Ralat Emel', 'Kumpulan IBU BAPA wajib menggunakan emel berakhir dengan @gmail.com sahaja.', 'error');
-                    return;
-                }
-            }
-
-            toggleLoading(true, 'Mendaftarkan Akaun...');
-
-            try {
-                // Semak jika emel telah wujud
-                const { data: existingUser } = await supabaseClient
-                    .from('heuta_users')
-                    .select('id')
-                    .eq('email', email)
-                    .maybeSingle();
-
-                if (existingUser) {
-                    throw new Error('Alamat emel ini telah didaftarkan. Sila log masuk.');
-                }
-
-                // Masukkan data pengguna baharu
-                const { error: insertError } = await supabaseClient
-                    .from('heuta_users')
-                    .insert([{ 
-                        full_name: fullName, 
-                        role: role, 
-                        email: email, 
-                        password: password 
-                    }]);
-
-                if (insertError) throw insertError;
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Pendaftaran Berjaya!',
-                    text: 'Akaun anda telah diaktifkan. Sila log masuk.',
-                    confirmButtonColor: '#0033A0'
-                }).then(() => {
-                    // Reset borang dan tukar ke tab log masuk
-                    document.getElementById('registerForm').reset();
-                    document.getElementById('loginEmail').value = email;
-                    toggleForm('login');
-                });
-
-            } catch (err) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Pendaftaran Gagal',
-                    text: err.message,
-                    confirmButtonColor: '#ED1C24'
-                });
-            } finally {
-                toggleLoading(false);
-            }
-        }
-    </script>
 </body>
 </html>

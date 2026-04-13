@@ -38,9 +38,13 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         const catatanFilterId = kategori === 'GURU' ? 'filterCatatanGuruAdmin' : 'filterCatatanMuridAdmin';
         const sekolahFilterId = kategori === 'GURU' ? 'filterSekolahGuruAdmin' : 'filterSekolahMuridAdmin';
         
-        const statusFilter = document.getElementById(statusFilterId)?.value || 'ALL';
-        let catatanFilter = document.getElementById(catatanFilterId)?.value || 'ALL';
-        let sekolahFilter = document.getElementById(sekolahFilterId)?.value || 'ALL';
+        const statusSelect = document.getElementById(statusFilterId);
+        const catatanSelect = document.getElementById(catatanFilterId);
+        const sekolahSelect = document.getElementById(sekolahFilterId);
+
+        let statusVal = statusSelect?.value || 'ALL';
+        let catVal = catatanSelect?.value || 'ALL';
+        let sekVal = sekolahSelect?.value || 'ALL';
 
         let dataToProcess = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
 
@@ -95,33 +99,47 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         }
 
         // =========================================================
-        // DYNAMIC CASCADING FILTERS LOGIC
+        // SMART DYNAMIC CASCADING FILTERS LOGIC
         // =========================================================
         
         // 1. Tapis data asas berdasarkan Status Semasa terlebih dahulu
         let statusFilteredData = dataToProcess;
-        if (statusFilter !== 'ALL') {
-            statusFilteredData = statusFilteredData.filter(item => item.status_proses === statusFilter);
+        if (statusVal !== 'ALL') {
+            statusFilteredData = statusFilteredData.filter(item => item.status_proses === statusVal);
         }
 
-        // 2. Ekstrak entiti unik untuk dropdown (Hanya yang wujud dalam status semasa)
-        const catatanSelect = document.getElementById(catatanFilterId);
-        const sekolahSelect = document.getElementById(sekolahFilterId);
-
         if (catatanSelect && sekolahSelect) {
-            // Dapatkan nilai unik dan susun
-            const uniqueCatatan = [...new Set(statusFilteredData.map(item => item.catatan).filter(Boolean))].sort();
-            const uniqueSekolah = [...new Set(statusFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
-
-            // Bina HTML untuk Dropdown Catatan
+            
+            // A. JANA DROPDOWN CATATAN (Dibasaskan pada pilihan Sekolah semasa)
+            let dataForCatatan = statusFilteredData;
+            if (sekVal !== 'ALL') {
+                dataForCatatan = dataForCatatan.filter(item => item.kod_sekolah === sekVal);
+            }
+            const uniqueCatatan = [...new Set(dataForCatatan.map(item => item.catatan).filter(Boolean))].sort();
+            
             let catatanHtml = '<option value="ALL">Semua Catatan</option>';
             uniqueCatatan.forEach(c => {
                 catatanHtml += `<option value="${c}">${c}</option>`;
             });
+            catatanSelect.innerHTML = catatanHtml;
 
-            // Bina HTML untuk Dropdown Sekolah (Padanan nama sekolah)
-            let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
+            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            if (catVal !== 'ALL' && uniqueCatatan.includes(catVal)) {
+                catatanSelect.value = catVal;
+            } else {
+                catVal = 'ALL';
+                catatanSelect.value = 'ALL';
+            }
+
+            // B. JANA DROPDOWN SEKOLAH (Dibasaskan pada pilihan Catatan semasa)
+            let dataForSekolah = statusFilteredData;
+            if (catVal !== 'ALL') {
+                dataForSekolah = dataForSekolah.filter(item => item.catatan === catVal);
+            }
+            const uniqueSekolah = [...new Set(dataForSekolah.map(item => item.kod_sekolah).filter(Boolean))].sort();
+            
             const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+            let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
             
             uniqueSekolah.forEach(kod => {
                 let namaSekolah = kod;
@@ -129,40 +147,29 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                     namaSekolah = APP_CONFIG.PPD_MAPPING[kod] ? `PPD ${APP_CONFIG.PPD_MAPPING[kod]}` : 'PEJABAT PENDIDIKAN DAERAH';
                 } else if (window.globalDashboardData) {
                     const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === kod);
-                    if (schoolMatch) namaSekolah = `${kod} - ${schoolMatch.nama_sekolah}`;
+                    if (schoolMatch) namaSekolah = `${schoolMatch.nama_sekolah}`;
                 }
-                sekolahHtml += `<option value="${kod}">${namaSekolah}</option>`;
+                sekolahHtml += `<option value="${kod}">${namaSekolah} (${kod})</option>`;
             });
-
-            // Kemaskini elemen DOM
-            catatanSelect.innerHTML = catatanHtml;
             sekolahSelect.innerHTML = sekolahHtml;
 
-            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika tidak
-            if (uniqueCatatan.includes(catatanFilter)) {
-                catatanSelect.value = catatanFilter;
+            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            if (sekVal !== 'ALL' && uniqueSekolah.includes(sekVal)) {
+                sekolahSelect.value = sekVal;
             } else {
-                catatanFilter = 'ALL';
-                catatanSelect.value = 'ALL';
-            }
-
-            if (uniqueSekolah.includes(sekolahFilter)) {
-                sekolahSelect.value = sekolahFilter;
-            } else {
-                sekolahFilter = 'ALL';
+                sekVal = 'ALL';
                 sekolahSelect.value = 'ALL';
             }
         }
 
-        // 3. Laksanakan Tapisan Penuh (Sekolah & Catatan) pada data yang telah ditapis status
+        // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan (Validated Parameters)
         let filteredData = statusFilteredData;
 
-        if (sekolahFilter !== 'ALL') {
-            filteredData = filteredData.filter(item => item.kod_sekolah === sekolahFilter);
+        if (sekVal !== 'ALL') {
+            filteredData = filteredData.filter(item => item.kod_sekolah === sekVal);
         }
-
-        if (catatanFilter !== 'ALL') {
-            filteredData = filteredData.filter(item => item.catatan === catatanFilter);
+        if (catVal !== 'ALL') {
+            filteredData = filteredData.filter(item => item.catatan === catVal);
         }
 
         // Simpan state tapisan penuh untuk kegunaan eksport CSV

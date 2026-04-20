@@ -1,12 +1,13 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.1 (Single-Row Database Constraint Fix)
- * --- UPDATE V8.1 ---
- * 1. Menggabungkan tatasusunan (array) pilihan daerah menjadi satu rentetan teks (String Join)
- * bagi menyokong Kekangan Unik (Unique Constraint) pada lajur 'tarikh'.
- * 2. Mengubah klausa tapisan dari `.eq` / `.in` kepada `.ilike` untuk ketepatan carian masa nyata
- * merentas rentetan (string) yang mengandungi pelbagai kod.
+ * Version: 8.4 (Surgical RBAC Calibration & Non-Destructive Lock Merge)
+ * --- UPDATE V8.4 ---
+ * 1. Pengecaman Daerah Kebal: Membina pemetaan padanan huruf besar (.toUpperCase()) dan pencarian
+ * ilike supaya pentadbir dan sekolah tidak jatuh ke zon M030 (fallback) secara salah.
+ * 2. Cantuman Kunci Bersilang (Non-Destructive Overwrite): Membina logik "Tarik & Cantum".
+ * Apabila Admin daerah mengunci/membuka tarikh, sistem menggabungkan daerahnya dengan
+ * senarai daerah sedia ada (M010,M020), bukannya memadam rekod daerah lain.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -29,34 +30,45 @@ export const BookingService = {
         const endStr = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
 
         // --- RBAC DAERAH INJECTION ---
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-        let validCodes = [];
-        let ppdOwner = 'M030'; // Lalai
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'USER';
         
-        // Kenal pasti daerah sekolah yang mengakses kalendar
-        if (userKod) {
+        let validCodes = [];
+        let ppdOwner = 'M030'; // Lalai sandaran
+        
+        // Penentuan hak milik paparan yang jitu
+        if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+            ppdOwner = 'ALL_DISTRICTS';
+        } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
+            ppdOwner = userKod;
+            const userDaerah = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) ? APP_CONFIG.PPD_MAPPING[userKod] : 'ALOR GAJAH';
+            // Tarik sekolah milik admin
+            const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', userDaerah);
+            if (sList) validCodes = sList.map(x => x.kod_sekolah);
+        } else if (userKod) {
+            // Sekolah biasa (USER)
             const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', userKod).maybeSingle();
-            const daerah = sData ? sData.daerah : 'ALOR GAJAH';
+            const userDaerah = sData && sData.daerah ? sData.daerah.toUpperCase() : 'ALOR GAJAH';
             
+            // Padanan selamat mengelak case-sensitive mismatches
             if (APP_CONFIG.PPD_MAPPING) {
                 for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
-                    if (v === daerah) { ppdOwner = k; break; }
+                    if (v.toUpperCase() === userDaerah) { ppdOwner = k; break; }
                 }
             }
             
-            // Senaraikan semua sekolah dalam daerah yang sama
-            const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
+            const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', userDaerah);
             if (sList) validCodes = sList.map(x => x.kod_sekolah);
         }
 
-        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah)
+        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah kecuali Super Admin)
         let queryB = db.from('smpid_bb_tempahan')
             .select('*')
             .eq('status', 'AKTIF')
             .gte('tarikh', startStr)
             .lte('tarikh', endStr);
             
-        if (validCodes.length > 0) {
+        if (!['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && validCodes.length > 0) {
             queryB = queryB.in('kod_sekolah', validCodes);
         }
 
@@ -68,12 +80,16 @@ export const BookingService = {
         }
 
         // 2. Ambil Kunci Tarikh Admin (Statewide 'ALL' atau Spesifik PPD - Menggunakan iLike untuk Pencarian String)
-        const { data: locks, error: errL } = await db
-            .from('smpid_bb_kunci')
+        let queryL = db.from('smpid_bb_kunci')
             .select('*')
             .gte('tarikh', startStr)
-            .lte('tarikh', endStr)
-            .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
+            .lte('tarikh', endStr);
+            
+        if (!['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+            queryL = queryL.or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
+        }
+
+        const { data: locks, error: errL } = await queryL;
 
         if (errL) {
             console.error("[BookingService] Ralat mengambil data kunci:", errL);
@@ -127,16 +143,16 @@ export const BookingService = {
 
         // --- RBAC DAERAH INJECTION UNTUK KAWALAN PERTINDIHAN (COLLISION) ---
         const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', kod_sekolah).maybeSingle();
-        const daerah = sData ? sData.daerah : 'ALOR GAJAH';
+        const daerah = sData && sData.daerah ? sData.daerah.toUpperCase() : 'ALOR GAJAH';
         
         let ppdOwner = 'M030';
         if (APP_CONFIG.PPD_MAPPING) {
             for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
-                if (v === daerah) { ppdOwner = k; break; }
+                if (v.toUpperCase() === daerah) { ppdOwner = k; break; }
             }
         }
         
-        const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
+        const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', daerah);
         const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
 
         // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
@@ -259,8 +275,8 @@ export const BookingService = {
      */
     async getAllLocks() {
         const db = getDatabaseClient();
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'USER';
         
         let query = db.from('smpid_bb_kunci').select('*').order('tarikh', { ascending: true });
 
@@ -326,13 +342,6 @@ export const BookingService = {
     async manageDateLock(action, tarikh, note, targetPpds) {
         const db = getDatabaseClient();
 
-        // 1. Format Perlindungan Array ke String Keseluruhan
-        let finalTargetPpds = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
-        if (finalTargetPpds.includes('ALL')) finalTargetPpds = ['ALL'];
-        
-        // Gabungkan tatasusunan menjadi rentetan tunggal yang dipisahkan koma
-        const joinedScopes = finalTargetPpds.join(','); // Contoh hasil: "M010,M020" atau "ALL"
-
         // Dapatkan Identiti Pentadbir untuk Jejak Audit
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'ADMIN';
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'PPD';
@@ -349,38 +358,71 @@ export const BookingService = {
             }
         }
 
-        // TINDAKAN A: BUKA KUNCI KESELURUHAN PADA TARIKH TERSEBUT
-        if (action === 'UNLOCK') {
-            // Kerana "Unique Constraint", kita hanya perlu memadam baris berasaskan tarikh sahaja.
-            const { error } = await db
-                .from('smpid_bb_kunci')
-                .delete()
-                .eq('tarikh', tarikh);
-            
+        // 1. Tarik rekod kunci yang sudah wujud pada tarikh tersebut (Jika ada)
+        const { data: existingLock } = await db.from('smpid_bb_kunci').select('*').eq('tarikh', tarikh).maybeSingle();
+        
+        let finalScopes = [];
+        let currentScopes = (existingLock && existingLock.kod_ppd) ? existingLock.kod_ppd.split(',') : [];
+
+        // 2. Logik Penggabungan Pintar (Smart Merge)
+        if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+            // Super Admin mengawal secara mutlak kotak semak (checkbox)
+            finalScopes = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
+        } else {
+            // Admin PPD Biasa -> Tambah/Buang diri sendiri dari cantuman daerah
+            if (action === 'UNLOCK') {
+                if (currentScopes.includes('ALL')) {
+                    const allPPDs = Object.keys(APP_CONFIG.PPD_MAPPING || {});
+                    finalScopes = allPPDs.filter(k => k !== userKod); // Tolak diri sendiri dari ALL
+                } else {
+                    finalScopes = currentScopes.filter(code => code !== userKod);
+                }
+            } else {
+                // LOCK & UPDATE Action
+                finalScopes = [...new Set([...currentScopes, userKod])];
+                const allPPDs = Object.keys(APP_CONFIG.PPD_MAPPING || {});
+                const hasAll = allPPDs.length > 0 && allPPDs.every(k => finalScopes.includes(k));
+                if (hasAll || finalScopes.includes('ALL')) finalScopes = ['ALL'];
+            }
+        }
+
+        // Persediaan Rentetan Keseluruhan
+        if (finalScopes.includes('ALL')) finalScopes = ['ALL'];
+        const joinedScopes = finalScopes.join(',');
+
+        // 3. Pelaksanaan Pangkalan Data (Non-Destructive Overwrite)
+        if (finalScopes.length === 0 || joinedScopes === '') {
+            // Pembersihan Total Jika Tiada Lagi Daerah Berkunci
+            const { error } = await db.from('smpid_bb_kunci').delete().eq('tarikh', tarikh);
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
+        } else {
+            if (existingLock) {
+                // Cantuman / Pengemaskinian Rekod Bersilang
+                const { error } = await db.from('smpid_bb_kunci').update({
+                    komen: note || existingLock.komen,
+                    kod_ppd: joinedScopes,
+                    dikunci_oleh: dikunciOlehIdentifier,
+                    admin_email: adminEmail,
+                    created_at: new Date().toISOString()
+                }).eq('id', existingLock.id);
+                
+                if (error) throw error;
+                return { success: true, action: 'UPDATED' };
+            } else {
+                // Rekod Kunci Pertama Kali
+                const { error } = await db.from('smpid_bb_kunci').insert([{
+                    tarikh: tarikh,
+                    komen: note,
+                    kod_ppd: joinedScopes,
+                    dikunci_oleh: dikunciOlehIdentifier,
+                    admin_email: adminEmail,
+                    created_at: new Date().toISOString()
+                }]);
+                
+                if (error) throw error;
+                return { success: true, action: 'LOCKED' };
+            }
         }
-
-        // TINDAKAN B: KEMASKINI ATAU KUNCI BAHARU
-        if (action === 'UPDATE' || action === 'LOCK') {
-            
-            // Langkah 1: Buang kunci sedia ada pada tarikh ini untuk mengelak pelanggaran Unique Key
-            await db.from('smpid_bb_kunci').delete().eq('tarikh', tarikh);
-
-            // Langkah 2: Laksanakan Sisipan Baris Tunggal (Single-Row Insert) dengan Rentetan Kombo
-            const { error } = await db.from('smpid_bb_kunci').insert([{
-                tarikh: tarikh,
-                komen: note,
-                kod_ppd: joinedScopes, // Hantar sebagai rentetan (String)
-                dikunci_oleh: dikunciOlehIdentifier,
-                admin_email: adminEmail,
-                created_at: new Date().toISOString()
-            }]);
-
-            if (error) throw error;
-            return { success: true, action: action === 'LOCK' ? 'LOCKED' : 'UPDATED' };
-        }
-        
-        throw new Error("Tindakan pengurusan kunci tarikh tidak sah.");
     }
 };

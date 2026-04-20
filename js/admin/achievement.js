@@ -1,11 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V2.0 FILE UPLOAD)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V3.0 SURGICAL EDIT)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V2.1 (RBAC DAERAH) ---
- * 1. Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
- * 2. Menyuntik tapisan global supaya data pencapaian selari dengan daerah admin.
- * --- UPDATE V2.2 (BULK DELETE) ---
- * 1. Menambah fungsi kawalan kotak semak dan pemadaman pukal.
+ * --- UPDATE V3.0 (STANDARDIZE & BULK EDIT) ---
+ * 1. Ditambah keupayaan menyaring (Standardize) 'Nama Program' dan 'Skor Pencapaian'.
+ * 2. Ditambah fungsi 'Ubah Penyedia Pukal' menggunakan SweetAlert2.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -21,7 +19,10 @@ let currentJawatanFilter = 'ALL';
 let currentKategoriFilter = 'ALL'; 
 let sortState = { column: 'created_at', direction: 'desc' };
 
-// Cache untuk senarai nama program unik bagi tujuan penyeragaman
+// State untuk Mod Penyeragaman Data (PROGRAM atau SKOR)
+let currentStandardizeMode = 'PROGRAM';
+
+// Cache untuk senarai nama/skor unik bagi tujuan penyeragaman
 let standardizationList = []; 
 let filteredStandardizationList = [];
 
@@ -120,7 +121,7 @@ function populateSekolahFilter(data) {
     else select.value = 'ALL';
 }
 
-// --- RENDERING LOGIC (Disusun Penuh Tanpa Truncation) ---
+// --- RENDERING LOGIC ---
 
 window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
@@ -146,7 +147,7 @@ window.renderPencapaianTable = function() {
         if(search) {
             let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH') : 
                 (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
-            const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan}`.toUpperCase();
+            const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan} ${i.pencapaian}`.toUpperCase();
             if (!searchTarget.includes(search)) return false;
         }
         
@@ -203,8 +204,12 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PPD') badgeClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
 
         let jenisBadge = '';
+        let penyediaBadge = '';
         if (i.jenis_rekod === 'PENSIJILAN') {
             jenisBadge = `<span class="bg-amber-50 text-amber-600 border border-amber-200 text-[9px] font-black px-1 rounded mr-1">SIJIL</span>`;
+            if(i.penyedia) {
+                penyediaBadge = `<span class="block text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider"><i class="fas fa-building mr-1"></i>${i.penyedia}</span>`;
+            }
         } else {
             jenisBadge = `<span class="bg-blue-50 text-blue-600 border border-blue-200 text-[9px] font-black px-1 rounded mr-1">PROG</span>`;
         }
@@ -223,6 +228,7 @@ window.renderPencapaianTable = function() {
             <td class="px-6 py-4 whitespace-normal">
                 <div class="mb-1">${jenisBadge}</div>
                 <div class="text-brand-600 text-xs font-bold leading-tight">${i.nama_pertandingan}</div>
+                ${penyediaBadge}
             </td>
             <td class="px-6 py-4 text-center font-black text-slate-700 text-xs w-32 whitespace-normal bg-slate-50/50">${i.pencapaian}</td>
             <td class="px-6 py-4 text-center w-24"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
@@ -529,6 +535,55 @@ window.padamPukalPencapaianAdmin = async function() {
         }
     });
 };
+
+// ── SURGICAL EDIT START: Fungsi Ubah Penyedia Pukal ──
+window.ubahPenyediaPukalAdmin = async function() {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
+    if (checkboxes.length === 0) return;
+
+    const idsToUpdate = Array.from(checkboxes).map(cb => cb.value);
+
+    const { value: newPenyedia } = await Swal.fire({
+        title: 'Ubah Penyedia (Pukal)',
+        html: `Sila pilih penyedia baharu untuk <b>${idsToUpdate.length}</b> rekod pensijilan yang ditandakan.`,
+        input: 'select',
+        inputOptions: {
+            'GOOGLE': 'GOOGLE FOR EDUCATION',
+            'APPLE': 'APPLE EDUCATION',
+            'MICROSOFT': 'MICROSOFT EDUCATION',
+            'LAIN-LAIN': 'LAIN-LAIN / TIADA'
+        },
+        inputPlaceholder: '- Sila Pilih Penyedia -',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Simpan Pukal',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' },
+        inputValidator: (value) => {
+            if (!value) return 'Anda mesti memilih salah satu penyedia!';
+        }
+    });
+
+    if (newPenyedia) {
+        toggleLoading(true);
+        try {
+            await AchievementService.batchUpdatePenyedia(idsToUpdate, newPenyedia);
+            toggleLoading(false);
+
+            // Reset UI states
+            const selectAllCb = document.getElementById('selectAllPencapaian');
+            if (selectAllCb) selectAllCb.checked = false;
+            window.checkBulkStatusPencapaian();
+
+            Swal.fire({ icon: 'success', title: 'Berjaya', text: `${idsToUpdate.length} rekod telah dikemaskini.`, timer: 1500, showConfirmButton: false })
+            .then(() => window.loadMasterPencapaian());
+        } catch (e) {
+            toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal mengubah penyedia secara pukal.', 'error');
+        }
+    }
+};
+// ── SURGICAL EDIT END ──
 
 // --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC - ADMIN) ---
 
@@ -861,7 +916,27 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (KEKAL) ---
+// ── SURGICAL EDIT START: Logik Penyeragaman Dinamik ──
+
+window.switchStandardizeTab = function(mode) {
+    currentStandardizeMode = mode;
+    const btnProg = document.getElementById('std-tab-program');
+    const btnSkor = document.getElementById('std-tab-skor');
+    const thAsal = document.getElementById('th-std-asal');
+
+    if (mode === 'PROGRAM') {
+        if(btnProg) btnProg.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-white shadow-sm text-slate-800 transition-all";
+        if(btnSkor) btnSkor.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-all";
+        if(thAsal) thAsal.innerText = "Program Asal";
+    } else {
+        if(btnSkor) btnSkor.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-white shadow-sm text-slate-800 transition-all";
+        if(btnProg) btnProg.className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-all";
+        if(thAsal) thAsal.innerText = "Skor Asal";
+    }
+
+    document.getElementById('standardizeSearch').value = '';
+    window.refreshStandardizeUI();
+};
 
 window.refreshStandardizeUI = function() {
     const counts = {};
@@ -869,7 +944,12 @@ window.refreshStandardizeUI = function() {
     filteredStandardizationList = [];
 
     pencapaianList.forEach(item => {
-        const name = item.nama_pertandingan || "TIADA NAMA";
+        let name = "";
+        if (currentStandardizeMode === 'PROGRAM') {
+            name = item.nama_pertandingan || "TIADA NAMA";
+        } else {
+            name = item.pencapaian || "TIADA SKOR";
+        }
         counts[name] = (counts[name] || 0) + 1;
     });
 
@@ -885,11 +965,11 @@ window.refreshStandardizeUI = function() {
     } else {
         renderStandardizeTable(filteredStandardizationList);
     }
-}
+};
 
 window.openStandardizeModal = function() {
     document.getElementById('standardizeSearch').value = '';
-    window.refreshStandardizeUI();
+    window.switchStandardizeTab('PROGRAM'); // Default ke tab Program setiap kali modal dibuka
     document.getElementById('modalStandardize').classList.remove('hidden');
 };
 
@@ -949,19 +1029,26 @@ window.executeStandardization = function(oldName, inputId) {
     if (!newName) return Swal.fire('Ralat', 'Nama baharu kosong.', 'warning');
     if (newName === oldName) return Swal.fire('Tiada Perubahan', 'Nama sama dengan asal.', 'info');
 
+    let titleText = currentStandardizeMode === 'PROGRAM' ? 'Sahkan Penyeragaman Program?' : 'Sahkan Penyeragaman Skor?';
+
     Swal.fire({
-        title: 'Sahkan Penyeragaman?',
+        title: titleText,
         html: `Menukar <b>"${oldName}"</b> kepada <br><b class="text-emerald-600">"${newName}"</b><br>untuk semua rekod berkaitan.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#10b981', 
         confirmButtonText: 'Ya, Seragamkan!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
     }).then(async (result) => {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
-                await AchievementService.batchUpdateProgramName(oldName, newName);
+                if (currentStandardizeMode === 'PROGRAM') {
+                    await AchievementService.batchUpdateProgramName(oldName, newName);
+                } else {
+                    await AchievementService.batchUpdateSkor(oldName, newName);
+                }
                 toggleLoading(false);
                 await Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
                 await window.loadMasterPencapaian(); 
@@ -973,3 +1060,4 @@ window.executeStandardization = function(oldName, inputId) {
         }
     });
 };
+// ── SURGICAL EDIT END ──

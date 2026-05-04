@@ -37,23 +37,17 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const catatanFilterId = kategori === 'GURU' ? 'filterCatatanGuruAdmin' : 'filterCatatanMuridAdmin';
         const sekolahFilterId = kategori === 'GURU' ? 'filterSekolahGuruAdmin' : 'filterSekolahMuridAdmin';
-        // ── SURGICAL EDIT START: Tambah pembolehubah ID Lokasi ──
         const lokasiFilterId = kategori === 'GURU' ? 'filterLokasiGuruAdmin' : 'filterLokasiMuridAdmin';
-        // ── SURGICAL EDIT END ──
         
         const statusSelect = document.getElementById(statusFilterId);
         const catatanSelect = document.getElementById(catatanFilterId);
         const sekolahSelect = document.getElementById(sekolahFilterId);
-        // ── SURGICAL EDIT START: Dapatkan elemen dropdown Lokasi ──
         const lokasiSelect = document.getElementById(lokasiFilterId);
-        // ── SURGICAL EDIT END ──
 
         let statusVal = statusSelect?.value || 'ALL';
         let catVal = catatanSelect?.value || 'ALL';
         let sekVal = sekolahSelect?.value || 'ALL';
-        // ── SURGICAL EDIT START: Dapatkan nilai Lokasi semasa ──
         let lokVal = lokasiSelect?.value || 'ALL';
-        // ── SURGICAL EDIT END ──
 
         let dataToProcess = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
 
@@ -119,12 +113,10 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
 
         if (catatanSelect && sekolahSelect) {
             
-            // A. JANA DROPDOWN CATATAN (Dibasaskan pada pilihan Sekolah semasa)
-            let dataForCatatan = statusFilteredData;
-            if (sekVal !== 'ALL') {
-                dataForCatatan = dataForCatatan.filter(item => item.kod_sekolah === sekVal);
-            }
-            const uniqueCatatan = [...new Set(dataForCatatan.map(item => item.catatan).filter(Boolean))].sort();
+            // Dropdown dibina bebas berpandukan 'statusFilteredData' mentah sahaja untuk halang infinite-reset loop
+            
+            // A. JANA DROPDOWN CATATAN (Bebas)
+            const uniqueCatatan = [...new Set(statusFilteredData.map(item => item.catatan).filter(Boolean))].sort();
             
             let catatanHtml = '<option value="ALL">Semua Catatan</option>';
             uniqueCatatan.forEach(c => {
@@ -132,7 +124,7 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             });
             catatanSelect.innerHTML = catatanHtml;
 
-            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            // State Restoration: Kekalkan pilihan jika ia masih wujud
             if (catVal !== 'ALL' && uniqueCatatan.includes(catVal)) {
                 catatanSelect.value = catVal;
             } else {
@@ -140,12 +132,8 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 catatanSelect.value = 'ALL';
             }
 
-            // B. JANA DROPDOWN SEKOLAH (Dibasaskan pada pilihan Catatan semasa)
-            let dataForSekolah = statusFilteredData;
-            if (catVal !== 'ALL') {
-                dataForSekolah = dataForSekolah.filter(item => item.catatan === catVal);
-            }
-            const uniqueSekolah = [...new Set(dataForSekolah.map(item => item.kod_sekolah).filter(Boolean))].sort();
+            // B. JANA DROPDOWN SEKOLAH (Bebas)
+            const uniqueSekolah = [...new Set(statusFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
             
             const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
             let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
@@ -162,7 +150,7 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             });
             sekolahSelect.innerHTML = sekolahHtml;
 
-            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            // State Restoration: Kekalkan pilihan jika ia masih wujud
             if (sekVal !== 'ALL' && uniqueSekolah.includes(sekVal)) {
                 sekolahSelect.value = sekVal;
             } else {
@@ -180,9 +168,21 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         if (catVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.catatan === catVal);
         }
-        // ── SURGICAL EDIT START: Laksanakan tapisan Lokasi Asal (Rentetan Teks) ──
+        
+        // ── SURGICAL EDIT START: Laksanakan tapisan gabungan untuk Lokasi Asal DALAM NEGERI ──
         if (lokVal !== 'ALL') {
-            filteredData = filteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
+            filteredData = filteredData.filter(item => {
+                if (!item.nama) return false;
+                const namaUpper = item.nama.toUpperCase();
+                if (lokVal === 'DALAM NEGERI') {
+                    // Tangkap kedua-dua kluster daerah secara tidak sensitif huruf
+                    return namaUpper.includes('(DALAM DAERAH)') || namaUpper.includes('(LUAR DAERAH)');
+                } else if (lokVal === 'LUAR NEGERI') {
+                    return namaUpper.includes('(LUAR NEGERI)');
+                } else {
+                    return namaUpper.includes(`(${lokVal.toUpperCase()})`);
+                }
+            });
         }
         // ── SURGICAL EDIT END ──
 
@@ -541,37 +541,31 @@ window.tandaSelesaiPukal = async function(kategori) {
             customClass: { popup: 'colored-toast' }
         });
 
-        // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah
+        // ── SURGICAL EDIT START: Pembaikan Cache Status SELESAI Pukal ──
+        // 1. Kemaskini Cache: Update status_proses kepada 'SELESAI' (BUKAN delete dari rawData)
         if (kategori === 'GURU') {
-            rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
-            if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
+            rawDataGuru.forEach(item => {
+                if (idsToUpdate.includes(String(item.id))) item.status_proses = 'SELESAI';
+            });
         } else {
-            rawDataMurid = rawDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
-            if (filteredDataMurid) filteredDataMurid = filteredDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
+            rawDataMurid.forEach(item => {
+                if (idsToUpdate.includes(String(item.id))) item.status_proses = 'SELESAI';
+            });
         }
 
-        // 2. Animasi Pembuangan Baris
+        // 2. Animasi Perubahan
         rowsToRemove.forEach(row => {
             row.style.transition = 'all 0.3s ease-out';
-            row.style.opacity = '0';
-            row.style.transform = 'translateX(20px)';
+            row.style.opacity = '0.5';
+            row.style.transform = 'scale(0.98)';
         });
 
         setTimeout(() => {
-            let parentTbody = null;
-            rowsToRemove.forEach(row => {
-                parentTbody = row.parentNode;
-                row.remove();
-            });
-
-            // 3. Reset UI Tindakan Pukal
+            // 3. Reset UI Pukal dan Muat Semula Jadual untuk patuhi filter semasa secara natif
             window.resetBulkState(kategori);
-
-            // 4. Masukkan baris kekosongan jika jadual telus sepenuhnya
-            if (parentTbody && parentTbody.children.length === 0) {
-                parentTbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-3 opacity-20 block"></i>Tiada rekod permohonan padan dengan tapisan ini.</td></tr>`;
-            }
+            window.loadSenaraiDelimaAdmin(kategori, false);
         }, 300);
+        // ── SURGICAL EDIT END ──
 
     } catch (error) {
         console.error('Ralat kemaskini pukal:', error);

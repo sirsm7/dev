@@ -212,23 +212,27 @@ function renderLibatUrusGallery(data) {
     emptyState.classList.add('hidden');
     
 // ── SURGICAL EDIT START: Reka bentuk semula jubin (minimalis), suntikan lakaran kecil (thumbnail), & Ringkasan Sekolah ──
+    // Kemaskini grid secara dinamik untuk memaksa ketumpatan kad lebih tinggi (sehingga 5 lajur)
+    galleryContainer.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10 relative";
+
     // Pengiraan untuk ringkasan jumlah sekolah unik
     const uniqueSchoolsCount = new Set(data.map(item => item.kod_sekolah)).size;
     const currentYear = new Date().getFullYear();
 
+    // Mengubah Penyerahan kepada Laporan & menjadikan ia "Sticky" (Kekal Terapung)
     const summaryHeader = `
-        <div class="col-span-full flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pb-4 border-b-2 border-slate-100">
+        <div class="col-span-full flex flex-col md:flex-row md:items-end justify-between gap-4 pb-3 mb-2 border-b-2 border-slate-200/60 sticky top-0 z-30 bg-[#f8fafc]/95 backdrop-blur-md pt-4 -mt-4 rounded-b-xl px-1 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)]">
             <div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1" aria-hidden="true">Prestasi Tahun Semasa</p>
-                <h3 class="text-3xl font-black text-slate-800 tracking-tighter leading-none">Penyerahan ${currentYear}</h3>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5" aria-hidden="true">Prestasi Tahun Semasa</p>
+                <h3 class="text-2xl font-black text-slate-800 tracking-tighter leading-none">Laporan ${currentYear}</h3>
             </div>
-            <div class="bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
-                    <i class="fas fa-school text-lg"></i>
+            <div class="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
+                    <i class="fas fa-school text-sm"></i>
                 </div>
                 <div>
-                    <span class="block text-2xl font-black text-slate-800 leading-none">${uniqueSchoolsCount}</span>
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Jumlah Sekolah</span>
+                    <span class="block text-xl font-black text-slate-800 leading-none">${uniqueSchoolsCount}</span>
+                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Jumlah Sekolah</span>
                 </div>
             </div>
         </div>
@@ -252,55 +256,56 @@ function renderLibatUrusGallery(data) {
         else if (cat === 'MURID') { catStyle = 'text-cyan-600 bg-cyan-50 border-cyan-100'; catIcon = 'fa-user-graduate'; }
         else if (cat.includes('IBU')) { catStyle = 'text-emerald-600 bg-emerald-50 border-emerald-100'; catIcon = 'fa-people-arrows'; }
 
-        // Penjanaan Lakaran Kecil (Thumbnail) Prebiu 
+        // Penjanaan Lakaran Kecil (Thumbnail) Prebiu yang dikurangkan saiz (h-28)
         let previewHtml = '';
         if (item.pautan_fail && item.pautan_fail.includes('drive.google.com')) {
             const previewUrl = item.pautan_fail.replace(/\/view.*/, '/preview');
             // iframe diset pointer-events-none untuk prestasi DOM optimum
-            previewHtml = `<div class="h-40 w-full overflow-hidden bg-slate-100 relative group-hover:opacity-90 transition-opacity">
-                <iframe src="${previewUrl}" class="w-full h-56 -mt-8 pointer-events-none border-0" aria-hidden="true" tabindex="-1" loading="lazy"></iframe>
+            previewHtml = `<div class="h-28 w-full overflow-hidden bg-slate-100 relative group-hover:opacity-90 transition-opacity">
+                <iframe src="${previewUrl}" class="w-full h-48 -mt-10 pointer-events-none border-0 transform scale-[1.02]" aria-hidden="true" tabindex="-1" loading="lazy"></iframe>
                 <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
             </div>`;
         } else {
-            previewHtml = `<div class="h-40 w-full bg-slate-50 flex items-center justify-center border-b border-slate-100">
-                <i class="fas fa-file-alt text-4xl text-slate-200"></i>
+            previewHtml = `<div class="h-28 w-full bg-slate-50 flex items-center justify-center border-b border-slate-100">
+                <i class="fas fa-file-alt text-3xl text-slate-200"></i>
             </div>`;
         }
 
+        // Susun atur kad yang lebih kompak (padding lebih kecil, saiz fon optimum)
         return `
-        <div class="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-orange-200 transition-all duration-500 flex flex-col overflow-hidden relative transform hover:-translate-y-1">
+        <div class="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-300 transition-all duration-300 flex flex-col overflow-hidden relative transform hover:-translate-y-1">
             ${previewHtml}
             
-            <div class="p-5 flex-grow flex flex-col">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex flex-wrap gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${catStyle}" aria-label="Kategori: ${cat}">
+            <div class="p-3.5 flex-grow flex flex-col">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${catStyle}" aria-label="Kategori: ${cat}">
                             <i class="fas ${catIcon}"></i> ${cat}
                         </span>
-                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${modStyle}" aria-label="Mod: ${mod}">
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${modStyle}" aria-label="Mod: ${mod}">
                             <i class="fas ${modIcon}"></i> ${mod}
                         </span>
                     </div>
-                    <span class="text-[9px] font-bold text-slate-400 border border-slate-100 px-2 py-1 rounded-md uppercase" aria-label="Daerah: ${daerah}">${daerah}</span>
+                    <span class="text-[8px] font-bold text-slate-400 border border-slate-100 px-1.5 py-0.5 rounded uppercase" aria-label="Daerah: ${daerah}">${daerah}</span>
                 </div>
                 
-                <h4 class="font-bold text-slate-900 text-sm mb-1 leading-snug line-clamp-2 uppercase group-hover:text-orange-600 transition-colors">${schoolName}</h4>
-                <p class="text-[10px] font-mono font-bold text-slate-400 mb-5"><i class="fas fa-fingerprint mr-1"></i> ${item.kod_sekolah}</p>
+                <h4 class="font-bold text-slate-900 text-xs mb-1 leading-tight line-clamp-2 uppercase group-hover:text-orange-600 transition-colors">${schoolName}</h4>
+                <p class="text-[9px] font-mono font-bold text-slate-400 mb-3"><i class="fas fa-fingerprint mr-1"></i> ${item.kod_sekolah}</p>
                 
-                <div class="mt-auto grid grid-cols-[1fr_auto] gap-3 mb-5">
-                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tarikh & Tempat</span>
-                        <span class="block text-xs font-bold text-slate-700 truncate" title="${item.tempat}">${item.tempat}</span>
-                        <span class="block text-[10px] font-semibold text-orange-600 mt-0.5">${dateStr}</span>
+                <div class="mt-auto grid grid-cols-[1fr_auto] gap-2 mb-3">
+                    <div class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex flex-col justify-center">
+                        <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Tarikh/Tempat</span>
+                        <span class="block text-[9px] font-bold text-slate-700 truncate" title="${item.tempat}">${item.tempat}</span>
+                        <span class="block text-[9px] font-semibold text-orange-600 mt-0.5">${dateStr}</span>
                     </div>
-                    <div class="bg-orange-50 p-3 px-4 rounded-2xl border border-orange-100 flex flex-col justify-center items-center text-center">
-                        <span class="block text-[9px] font-bold text-orange-400 uppercase tracking-widest mb-0.5">Peserta</span>
-                        <span class="block text-xl font-black text-orange-600 leading-none">${item.jumlah_peserta}</span>
+                    <div class="bg-orange-50 p-2 px-3 rounded-xl border border-orange-100 flex flex-col justify-center items-center text-center">
+                        <span class="block text-[8px] font-bold text-orange-400 uppercase tracking-widest mb-0.5">Peserta</span>
+                        <span class="block text-lg font-black text-orange-600 leading-none">${item.jumlah_peserta}</span>
                     </div>
                 </div>
                 
-                <a href="${item.pautan_fail}" target="_blank" rel="noopener noreferrer" class="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-orange-600 text-white text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm" aria-label="Lihat laporan penuh untuk ${schoolName}">
-                    <i class="fas fa-external-link-alt text-[10px]"></i> Buka Laporan
+                <a href="${item.pautan_fail}" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-orange-600 text-white text-[10px] font-bold transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm" aria-label="Lihat laporan penuh untuk ${schoolName}">
+                    <i class="fas fa-external-link-alt text-[9px]"></i> Buka Laporan
                 </a>
             </div>
         </div>

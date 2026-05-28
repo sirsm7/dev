@@ -936,6 +936,11 @@ window.submitLibatUrus = async function() {
     const fileInput = document.getElementById('luFile');
     const file = fileInput.files[0];
 
+// ── SURGICAL EDIT START: Menangkap nilai mod pelaksanaan ──
+    const modPelaksanaanInput = document.querySelector('input[name="luModPelaksanaan"]:checked');
+    const modPelaksanaan = modPelaksanaanInput ? modPelaksanaanInput.value : 'BERSEMUKA';
+// ── SURGICAL EDIT END ──
+
     if (!kategori || !tarikh || !peserta || !tempat || !file) {
         return Swal.fire('Maklumat Tidak Lengkap', 'Sila isi semua ruangan bertanda termasuk muat naik fail.', 'warning');
     }
@@ -960,7 +965,10 @@ window.submitLibatUrus = async function() {
             tarikh_laksana: tarikh,
             tempat: tempat,
             jumlah_peserta: peserta,
-            pautan_fail: uploadedUrl
+            pautan_fail: uploadedUrl,
+// ── SURGICAL EDIT START: Menambah mod_pelaksanaan ke dalam objek payload ──
+            mod_pelaksanaan: modPelaksanaan
+// ── SURGICAL EDIT END ──
         };
 
         await libatUrusService.createLibatUrus(payload);
@@ -1007,10 +1015,16 @@ window.loadLibatUrusSekolah = async function() {
                              : item.kategori_sasar === 'MURID' ? 'bg-amber-100 text-amber-700 border-amber-200' 
                              : 'bg-green-100 text-green-700 border-green-200';
 
+// ── SURGICAL EDIT START: Tambah badge mod pelaksanaan ──
+            const modBadge = item.mod_pelaksanaan === 'DALAM TALIAN' 
+                           ? `<span class="inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase border bg-purple-50 text-purple-600 border-purple-200 ml-1"><i class="fas fa-video mr-1"></i> DALAM TALIAN</span>`
+                           : `<span class="inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase border bg-teal-50 text-teal-600 border-teal-200 ml-1"><i class="fas fa-users mr-1"></i> BERSEMUKA</span>`;
+// ── SURGICAL EDIT END ──
+
             return `
             <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 group">
                 <td class="px-4 py-4">
-                    <div class="mb-1.5"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase border ${badgeColor}">${item.kategori_sasar}</span></div>
+                    <div class="mb-1.5"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase border ${badgeColor}">${item.kategori_sasar}</span>${modBadge}</div>
                     <div class="font-bold text-slate-800 text-sm leading-snug uppercase">${item.tempat}</div>
                     <div class="text-[10px] text-slate-500 font-mono font-bold mt-1"><i class="far fa-calendar-alt mr-1"></i> ${new Date(item.tarikh_laksana).toLocaleDateString('ms-MY')} (${item.bulan})</div>
                 </td>

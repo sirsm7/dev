@@ -80,6 +80,7 @@ class LibatUrusService {
         ];
         const bulan = monthsInMalay[dateObj.getMonth()];
 
+// ── SURGICAL EDIT START: Memastikan mod_pelaksanaan dimasukkan ke dalam payload pangkalan data ──
         const payload = {
             kod_sekolah: data.kod_sekolah,
             kategori_sasar: data.kategori_sasar,
@@ -87,8 +88,10 @@ class LibatUrusService {
             bulan: bulan,
             tempat: data.tempat,
             jumlah_peserta: parseInt(data.jumlah_peserta, 10),
-            pautan_fail: data.pautan_fail
+            pautan_fail: data.pautan_fail,
+            mod_pelaksanaan: data.mod_pelaksanaan
         };
+// ── SURGICAL EDIT END ──
 
 // ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
         const db = getDatabaseClient();

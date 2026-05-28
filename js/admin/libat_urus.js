@@ -127,6 +127,10 @@ function calculateDashboardStats(data) {
     let sumGuru = 0;
     let sumMurid = 0;
     let sumIbuBapa = 0;
+// ── SURGICAL EDIT START: Menambah pembolehubah kiraan mod pelaksanaan ──
+    let sumBersemuka = 0;
+    let sumDalamTalian = 0;
+// ── SURGICAL EDIT END ──
     
     const monthFrequency = {};
     let topMonth = '-';
@@ -136,10 +140,18 @@ function calculateDashboardStats(data) {
         // Tally participants based on categories
         const cat = (item.kategori_sasar || '').toUpperCase();
         const pax = parseInt(item.jumlah_peserta) || 0;
+// ── SURGICAL EDIT START: Menjumlahkan nilai peserta mengikut mod pelaksanaan ──
+        const mod = (item.mod_pelaksanaan || 'BERSEMUKA').toUpperCase();
+// ── SURGICAL EDIT END ──
         
         if (cat === 'GURU') sumGuru += pax;
         else if (cat === 'MURID') sumMurid += pax;
         else if (cat === 'IBU-BAPA (PIBG & PIBKS)' || cat.includes('IBU')) sumIbuBapa += pax;
+
+// ── SURGICAL EDIT START: Logik agihan metrik peserta mod pelaksanaan ──
+        if (mod === 'DALAM TALIAN') sumDalamTalian += pax;
+        else sumBersemuka += pax; // Defaulting to Bersemuka for legacy/null records
+// ── SURGICAL EDIT END ──
 
         // Calculate Month Frequency
         if (item.bulan) {
@@ -161,6 +173,14 @@ function calculateDashboardStats(data) {
     if(statLuGuru) statLuGuru.innerText = sumGuru.toLocaleString('ms-MY');
     if(statLuMurid) statLuMurid.innerText = sumMurid.toLocaleString('ms-MY');
     if(statLuIbuBapa) statLuIbuBapa.innerText = sumIbuBapa.toLocaleString('ms-MY');
+
+// ── SURGICAL EDIT START: Kemaskini metrik ke DOM ID Kad KPI yang baharu dicipta ──
+    const statLuBersemuka = document.getElementById('luKpiBersemuka');
+    const statLuDalamTalian = document.getElementById('luKpiDalamTalian');
+
+    if(statLuBersemuka) statLuBersemuka.innerText = sumBersemuka.toLocaleString('ms-MY');
+    if(statLuDalamTalian) statLuDalamTalian.innerText = sumDalamTalian.toLocaleString('ms-MY');
+// ── SURGICAL EDIT END ──
 }
 
 /**
@@ -187,6 +207,14 @@ function renderLibatUrusGallery(data) {
         const schoolName = item.school?.nama_sekolah || item.kod_sekolah;
         const daerah = item.school?.daerah || 'N/A';
         
+// ── SURGICAL EDIT START: Reka bentuk lencana (badge) spesifik bagi Mod Pelaksanaan ──
+        const mod = (item.mod_pelaksanaan || 'BERSEMUKA').toUpperCase();
+        const modBadgeStyle = mod === 'DALAM TALIAN' 
+            ? 'bg-purple-100 text-purple-700 border-purple-200' 
+            : 'bg-teal-100 text-teal-700 border-teal-200';
+        const modIcon = mod === 'DALAM TALIAN' ? '<i class="fas fa-video"></i>' : '<i class="fas fa-users"></i>';
+// ── SURGICAL EDIT END ──
+        
         let badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
         let icon = '<i class="fas fa-users"></i>';
         
@@ -208,6 +236,11 @@ function renderLibatUrusGallery(data) {
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border shadow-sm ${badgeStyle}">
                         ${icon} ${cat}
                     </span>
+<!-- ── SURGICAL EDIT START: Meletakkan lencana Mod Pelaksanaan bersebelahan Kategori Sasar ── -->
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border shadow-sm ml-1 ${modBadgeStyle}">
+                        ${modIcon} ${mod}
+                    </span>
+<!-- ── SURGICAL EDIT END ── -->
                 </div>
                 <div class="text-[10px] text-slate-400 font-bold bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm uppercase">
                     ${daerah}
@@ -251,7 +284,9 @@ window.eksportLibatUrusCSV = function() {
 
     let csvContent = "data:text/csv;charset=utf-8,";
     // Header
-    csvContent += "ID_REKOD,KOD_SEKOLAH,NAMA_SEKOLAH,DAERAH,KATEGORI_SASAR,TARIKH_LAKSANA,BULAN,TEMPAT,JUMLAH_PESERTA,PAUTAN_FAIL\r\n";
+// ── SURGICAL EDIT START: Menambah lajur MOD_PELAKSANAAN ──
+    csvContent += "ID_REKOD,KOD_SEKOLAH,NAMA_SEKOLAH,DAERAH,KATEGORI_SASAR,MOD_PELAKSANAAN,TARIKH_LAKSANA,BULAN,TEMPAT,JUMLAH_PESERTA,PAUTAN_FAIL\r\n";
+// ── SURGICAL EDIT END ──
 
     filteredLibatUrusData.forEach(item => {
         const id = item.id || '';
@@ -259,13 +294,18 @@ window.eksportLibatUrusCSV = function() {
         const namaSekolah = `"${(item.school?.nama_sekolah || '').replace(/"/g, '""')}"`;
         const daerah = item.school?.daerah || '';
         const kategori = `"${(item.kategori_sasar || '').replace(/"/g, '""')}"`;
+// ── SURGICAL EDIT START: Membaca dan menapis ralat (escape characters) mod pelaksanaan ──
+        const modPelaksanaan = `"${(item.mod_pelaksanaan || 'BERSEMUKA').replace(/"/g, '""')}"`;
+// ── SURGICAL EDIT END ──
         const tarikh = item.tarikh_laksana || '';
         const bulan = item.bulan || '';
         const tempat = `"${(item.tempat || '').replace(/"/g, '""')}"`;
         const jumlah = item.jumlah_peserta || 0;
         const pautan = `"${(item.pautan_fail || '').replace(/"/g, '""')}"`;
 
-        const row = [id, kod, namaSekolah, daerah, kategori, tarikh, bulan, tempat, jumlah, pautan].join(",");
+// ── SURGICAL EDIT START: Kemasukan data baris selari dengan kedudukan Header baharu ──
+        const row = [id, kod, namaSekolah, daerah, kategori, modPelaksanaan, tarikh, bulan, tempat, jumlah, pautan].join(",");
+// ── SURGICAL EDIT END ──
         csvContent += row + "\r\n";
     });
 

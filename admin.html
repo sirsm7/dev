@@ -192,9 +192,9 @@
         <a href="#tempahan" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
         <a href="#email" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
         <a href="#helpdesk" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Sokongan</a>
-<!-- ── SURGICAL EDIT START: Menambah Tab Menu Libat Urus ── -->
+        <!-- ── SURGICAL EDIT START: Menambah Tab Menu Libat Urus ── -->
         <a href="#libat-urus" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="libat-urus-tab" onclick="switchAdminTab('libat-urus', event)"><i class="fas fa-handshake text-orange-600"></i> Libat Urus</a>
-<!-- ── SURGICAL EDIT END ── -->
+        <!-- ── SURGICAL EDIT END ── -->
         <a href="#admin-users" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
         
         <!-- TAB IMPORT (Super Admin Sahaja) -->
@@ -226,6 +226,7 @@
         </div>
     </div>
 
+    <!-- TABS CONTAINER (Cleaned Single Source of Truth) -->
     <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
         
         <!-- TAB 1: DASHBOARD -->
@@ -532,6 +533,7 @@
                     </div>
                 </div>
             </div>
+
             <!-- ── SURGICAL EDIT START: Tambah word cloud tajuk program untuk tab Kemenjadian ── -->
             <div id="programCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
@@ -541,6 +543,7 @@
                 <div id="programCloudContainer" class="p-4 bg-indigo-50/50 border-2 border-indigo-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
             <!-- ── SURGICAL EDIT END ── -->
+            
             <div id="jawatanCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
                     <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Guru</h6>
@@ -699,7 +702,6 @@
             <!-- Panel Status ID Guru -->
             <div id="panelAdminGuru" class="hidden">
                 <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-                    <!-- ── SURGICAL EDIT START: Tambah Filter Lokasi Asal Guru & Flex Wrap ── -->
                     <div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                         <div class="relative w-full sm:w-64">
                             <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
@@ -715,16 +717,13 @@
                         </div>
                         <div class="relative w-full sm:w-48">
                             <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
-                            <!-- ── SURGICAL EDIT START: Kemaskini Pilihan Lokasi Guru ── -->
                             <select id="filterLokasiGuruAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-blue-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-blue-500" onchange="loadSenaraiDelimaAdmin('GURU')">
                                 <option value="ALL">Semua Lokasi</option>
                                 <option value="DALAM NEGERI">Dalam Negeri</option>
                                 <option value="LUAR NEGERI">Luar Negeri</option>
                             </select>
-                            <!-- ── SURGICAL EDIT END ── -->
                         </div>
                     </div>
-                    <!-- ── SURGICAL EDIT END ── -->
                     <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('GURU')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
@@ -769,7 +768,6 @@
             <!-- Panel Status ID Murid -->
             <div id="panelAdminMurid" class="hidden">
                 <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-                    <!-- ── SURGICAL EDIT START: Tambah Filter Lokasi Asal Murid & Flex Wrap ── -->
                     <div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                         <div class="relative w-full sm:w-64">
                             <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
@@ -785,16 +783,13 @@
                         </div>
                         <div class="relative w-full sm:w-48">
                             <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-                            <!-- ── SURGICAL EDIT START: Kemaskini Pilihan Lokasi Murid ── -->
                             <select id="filterLokasiMuridAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-cyan-500" onchange="loadSenaraiDelimaAdmin('MURID')">
                                 <option value="ALL">Semua Lokasi</option>
                                 <option value="DALAM NEGERI">Dalam Negeri</option>
                                 <option value="LUAR NEGERI">Luar Negeri</option>
                             </select>
-                            <!-- ── SURGICAL EDIT END ── -->
                         </div>
                     </div>
-                    <!-- ── SURGICAL EDIT END ── -->
                     <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('MURID')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
@@ -837,7 +832,7 @@
             </div>
         </div>
 
-<!-- ── SURGICAL EDIT START: Menambah Rangka Antaramuka Tab Libat Urus ── -->
+        <!-- ── SURGICAL EDIT START: Menambah Rangka Antaramuka Tab Libat Urus Secara Dinamik (6 Kolum) ── -->
         <!-- TAB 7B: LIBAT URUS -->
         <div id="tab-libat-urus" class="hidden p-6 md:p-8 bg-slate-50/50">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
@@ -855,22 +850,30 @@
             </div>
 
             <!-- Dashboard Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bulan Paling Kerap</span>
-                    <h4 class="text-2xl font-black text-slate-700 uppercase" id="statLuBulan">-</h4>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Bulan Aktif</span>
+                    <h4 class="text-xl font-black text-slate-700 uppercase" id="statLuBulan">-</h4>
                 </div>
-                <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center justify-center text-center">
-                    <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Peserta Guru</span>
-                    <h4 class="text-3xl font-black text-blue-700" id="statLuGuru">0</h4>
+                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Peserta Guru</span>
+                    <h4 class="text-2xl font-black text-blue-700" id="statLuGuru">0</h4>
                 </div>
-                <div class="bg-cyan-50 p-5 rounded-2xl border border-cyan-100 shadow-sm flex flex-col items-center justify-center text-center">
-                    <span class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-2">Peserta Murid</span>
-                    <h4 class="text-3xl font-black text-cyan-700" id="statLuMurid">0</h4>
+                <div class="bg-cyan-50 p-4 rounded-2xl border border-cyan-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-1">Peserta Murid</span>
+                    <h4 class="text-2xl font-black text-cyan-700" id="statLuMurid">0</h4>
                 </div>
-                <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center justify-center text-center">
-                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Peserta Ibu-Bapa</span>
-                    <h4 class="text-3xl font-black text-emerald-700" id="statLuIbuBapa">0</h4>
+                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Ibu-Bapa</span>
+                    <h4 class="text-2xl font-black text-emerald-700" id="statLuIbuBapa">0</h4>
+                </div>
+                <div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest mb-1">Bersemuka</span>
+                    <h4 class="text-2xl font-black text-teal-700" id="luKpiBersemuka">0</h4>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-1">Dalam Talian</span>
+                    <h4 class="text-2xl font-black text-purple-700" id="luKpiDalamTalian">0</h4>
                 </div>
             </div>
 
@@ -924,7 +927,7 @@
                 <p class="text-slate-500 font-medium">Tiada rekod libat urus ditemui berpandukan tapisan semasa.</p>
             </div>
         </div>
-<!-- ── SURGICAL EDIT END ── -->
+        <!-- ── SURGICAL EDIT END ── -->
 
         <!-- TAB 8: ADMIN USERS -->
         <div id="tab-admin-users" class="hidden p-6 md:p-8">

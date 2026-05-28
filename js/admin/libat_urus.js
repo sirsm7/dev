@@ -34,8 +34,18 @@ window.loadAdminLibatUrus = async function() {
             daerahFilter = APP_CONFIG.PPD_MAPPING[userKod] || null;
         }
 
+// ── SURGICAL EDIT START: Memuat turun data dan menapis hanya rekod tahun semasa ──
         // Fetch data from database via service
-        allLibatUrusData = await libatUrusService.getAllReports(daerahFilter);
+        const rawData = await libatUrusService.getAllReports(daerahFilter);
+        const currentYear = new Date().getFullYear();
+        
+        // Filter strictly for current year data
+        allLibatUrusData = rawData.filter(item => {
+            if (!item.tarikh_laksana) return false;
+            const itemYear = new Date(item.tarikh_laksana).getFullYear();
+            return itemYear === currentYear;
+        });
+// ── SURGICAL EDIT END ──
         
         // Initialize filters and UI
         resetLibatUrusFilters();
@@ -201,77 +211,104 @@ function renderLibatUrusGallery(data) {
 
     emptyState.classList.add('hidden');
     
+// ── SURGICAL EDIT START: Reka bentuk semula jubin (minimalis), suntikan lakaran kecil (thumbnail), & Ringkasan Sekolah ──
+    // Pengiraan untuk ringkasan jumlah sekolah unik
+    const uniqueSchoolsCount = new Set(data.map(item => item.kod_sekolah)).size;
+    const currentYear = new Date().getFullYear();
+
+    const summaryHeader = `
+        <div class="col-span-full flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pb-4 border-b-2 border-slate-100">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1" aria-hidden="true">Prestasi Tahun Semasa</p>
+                <h3 class="text-3xl font-black text-slate-800 tracking-tighter leading-none">Penyerahan ${currentYear}</h3>
+            </div>
+            <div class="bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
+                    <i class="fas fa-school text-lg"></i>
+                </div>
+                <div>
+                    <span class="block text-2xl font-black text-slate-800 leading-none">${uniqueSchoolsCount}</span>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Jumlah Sekolah</span>
+                </div>
+            </div>
+        </div>
+    `;
+
     const htmlCards = data.map(item => {
         const cat = (item.kategori_sasar || '').toUpperCase();
-        const dateStr = new Date(item.tarikh_laksana).toLocaleDateString('ms-MY');
+        const dateStr = new Date(item.tarikh_laksana).toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
         const schoolName = item.school?.nama_sekolah || item.kod_sekolah;
         const daerah = item.school?.daerah || 'N/A';
         
-// ── SURGICAL EDIT START: Reka bentuk lencana (badge) spesifik bagi Mod Pelaksanaan ──
         const mod = (item.mod_pelaksanaan || 'BERSEMUKA').toUpperCase();
-        const modBadgeStyle = mod === 'DALAM TALIAN' 
-            ? 'bg-purple-100 text-purple-700 border-purple-200' 
-            : 'bg-teal-100 text-teal-700 border-teal-200';
-        const modIcon = mod === 'DALAM TALIAN' ? '<i class="fas fa-video"></i>' : '<i class="fas fa-users"></i>';
-// ── SURGICAL EDIT END ──
+        const isOnline = mod === 'DALAM TALIAN';
+        const modStyle = isOnline ? 'text-purple-600 bg-purple-50 border-purple-100' : 'text-teal-600 bg-teal-50 border-teal-100';
+        const modIcon = isOnline ? 'fa-video' : 'fa-users';
         
-        let badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
-        let icon = '<i class="fas fa-users"></i>';
+        let catStyle = 'text-slate-600 bg-slate-50 border-slate-100';
+        let catIcon = 'fa-users';
         
-        if (cat === 'GURU') {
-            badgeStyle = 'bg-blue-100 text-blue-700 border-blue-200';
-            icon = '<i class="fas fa-chalkboard-teacher"></i>';
-        } else if (cat === 'MURID') {
-            badgeStyle = 'bg-cyan-100 text-cyan-700 border-cyan-200';
-            icon = '<i class="fas fa-user-graduate"></i>';
-        } else if (cat.includes('IBU')) {
-            badgeStyle = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            icon = '<i class="fas fa-people-arrows"></i>';
+        if (cat === 'GURU') { catStyle = 'text-blue-600 bg-blue-50 border-blue-100'; catIcon = 'fa-chalkboard-teacher'; }
+        else if (cat === 'MURID') { catStyle = 'text-cyan-600 bg-cyan-50 border-cyan-100'; catIcon = 'fa-user-graduate'; }
+        else if (cat.includes('IBU')) { catStyle = 'text-emerald-600 bg-emerald-50 border-emerald-100'; catIcon = 'fa-people-arrows'; }
+
+        // Penjanaan Lakaran Kecil (Thumbnail) Prebiu 
+        let previewHtml = '';
+        if (item.pautan_fail && item.pautan_fail.includes('drive.google.com')) {
+            const previewUrl = item.pautan_fail.replace(/\/view.*/, '/preview');
+            // iframe diset pointer-events-none untuk prestasi DOM optimum
+            previewHtml = `<div class="h-40 w-full overflow-hidden bg-slate-100 relative group-hover:opacity-90 transition-opacity">
+                <iframe src="${previewUrl}" class="w-full h-56 -mt-8 pointer-events-none border-0" aria-hidden="true" tabindex="-1" loading="lazy"></iframe>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+            </div>`;
+        } else {
+            previewHtml = `<div class="h-40 w-full bg-slate-50 flex items-center justify-center border-b border-slate-100">
+                <i class="fas fa-file-alt text-4xl text-slate-200"></i>
+            </div>`;
         }
 
         return `
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
-                <div>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border shadow-sm ${badgeStyle}">
-                        ${icon} ${cat}
-                    </span>
-<!-- ── SURGICAL EDIT START: Meletakkan lencana Mod Pelaksanaan bersebelahan Kategori Sasar ── -->
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border shadow-sm ml-1 ${modBadgeStyle}">
-                        ${modIcon} ${mod}
-                    </span>
-<!-- ── SURGICAL EDIT END ── -->
-                </div>
-                <div class="text-[10px] text-slate-400 font-bold bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm uppercase">
-                    ${daerah}
-                </div>
-            </div>
-            <div class="p-5 flex-grow">
-                <h4 class="font-bold text-slate-800 text-sm mb-1 leading-tight uppercase">${schoolName}</h4>
-                <p class="text-[10px] font-mono font-bold text-slate-400 mb-3"><i class="fas fa-fingerprint mr-1"></i> ${item.kod_sekolah}</p>
-                
-                <div class="bg-orange-50 rounded-xl p-3 border border-orange-100 mb-4">
-                    <p class="text-xs font-bold text-orange-900 mb-1 leading-snug uppercase">${item.tempat}</p>
-                    <p class="text-[10px] text-orange-600 font-bold uppercase"><i class="far fa-calendar-alt mr-1"></i> ${dateStr} (${item.bulan})</p>
+        <div class="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-orange-200 transition-all duration-500 flex flex-col overflow-hidden relative transform hover:-translate-y-1">
+            ${previewHtml}
+            
+            <div class="p-5 flex-grow flex flex-col">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex flex-wrap gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${catStyle}" aria-label="Kategori: ${cat}">
+                            <i class="fas ${catIcon}"></i> ${cat}
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${modStyle}" aria-label="Mod: ${mod}">
+                            <i class="fas ${modIcon}"></i> ${mod}
+                        </span>
+                    </div>
+                    <span class="text-[9px] font-bold text-slate-400 border border-slate-100 px-2 py-1 rounded-md uppercase" aria-label="Daerah: ${daerah}">${daerah}</span>
                 </div>
                 
-                <div class="flex items-center justify-between mt-auto">
-                    <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Peserta</span>
-                        <span class="text-xl font-black text-slate-700">${item.jumlah_peserta}</span>
+                <h4 class="font-bold text-slate-900 text-sm mb-1 leading-snug line-clamp-2 uppercase group-hover:text-orange-600 transition-colors">${schoolName}</h4>
+                <p class="text-[10px] font-mono font-bold text-slate-400 mb-5"><i class="fas fa-fingerprint mr-1"></i> ${item.kod_sekolah}</p>
+                
+                <div class="mt-auto grid grid-cols-[1fr_auto] gap-3 mb-5">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tarikh & Tempat</span>
+                        <span class="block text-xs font-bold text-slate-700 truncate" title="${item.tempat}">${item.tempat}</span>
+                        <span class="block text-[10px] font-semibold text-orange-600 mt-0.5">${dateStr}</span>
+                    </div>
+                    <div class="bg-orange-50 p-3 px-4 rounded-2xl border border-orange-100 flex flex-col justify-center items-center text-center">
+                        <span class="block text-[9px] font-bold text-orange-400 uppercase tracking-widest mb-0.5">Peserta</span>
+                        <span class="block text-xl font-black text-orange-600 leading-none">${item.jumlah_peserta}</span>
                     </div>
                 </div>
-            </div>
-            <div class="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                <a href="${item.pautan_fail}" target="_blank" class="flex-1 text-center py-2.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm transition-all transform active:scale-95 flex items-center justify-center gap-2">
-                    <i class="fas fa-file-pdf"></i> Lihat Laporan
+                
+                <a href="${item.pautan_fail}" target="_blank" rel="noopener noreferrer" class="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-orange-600 text-white text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm" aria-label="Lihat laporan penuh untuk ${schoolName}">
+                    <i class="fas fa-external-link-alt text-[10px]"></i> Buka Laporan
                 </a>
             </div>
         </div>
         `;
     }).join('');
 
-    galleryContainer.innerHTML = htmlCards;
+    galleryContainer.innerHTML = summaryHeader + htmlCards;
+// ── SURGICAL EDIT END ──
 }
 
 /**

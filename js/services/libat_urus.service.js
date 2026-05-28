@@ -5,7 +5,9 @@
  */
 
 import { APP_CONFIG } from '../config/app.config.js';
-import { supabase } from '../core/db.js';
+// ── SURGICAL EDIT START: Membetulkan ralat import dan menggunakan getInstance pattern untuk keselamatan Anti-Crash ──
+import { getDatabaseClient } from '../core/db.js';
+// ── SURGICAL EDIT END ──
 
 class LibatUrusService {
     constructor() {
@@ -88,10 +90,15 @@ class LibatUrusService {
             pautan_fail: data.pautan_fail
         };
 
-        const { data: insertedData, error } = await supabase
+// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
+        const db = getDatabaseClient();
+        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+
+        const { data: insertedData, error } = await db
             .from(this.tableName)
             .insert([payload])
             .select();
+// ── SURGICAL EDIT END ──
 
         if (error) {
             console.error('Error inserting Libat Urus record:', error);
@@ -108,8 +115,13 @@ class LibatUrusService {
      * @returns {Promise<Array>} - List of records with joined details
      */
     async getAllReports(daerahFilter = null) {
-        let query = supabase
+// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
+        const db = getDatabaseClient();
+        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+
+        let query = db
             .from(this.tableName)
+// ── SURGICAL EDIT END ──
             .select(`
                 *,
                 school:${APP_CONFIG.DB_TABLES.SCHOOLS} (
@@ -143,8 +155,13 @@ class LibatUrusService {
      * @returns {Promise<Array>}
      */
     async getReportsBySchool(kodSekolah) {
-        const { data, error } = await supabase
+// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
+        const db = getDatabaseClient();
+        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+
+        const { data, error } = await db
             .from(this.tableName)
+// ── SURGICAL EDIT END ──
             .select(`
                 *,
                 school:${APP_CONFIG.DB_TABLES.SCHOOLS} (
@@ -169,8 +186,13 @@ class LibatUrusService {
      * @returns {Promise<boolean>}
      */
     async deleteReport(id) {
-        const { error } = await supabase
+// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
+        const db = getDatabaseClient();
+        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+
+        const { error } = await db
             .from(this.tableName)
+// ── SURGICAL EDIT END ──
             .delete()
             .eq('id', id);
 

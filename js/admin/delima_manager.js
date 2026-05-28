@@ -105,18 +105,30 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         // SMART DYNAMIC CASCADING FILTERS LOGIC
         // =========================================================
         
-        // 1. Tapis data asas berdasarkan Status Semasa terlebih dahulu
-        let statusFilteredData = dataToProcess;
+        // ── SURGICAL EDIT START: Memindahkan tapisan Lokasi ke tahap Pra-Tapisan untuk kesan lata (cascading) ──
+        // 1. Pra-Tapisan data asas berdasarkan Status Semasa & Lokasi
+        let preFilteredData = dataToProcess;
+        
         if (statusVal !== 'ALL') {
-            statusFilteredData = statusFilteredData.filter(item => item.status_proses === statusVal);
+            preFilteredData = preFilteredData.filter(item => item.status_proses === statusVal);
+        }
+
+        // Tapisan gabungan untuk Lokasi Asal dilaksanakan sebelum penjanaan dropdown
+        if (lokVal !== 'ALL') {
+            if (lokVal === 'DALAM NEGERI') {
+                // Tangkap kedua-dua kluster daerah Melaka
+                preFilteredData = preFilteredData.filter(item => item.nama && (item.nama.includes('(DALAM DAERAH)') || item.nama.includes('(LUAR DAERAH)')));
+            } else if (lokVal === 'LUAR NEGERI') {
+                preFilteredData = preFilteredData.filter(item => item.nama && item.nama.includes('(LUAR NEGERI)'));
+            } else {
+                preFilteredData = preFilteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
+            }
         }
 
         if (catatanSelect && sekolahSelect) {
             
-            // Dropdown dibina bebas berpandukan 'statusFilteredData' mentah sahaja untuk halang infinite-reset loop
-            
-            // A. JANA DROPDOWN CATATAN (Bebas)
-            const uniqueCatatan = [...new Set(statusFilteredData.map(item => item.catatan).filter(Boolean))].sort();
+            // A. JANA DROPDOWN CATATAN (Berdasarkan preFilteredData)
+            const uniqueCatatan = [...new Set(preFilteredData.map(item => item.catatan).filter(Boolean))].sort();
             
             let catatanHtml = '<option value="ALL">Semua Catatan</option>';
             uniqueCatatan.forEach(c => {
@@ -132,8 +144,8 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 catatanSelect.value = 'ALL';
             }
 
-            // B. JANA DROPDOWN SEKOLAH (Bebas)
-            const uniqueSekolah = [...new Set(statusFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
+            // B. JANA DROPDOWN SEKOLAH (Berdasarkan preFilteredData)
+            const uniqueSekolah = [...new Set(preFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
             
             const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
             let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
@@ -159,8 +171,8 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             }
         }
 
-        // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan (Validated Parameters)
-        let filteredData = statusFilteredData;
+        // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan
+        let filteredData = preFilteredData;
 
         if (sekVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.kod_sekolah === sekVal);
@@ -168,22 +180,7 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         if (catVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.catatan === catVal);
         }
-        
-        // ── SURGICAL EDIT START: Laksanakan tapisan gabungan untuk Lokasi Asal DALAM NEGERI ──
-        if (lokVal !== 'ALL') {
-            filteredData = filteredData.filter(item => {
-                if (!item.nama) return false;
-                const namaUpper = item.nama.toUpperCase();
-                if (lokVal === 'DALAM NEGERI') {
-                    // Tangkap kedua-dua kluster daerah secara tidak sensitif huruf
-                    return namaUpper.includes('(DALAM DAERAH)') || namaUpper.includes('(LUAR DAERAH)');
-                } else if (lokVal === 'LUAR NEGERI') {
-                    return namaUpper.includes('(LUAR NEGERI)');
-                } else {
-                    return namaUpper.includes(`(${lokVal.toUpperCase()})`);
-                }
-            });
-        }
+        // Nota: Tapisan lokVal telah dipindahkan ke blok preFilteredData di atas.
         // ── SURGICAL EDIT END ──
 
         // Simpan state tapisan penuh untuk kegunaan eksport CSV
@@ -541,31 +538,37 @@ window.tandaSelesaiPukal = async function(kategori) {
             customClass: { popup: 'colored-toast' }
         });
 
-        // ── SURGICAL EDIT START: Pembaikan Cache Status SELESAI Pukal ──
-        // 1. Kemaskini Cache: Update status_proses kepada 'SELESAI' (BUKAN delete dari rawData)
+        // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah
         if (kategori === 'GURU') {
-            rawDataGuru.forEach(item => {
-                if (idsToUpdate.includes(String(item.id))) item.status_proses = 'SELESAI';
-            });
+            rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
+            if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
         } else {
-            rawDataMurid.forEach(item => {
-                if (idsToUpdate.includes(String(item.id))) item.status_proses = 'SELESAI';
-            });
+            rawDataMurid = rawDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
+            if (filteredDataMurid) filteredDataMurid = filteredDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
         }
 
-        // 2. Animasi Perubahan
+        // 2. Animasi Pembuangan Baris
         rowsToRemove.forEach(row => {
             row.style.transition = 'all 0.3s ease-out';
-            row.style.opacity = '0.5';
-            row.style.transform = 'scale(0.98)';
+            row.style.opacity = '0';
+            row.style.transform = 'translateX(20px)';
         });
 
         setTimeout(() => {
-            // 3. Reset UI Pukal dan Muat Semula Jadual untuk patuhi filter semasa secara natif
+            let parentTbody = null;
+            rowsToRemove.forEach(row => {
+                parentTbody = row.parentNode;
+                row.remove();
+            });
+
+            // 3. Reset UI Tindakan Pukal
             window.resetBulkState(kategori);
-            window.loadSenaraiDelimaAdmin(kategori, false);
+
+            // 4. Masukkan baris kekosongan jika jadual telus sepenuhnya
+            if (parentTbody && parentTbody.children.length === 0) {
+                parentTbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-3 opacity-20 block"></i>Tiada rekod permohonan padan dengan tapisan ini.</td></tr>`;
+            }
         }, 300);
-        // ── SURGICAL EDIT END ──
 
     } catch (error) {
         console.error('Ralat kemaskini pukal:', error);

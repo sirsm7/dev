@@ -131,9 +131,11 @@ class LibatUrusService {
         }
 
         // 2. Ambil data rujukan sekolah untuk cantuman
+        // ── SURGICAL EDIT START: Menetapkan nama jadual sebenar 'smpid_sekolah_data' ──
         const { data: schoolData, error: schoolError } = await db
-            .from(APP_CONFIG.DB_TABLES.SCHOOLS)
+            .from('smpid_sekolah_data')
             .select('kod_sekolah, nama_sekolah, daerah');
+        // ── SURGICAL EDIT END ──
 
         if (schoolError) {
             console.error('Error fetching schools data for mapping:', schoolError);
@@ -189,11 +191,13 @@ class LibatUrusService {
         }
 
         // 2. Ambil data spesifik nama dan daerah sekolah tersebut
+        // ── SURGICAL EDIT START: Menetapkan nama jadual sebenar 'smpid_sekolah_data' ──
         const { data: schoolData, error: schoolError } = await db
-            .from(APP_CONFIG.DB_TABLES.SCHOOLS)
+            .from('smpid_sekolah_data')
             .select('nama_sekolah, daerah')
             .eq('kod_sekolah', kodSekolah)
             .single();
+        // ── SURGICAL EDIT END ──
 
         // 3. Jika ralat (cth: kod sekolah tiada), biar nilai schoolObj menjadi null untuk mengelak crash
         const schoolObj = (!schoolError && schoolData) ? schoolData : null;

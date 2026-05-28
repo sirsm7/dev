@@ -115,38 +115,55 @@ class LibatUrusService {
      * @returns {Promise<Array>} - List of records with joined details
      */
     async getAllReports(daerahFilter = null) {
-// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
+// ── SURGICAL EDIT START: Melaksanakan In-Memory Join bagi mengelakkan ralat Foreign Key Supabase ──
         const db = getDatabaseClient();
         if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
 
-        let query = db
+        // 1. Ambil data Libat Urus secara bebas tanpa rantaian
+        const { data: libatUrusData, error: libatUrusError } = await db
             .from(this.tableName)
-// ── SURGICAL EDIT END ──
-            .select(`
-                *,
-                school:${APP_CONFIG.DB_TABLES.SCHOOLS} (
-                    nama_sekolah,
-                    daerah
-                )
-            `)
+            .select('*')
             .order('tarikh_laksana', { ascending: false });
 
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('Error fetching all Libat Urus reports:', error);
-            throw new Error(error.message);
+        if (libatUrusError) {
+            console.error('Error fetching all Libat Urus reports:', libatUrusError);
+            throw new Error(libatUrusError.message);
         }
 
-        // Post-filter by district if specified (since multi-join filters in Supabase require complex structures, we filter in memory)
+        // 2. Ambil data rujukan sekolah untuk cantuman
+        const { data: schoolData, error: schoolError } = await db
+            .from(APP_CONFIG.DB_TABLES.SCHOOLS)
+            .select('kod_sekolah, nama_sekolah, daerah');
+
+        if (schoolError) {
+            console.error('Error fetching schools data for mapping:', schoolError);
+            throw new Error(schoolError.message);
+        }
+
+        // 3. Bina pemetaan berindeks (Hash Map) untuk carian pantas O(1)
+        const schoolMap = {};
+        if (schoolData) {
+            schoolData.forEach(s => {
+                schoolMap[s.kod_sekolah] = { nama_sekolah: s.nama_sekolah, daerah: s.daerah };
+            });
+        }
+
+        // 4. Cantumkan secara In-Memory
+        const mappedData = libatUrusData.map(item => ({
+            ...item,
+            school: schoolMap[item.kod_sekolah] || null
+        }));
+
+        // 5. Post-filter by district if specified
         if (daerahFilter) {
             const normalizedDaerah = daerahFilter.trim().toUpperCase();
-            return data.filter(item => 
+            return mappedData.filter(item => 
                 item.school && item.school.daerah && item.school.daerah.toUpperCase() === normalizedDaerah
             );
         }
 
-        return data;
+        return mappedData;
+// ── SURGICAL EDIT END ──
     }
 
     /**
@@ -155,29 +172,38 @@ class LibatUrusService {
      * @returns {Promise<Array>}
      */
     async getReportsBySchool(kodSekolah) {
-// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
+// ── SURGICAL EDIT START: Melaksanakan In-Memory Join bagi mengelakkan ralat Foreign Key Supabase ──
         const db = getDatabaseClient();
         if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
 
-        const { data, error } = await db
+        // 1. Ambil data Libat Urus untuk sekolah tertentu tanpa rantaian
+        const { data: libatUrusData, error: libatUrusError } = await db
             .from(this.tableName)
-// ── SURGICAL EDIT END ──
-            .select(`
-                *,
-                school:${APP_CONFIG.DB_TABLES.SCHOOLS} (
-                    nama_sekolah,
-                    daerah
-                )
-            `)
+            .select('*')
             .eq('kod_sekolah', kodSekolah)
             .order('tarikh_laksana', { ascending: false });
 
-        if (error) {
-            console.error(`Error fetching reports for school ${kodSekolah}:`, error);
-            throw new Error(error.message);
+        if (libatUrusError) {
+            console.error(`Error fetching reports for school ${kodSekolah}:`, libatUrusError);
+            throw new Error(libatUrusError.message);
         }
 
-        return data;
+        // 2. Ambil data spesifik nama dan daerah sekolah tersebut
+        const { data: schoolData, error: schoolError } = await db
+            .from(APP_CONFIG.DB_TABLES.SCHOOLS)
+            .select('nama_sekolah, daerah')
+            .eq('kod_sekolah', kodSekolah)
+            .single();
+
+        // 3. Jika ralat (cth: kod sekolah tiada), biar nilai schoolObj menjadi null untuk mengelak crash
+        const schoolObj = (!schoolError && schoolData) ? schoolData : null;
+
+        // 4. Cantum dan kembalikan tatasusunan data
+        return libatUrusData.map(item => ({
+            ...item,
+            school: schoolObj
+        }));
+// ── SURGICAL EDIT END ──
     }
 
     /**

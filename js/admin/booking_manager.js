@@ -144,7 +144,7 @@ function checkIsAllowedDayAdmin(dateObj) {
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || '';
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
     
-    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk dikunci
+    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk dikunci (kecuali Sabtu yang memerlukan semakan khusus)
     if ([2, 3, 4].includes(dayOfWeek)) return true;
     
     // Isnin (1) - Dibenarkan jika SUPER_ADMIN, JPNMEL, atau ADMIN MELAKA TENGAH (M020)
@@ -155,8 +155,13 @@ function checkIsAllowedDayAdmin(dateObj) {
         return false; // Daerah lain tidak perlu berurusan dengan hari Isnin
     }
     
-    // Sabtu (6) - Dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb) untuk dikunci
-    if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+    // Sabtu (6) - Dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb) HANYA untuk ALOR GAJAH atau SUPER_ADMIN
+    if (dayOfWeek === 6) {
+        if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+        const namaDaerah = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) ? APP_CONFIG.PPD_MAPPING[userKod].toUpperCase() : '';
+        if ((namaDaerah === 'ALOR GAJAH' || userKod === 'M010') && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+        return false;
+    }
     
     return false;
 }

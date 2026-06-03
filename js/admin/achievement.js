@@ -359,7 +359,7 @@ window.renderPencapaianTable = function() {
     // ── SURGICAL EDIT END ──
 
     const katFilter = currentKategoriFilter;
-    const sekFilter = document.getElementById('filterSekolahPencapaian').value;
+    const sekFilter = document.getElementById('filterSekolahPencapaian');
     const jenisFilter = document.getElementById('filterJenisPencapaian').value; 
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
@@ -623,7 +623,7 @@ function updateProgramCloud(data) {
 
     const sortedPrograms = Object.entries(counts)
         .sort((a, b) => b[1] - a[1]) // Susun kekerapan tertinggi ke terendah
-        .slice(0, 10);               // Had kepada 10 tertinggi sahaja
+        .slice(0, 10);                // Had kepada 10 tertinggi sahaja
 
     container.innerHTML = sortedPrograms.map(([program, count]) => {
         const isActive = currentProgramFilter.includes(program);
@@ -779,12 +779,24 @@ window.resetPencapaianFilters = function() {
     currentCardFilter = 'ALL'; 
     currentJawatanFilter = 'ALL'; 
     currentKategoriFilter = 'ALL';
+    
     // ── SURGICAL EDIT START: Reset filter daerah dan program Kemenjadian ──
     currentProgramFilter = [];
     currentDaerahFilter = 'ALL';
     // ── SURGICAL EDIT END ──
-    document.getElementById('searchPencapaianInput').value = '';
     
+    // 1. Kosongkan input carian utama
+    const mainSearch = document.getElementById('searchPencapaianInput');
+    if(mainSearch) mainSearch.value = '';
+    
+    // 2. Kosongkan input carian di dalam dropdown "SEMUA PROGRAM"
+    const progSearchInput = document.getElementById('progSearchInput');
+    if (progSearchInput) {
+        progSearchInput.value = '';
+        // Reset paparan list jika ia sudah di-render (buang filter 'display:none')
+        document.querySelectorAll('.prog-item').forEach(el => el.style.display = '');
+    }
+
     const elSek = document.getElementById('filterSekolahPencapaian');
     if(elSek) elSek.value = 'ALL';
 

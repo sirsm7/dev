@@ -1,10 +1,7 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.6 (Surgical RBAC Calibration - Alor Gajah Sabtu & Melaka Tengah Isnin)
- * --- UPDATE V8.6 ---
- * Mengemas kini logik lapisan validasi API untuk menyekat hari Sabtu hanya untuk PPD
- * Alor Gajah (M010) pada minggu ke-3, manakala hari Isnin dikekalkan untuk Melaka Tengah.
+ * Version: 8.5 (Surgical RBAC Calibration & Non-Destructive Lock Merge Fix)
  * --- UPDATE V8.5 (SUPER_ADMIN UNLOCK FIX) ---
  * Memperbetulkan pepijat (bug) di mana tindakan 'UNLOCK' oleh SUPER_ADMIN sebelum ini
  * hanya menimpa (overwrite) data berbanding menolak (subtract) daerah daripada senarai kunci.
@@ -129,7 +126,7 @@ export const BookingService = {
         const db = getDatabaseClient();
         const { tarikh, masa, kod_sekolah, nama_sekolah, tajuk_bengkel, nama_pic, no_tel_pic } = payload;
 
-        // SURGICAL EDIT START: Menyusun semula pertanyaan daerah ke atas untuk validasi Isnin (Melaka Tengah) & Sabtu (Minggu ke-3, Alor Gajah sahaja)
+        // SURGICAL EDIT START: Menyusun semula pertanyaan daerah ke atas untuk validasi Isnin (Melaka Tengah) & Sabtu (Minggu ke-3)
         // --- RBAC DAERAH INJECTION UNTUK KAWALAN PERTINDIHAN (COLLISION) ---
         const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', kod_sekolah).maybeSingle();
         const daerah = sData && sData.daerah ? sData.daerah.toUpperCase() : 'ALOR GAJAH';
@@ -149,7 +146,6 @@ export const BookingService = {
         const day = dateObj.getDay();
         const dayOfMonth = dateObj.getDate();
         const isMelakaTengah = (daerah === 'MELAKA TENGAH' || kod_sekolah === 'M020');
-        const isAlorGajah = (daerah === 'ALOR GAJAH' || kod_sekolah === 'M010');
 
         let isAllowedDay = false;
         let errorMsg = "Sesi bimbingan tidak dibenarkan pada tarikh ini.";
@@ -163,14 +159,10 @@ export const BookingService = {
                 errorMsg = "Hari Isnin hanya dibuka untuk tempahan PPD Melaka Tengah (M020) sahaja.";
             }
         } else if (day === 6) { // Sabtu
-            if (isAlorGajah) {
-                if (dayOfMonth >= 15 && dayOfMonth <= 21) {
-                    isAllowedDay = true;
-                } else {
-                    errorMsg = "Hari Sabtu hanya dibuka untuk tempahan pada minggu ke-3 (15hb - 21hb) setiap bulan sahaja.";
-                }
+            if (dayOfMonth >= 15 && dayOfMonth <= 21) {
+                isAllowedDay = true;
             } else {
-                errorMsg = "Hari Sabtu hanya dibuka untuk tempahan PPD Alor Gajah (M010) sahaja.";
+                errorMsg = "Hari Sabtu hanya dibuka untuk tempahan pada minggu ke-3 (15hb - 21hb) setiap bulan sahaja.";
             }
         }
 

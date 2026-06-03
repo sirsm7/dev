@@ -85,38 +85,31 @@ function initDistrictFilter(userRole) {
 
 /**
  * PRO WEB CASTER: Helper untuk mendapatkan data tersaring (Global State)
- * FIXED: Cross-reference dengan globalDashboardData untuk padanan daerah
+ * FIXED: Menggunakan skema data Supabase sebenar (kolum 'daerah' dan 'kod_sekolah')
  */
 function getBaseFilteredData() {
     let list = [...dcsDataList];
     const filterEl = document.getElementById('filterDaerahAnalisa');
     
     if (filterEl && filterEl.value !== 'ALL') {
-        const targetPPD = filterEl.value; // cth: 'M010'
+        const targetPPDCode = filterEl.value; // Cth: 'M030'
         
-        // 1. Dapatkan senarai kod sekolah bagi daerah ini dari profil global (jika wujud)
-        let kodSekolahDalamPpd = [];
-        if (window.globalDashboardData && window.globalDashboardData.length > 0) {
-            // Semak pelbagai kemungkinan nama parameter bagi daerah/PPD
-            kodSekolahDalamPpd = window.globalDashboardData
-                .filter(s => s.kod_ppd === targetPPD || s.ppd === targetPPD || s.kod_daerah === targetPPD || s.daerah === targetPPD)
-                .map(s => s.kod_sekolah);
-        }
+        // Tukar kod PPD kepada nama daerah (Cth: 'ALOR GAJAH') merujuk kepada app.config.js
+        const senaraiPPD = APP_CONFIG.PPD_MAPPING || {};
+        const targetPPDName = senaraiPPD[targetPPDCode] ? senaraiPPD[targetPPDCode].toUpperCase() : targetPPDCode.toUpperCase();
 
-        // 2. Laksanakan saringan
         list = list.filter(d => {
-            // Tapis terus jika rekod itu adalah rekod KPI PPD itu sendiri
-            if (d.kod_sekolah === targetPPD) return true;
+            // 1. Sentiasa benarkan rekod purata/KPI PPD itu sendiri (kod_sekolah = 'M030')
+            if (d.kod_sekolah && d.kod_sekolah.toUpperCase() === targetPPDCode.toUpperCase()) {
+                return true;
+            }
 
-            // Jika API DCS mempunyai medan PPD/Daerah secara terus
-            if (d.kod_ppd === targetPPD || d.daerah === targetPPD || d.kod_daerah === targetPPD) return true;
-            
-            // Jika tidak, gunakan padanan senarai kod sekolah dari globalDashboardData
-            if (kodSekolahDalamPpd.length > 0) {
-                return kodSekolahDalamPpd.includes(d.kod_sekolah);
+            // 2. Padankan berdasarkan kolum 'daerah' yang wujud di dalam Supabase
+            if (d.daerah && d.daerah.toUpperCase() === targetPPDName) {
+                return true;
             }
             
-            return false; // Tiada padanan dijumpai
+            return false; // Keluarkan dari senarai jika tiada padanan
         });
     }
     

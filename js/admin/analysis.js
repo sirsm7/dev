@@ -85,17 +85,41 @@ function initDistrictFilter(userRole) {
 
 /**
  * PRO WEB CASTER: Helper untuk mendapatkan data tersaring (Global State)
+ * FIXED: Cross-reference dengan globalDashboardData untuk padanan daerah
  */
 function getBaseFilteredData() {
     let list = [...dcsDataList];
     const filterEl = document.getElementById('filterDaerahAnalisa');
     
     if (filterEl && filterEl.value !== 'ALL') {
-        const targetPPD = filterEl.value;
-        // Penapis berdasarkan kod_ppd (Sila pastikan objek dcsDataList anda mempunyai atribut kod_ppd)
-        // Jika API anda tidak mempunyai kod_ppd, anda perlu mapping dari kod_sekolah
-        list = list.filter(d => d.kod_ppd === targetPPD || d.kod_sekolah === targetPPD);
+        const targetPPD = filterEl.value; // cth: 'M010'
+        
+        // 1. Dapatkan senarai kod sekolah bagi daerah ini dari profil global (jika wujud)
+        let kodSekolahDalamPpd = [];
+        if (window.globalDashboardData && window.globalDashboardData.length > 0) {
+            // Semak pelbagai kemungkinan nama parameter bagi daerah/PPD
+            kodSekolahDalamPpd = window.globalDashboardData
+                .filter(s => s.kod_ppd === targetPPD || s.ppd === targetPPD || s.kod_daerah === targetPPD || s.daerah === targetPPD)
+                .map(s => s.kod_sekolah);
+        }
+
+        // 2. Laksanakan saringan
+        list = list.filter(d => {
+            // Tapis terus jika rekod itu adalah rekod KPI PPD itu sendiri
+            if (d.kod_sekolah === targetPPD) return true;
+
+            // Jika API DCS mempunyai medan PPD/Daerah secara terus
+            if (d.kod_ppd === targetPPD || d.daerah === targetPPD || d.kod_daerah === targetPPD) return true;
+            
+            // Jika tidak, gunakan padanan senarai kod sekolah dari globalDashboardData
+            if (kodSekolahDalamPpd.length > 0) {
+                return kodSekolahDalamPpd.includes(d.kod_sekolah);
+            }
+            
+            return false; // Tiada padanan dijumpai
+        });
     }
+    
     return list;
 }
 

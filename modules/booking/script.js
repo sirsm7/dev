@@ -174,18 +174,36 @@ async function loadBookingHistory(kod) {
 function checkIsAllowedDay(dateObj) {
     const dayOfWeek = dateObj.getDay();
     const dayOfMonth = dateObj.getDate();
-    const isMelakaTengah = (schoolInfo.daerah === 'MELAKA TENGAH' || schoolInfo.kod === 'M020');
+    
+    // Fallback jika schoolInfo.daerah masih kosong, kita tidak membenarkan tempahan
+    if (!schoolInfo.daerah) return false;
+    
+    const daerah = schoolInfo.daerah.toUpperCase();
 
-    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk semua
-    if ([2, 3, 4].includes(dayOfWeek)) return true;
+    // 1. Logik MELAKA TENGAH (Isnin, Selasa, Rabu, Khamis)
+    // Juga merangkumi PPD Melaka Tengah (kod M020)
+    if (daerah.includes('MELAKA TENGAH') || schoolInfo.kod === 'M020') {
+        return dayOfWeek >= 1 && dayOfWeek <= 4;
+    }
     
-    // Isnin (1) dibenarkan KHAS untuk MELAKA TENGAH / M020 sahaja
-    if (dayOfWeek === 1 && isMelakaTengah) return true;
+    // 2. Logik JASIN (Selasa, Rabu, Khamis)
+    // Juga merangkumi PPD Jasin (kod M030)
+    if (daerah.includes('JASIN') || schoolInfo.kod === 'M030') {
+        return dayOfWeek >= 2 && dayOfWeek <= 4;
+    }
     
-    // Sabtu (6) dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb)
-    if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
-    
-    return false;
+    // 3. Logik ALOR GAJAH (Selasa, Rabu, Khamis DAN Sabtu Minggu ke-3)
+    // Juga merangkumi PPD Alor Gajah (kod M010)
+    if (daerah.includes('ALOR GAJAH') || schoolInfo.kod === 'M010') {
+        const isSelasaHinggaKhamis = (dayOfWeek >= 2 && dayOfWeek <= 4);
+        // Formula: Sabtu minggu ke-3 sentiasa jatuh pada tarikh 15 hingga 21 hari bulan
+        const isSabtuMingguKetiga = (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21);
+        
+        return isSelasaHinggaKhamis || isSabtuMingguKetiga;
+    }
+
+    // Jika daerah tidak dikenalpasti, gunakan ALLOWED_DAYS asal sebagai fallback sementara
+    return ALLOWED_DAYS.includes(dayOfWeek);
 }
 // SURGICAL EDIT END
 
@@ -244,7 +262,7 @@ window.renderCalendar = async function() {
 
             const dayOfWeek = dateObj.getDay();
             
-            // SURGICAL EDIT START: Gantikan rujukan statik dengan fungsi dinamik
+            // SURGICAL EDIT START: Gantikan rujukan statik dengan fungsi dinamik berasaskan daerah
             const isAllowedDay = checkIsAllowedDay(dateObj);
             // SURGICAL EDIT END
 

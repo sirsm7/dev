@@ -1,11 +1,10 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.6 (Slots & District Filter Integration)
- * --- UPDATE V8.6 ---
- * 1. Menerima parameter tambahan (adminDaerah) pada getMonthlyData untuk penapisan kalendar Super Admin.
- * 2. Mengintegrasikan logik 'kod:slot' dalam fungsi mengunci tarikh (manageDateLock).
- * 3. Mempertingkat perlindungan pertindihan (collision) di createBooking untuk membaca slot separa admin.
+ * Version: 8.7 (Strict District Day Validation Integration)
+ * --- UPDATE V8.7 ---
+ * Mempertingkat perlindungan pertindihan (collision) di createBooking untuk
+ * menepati logik unik hari bekerja bagi Jasin, Alor Gajah, dan Melaka Tengah.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -145,15 +144,22 @@ export const BookingService = {
         const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', daerah);
         const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
 
-        // Validasi 1: Hari Operasi yang Dibenarkan
+        // SURGICAL EDIT START: Validasi 1: Hari Operasi yang Dibenarkan mengikut Daerah (Server-Side)
         const dateObj = new Date(tarikh);
-        const day = dateObj.getDay();
+        const day = dateObj.getDay(); // 0:Ahad, 1:Isnin, ... 6:Sabtu
         const dayOfMonth = dateObj.getDate();
-        const isMelakaTengah = (daerah === 'MELAKA TENGAH' || kod_sekolah === 'M020');
+        
+        const dName = daerah;
+        const dCode = kod_sekolah;
+        
+        const isJasin = (dName === 'JASIN' || dCode.startsWith('J') || dCode === 'M010');
+        const isMelakaTengah = (dName === 'MELAKA TENGAH' || dCode.startsWith('M') && dCode !== 'M010' && dCode !== 'M030' || dCode === 'M020');
+        const isAlorGajah = (!isJasin && !isMelakaTengah); 
 
         let isAllowedDay = false;
         let errorMsg = "Sesi bimbingan tidak dibenarkan pada tarikh ini.";
 
+        // Universal (Selasa-Khamis dibenarkan untuk semua)
         if ([2, 3, 4].includes(day)) {
             isAllowedDay = true;
         } else if (day === 1) { // Isnin
@@ -163,10 +169,14 @@ export const BookingService = {
                 errorMsg = "Hari Isnin hanya dibuka untuk tempahan PPD Melaka Tengah (M020) sahaja.";
             }
         } else if (day === 6) { // Sabtu
-            if (dayOfMonth >= 15 && dayOfMonth <= 21) {
-                isAllowedDay = true;
+            if (isAlorGajah) {
+                if (dayOfMonth >= 15 && dayOfMonth <= 21) {
+                    isAllowedDay = true;
+                } else {
+                    errorMsg = "Hari Sabtu hanya dibuka untuk tempahan pada minggu ke-3 (15hb - 21hb) setiap bulan bagi Alor Gajah.";
+                }
             } else {
-                errorMsg = "Hari Sabtu hanya dibuka untuk tempahan pada minggu ke-3 (15hb - 21hb) setiap bulan sahaja.";
+                errorMsg = "Hari Sabtu hanya dibuka untuk tempahan PPD Alor Gajah sahaja.";
             }
         }
 
@@ -175,16 +185,21 @@ export const BookingService = {
         }
 
         // Validasi 2: Logik Spesifik Hari & Masa
-        // Sabtu: Hanya Pagi
+        // Sabtu: Hanya Pagi (untuk sesiapa yang berjaya sampai ke tahap ini)
         if (day === 6 && masa !== 'Pagi') {
             throw new Error("Maaf, sesi bimbingan pada hari Sabtu hanya dibuka untuk slot PAGI sahaja.");
         }
-        // '1 HARI': Hanya hari kerja biasa (Isnin - Khamis)
-        if (masa === '1 HARI' && ![1, 2, 3, 4].includes(day)) {
+        
+        // '1 HARI' / 'Petang': Tidak dibenarkan pada hari minggu (Sabtu/Ahad)
+        const isNormalDay = (day !== 0 && day !== 6);
+        if (masa === '1 HARI' && !isNormalDay) {
             throw new Error("Opsyen '1 HARI' hanya tersedia untuk hari bekerja biasa (Isnin-Khamis) sahaja.");
         }
+        if (masa === 'Petang' && !isNormalDay) {
+            throw new Error("Sesi Petang tidak ditawarkan pada hari kelepasan am atau hujung minggu.");
+        }
+        // SURGICAL EDIT END
 
-        // SURGICAL EDIT START: Menyemak Kunci Tarikh Termasuk Pemisahan Slot 
         // Validasi 3: Semak jika tarikh/slot telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
         const { data: lockRecord } = await db
             .from('smpid_bb_kunci')
@@ -194,7 +209,7 @@ export const BookingService = {
             .maybeSingle();
         
         if (lockRecord) {
-            const scopes = lockObj.kod_ppd ? lockObj.kod_ppd.split(',') : [];
+            const scopes = lockRecord.kod_ppd ? lockRecord.kod_ppd.split(',') : [];
             let isSlotLocked = false;
 
             for (const scope of scopes) {
@@ -230,7 +245,6 @@ export const BookingService = {
                 throw new Error(`Maaf, slot tempahan pada tarikh ini telah ditutup oleh pihak pentadbir PPD bagi urusan rasmi.`);
             }
         }
-        // SURGICAL EDIT END
 
         // Validasi 4: Konflik Masa & Kapasiti (Saringan Khusus Daerah)
         if (masa === '1 HARI') {

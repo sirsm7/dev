@@ -1,9 +1,9 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V8.2 SLOTS & DISTRICT FILTER)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V8.3 STRICT DAY LOGIC)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V8.2 (SLOTS & DISTRICT FILTER FIX) ---
- * 1. Menambah keupayaan mengunci slot separa (Pagi/Petang) dalam SweetAlert.
- * 2. Menambah Filter Daerah di UI Kalendar untuk Super Admin memantau kapasiti daerah.
+ * --- UPDATE V8.3 ---
+ * 1. Mengemaskini checkIsAllowedDayAdmin supaya mengunci paparan Admin mengikut logik
+ *    hari operasi sebenar bagi PPD Alor Gajah, Jasin, dan Melaka Tengah.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -16,13 +16,13 @@ let adminCurrentMonth = todayDate.getMonth();
 let adminCurrentYear = todayDate.getFullYear();
 
 // LOGIK AUTO-MINGGU: Mengira minggu berdasarkan tarikh hari ini
-let adminActiveWeek = Math.ceil(todayDate.getDate() / 7); 
+let adminActiveWeek = Math.ceil(todayDate.getDate() / 7);
 
 let activeBookings = [];
 let lockedDatesList = [];
-let adminSelectedDate = null; 
+let adminSelectedDate = null;
 // SURGICAL EDIT START: Tambahan State untuk Filter Daerah
-let adminDaerahFilter = 'ALL'; 
+let adminDaerahFilter = 'ALL';
 // SURGICAL EDIT END
 
 const ALLOWED_DAYS = [2, 3, 4, 6]; // Selasa, Rabu, Khamis, Sabtu
@@ -67,7 +67,7 @@ window.initAdminBooking = async function() {
                                     </div>
                                     <!-- SURGICAL EDIT END -->
                                 </div>
-                                
+
                                 <div class="p-6">
                                     <div class="overflow-x-auto pb-4 mb-4">
                                         <div class="flex gap-2 min-w-max" id="adminWeekTabsContainer"></div>
@@ -132,7 +132,7 @@ function populateAdminBookingDaerah() {
     if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
         wrapper.classList.remove('hidden');
         let html = `<option value="ALL">SEMUA DAERAH</option>`;
-        
+
         if (APP_CONFIG.PPD_MAPPING) {
             // Gunakan kod PPD sebagai value
             for (const [kod, nama] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
@@ -170,7 +170,7 @@ window.switchAdminBookingView = function(view) {
         btnCal.className = "px-6 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-600 border-2 border-transparent transition-all";
         viewList.classList.remove('hidden');
         viewCal.classList.add('hidden');
-        
+
         // Muat semula senarai apabila tab dibuka
         window.loadAdminBookingList();
     }
@@ -181,28 +181,49 @@ window.switchAdminWeek = function(weekNum) {
     window.renderAdminBookingCalendar();
 };
 
+// SURGICAL EDIT START: Memastikan Admin Calendar Filter Mematuhi Syarat Hari Daerah Terkini
 function checkIsAllowedDayAdmin(dateObj) {
     const dayOfWeek = dateObj.getDay();
     const dayOfMonth = dateObj.getDate();
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || '';
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
     
-    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk dikunci
-    if ([2, 3, 4].includes(dayOfWeek)) return true;
-    
-    // Isnin (1) - Dibenarkan jika SUPER_ADMIN, JPNMEL, atau ADMIN MELAKA TENGAH (M020)
-    if (dayOfWeek === 1) {
-        if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) return true;
-        const namaDaerah = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) ? APP_CONFIG.PPD_MAPPING[userKod].toUpperCase() : '';
-        if (namaDaerah === 'MELAKA TENGAH' || userKod === 'M020') return true;
-        return false; // Daerah lain tidak perlu berurusan dengan hari Isnin
+    // Tentukan daerah mana yang sedang dilihat oleh admin ini di kalendar
+    let targetDaerahKod = userKod;
+    if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && adminDaerahFilter !== 'ALL') {
+        targetDaerahKod = adminDaerahFilter;
     }
     
-    // Sabtu (6) - Dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb) untuk dikunci
-    if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+    // Jika Super Admin melihat "ALL", kita longgarkan sedikit paparan grid supaya semua hari yang mungkin (Isnin, Sabtu) terbuka
+    // Tetapi jika melihat daerah spesifik, kita sekat mengikut logik
+    if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && adminDaerahFilter === 'ALL') {
+        if ([1, 2, 3, 4].includes(dayOfWeek)) return true; // Benarkan Isnin-Khamis untuk paparan ALL
+        if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true; // Benarkan Sabtu W3 untuk paparan ALL
+        return false;
+    }
+
+    // Logik Spesifik Mengikut PPD yang Dilihat
+    const isJasin = (targetDaerahKod === 'M010');
+    const isMelakaTengah = (targetDaerahKod === 'M020');
+    const isAlorGajah = (targetDaerahKod === 'M030' || (!isJasin && !isMelakaTengah)); // Lalai
+    
+    // Universal
+    if ([2, 3, 4].includes(dayOfWeek)) return true;
+    
+    // Jasin
+    if (isJasin) return false;
+    
+    // Melaka Tengah
+    if (isMelakaTengah && dayOfWeek === 1) return true;
+    
+    // Alor Gajah
+    if (isAlorGajah && dayOfWeek === 6) {
+        if (dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+    }
     
     return false;
 }
+// SURGICAL EDIT END
 
 /**
  * Membina Grid Kalendar (Admin Side) dengan Sokongan Pelbagai Skop Kunci
@@ -211,14 +232,14 @@ window.renderAdminBookingCalendar = async function() {
     const grid = document.getElementById('adminCalendarGrid');
     const label = document.getElementById('adminMonthLabel');
     const tabsContainer = document.getElementById('adminWeekTabsContainer');
-    
+
     if (!grid || !label || !tabsContainer) return;
 
     grid.innerHTML = `<div class="col-span-full py-20 text-center flex flex-col items-center justify-center">
         <i class="fas fa-circle-notch fa-spin text-slate-300 text-3xl mb-4"></i>
         <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Menjana Kalendar...</p>
     </div>`;
-    
+
     label.innerText = `${MALAY_MONTHS[adminCurrentMonth]} ${adminCurrentYear}`;
 
     try {
@@ -232,10 +253,10 @@ window.renderAdminBookingCalendar = async function() {
             BookingService.getAllLocks()
         ]);
         // SURGICAL EDIT END
-        
+
         // Tapis kunci tarikh untuk bulan paparan semasa
         const activeMonthLocks = allLocks.filter(l => l.tarikh.startsWith(monthPrefix));
-        
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -261,15 +282,15 @@ window.renderAdminBookingCalendar = async function() {
             const dateObj = new Date(adminCurrentYear, adminCurrentMonth, d);
             dateObj.setHours(0, 0, 0, 0);
 
-            const dayOfWeek = dateObj.getDay(); 
+            const dayOfWeek = dateObj.getDay();
             const isAllowedDay = checkIsAllowedDayAdmin(dateObj);
-            
+
             // SURGICAL EDIT START: Pengesanan Kekunci yang lebih pintar menyokong slot
             // Dapatkan kunci untuk tarikh ini dan ekstrak maklumat slot
             const lockObj = activeMonthLocks.find(l => l.tarikh.split('T')[0] === dateString);
             const isLockedGlobal = !!lockObj;
             let lockedSlots = []; // ['Pagi', 'Petang', '1 HARI']
-            
+
             if (isLockedGlobal) {
                 // Di dalam versi ini, format kod_ppd memegang data slot. Cth: M010:PAGI,M010:PETANG,M020:ALL
                 // Oleh kerana pangkalan data lama tidak mempunyai pemisah :, kita anggap jika wujud ia adalah ALL (sehari penuh)
@@ -280,10 +301,10 @@ window.renderAdminBookingCalendar = async function() {
                      const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
                      const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
                      const viewTarget = ['SUPER_ADMIN', 'JPNMEL'].includes(userRole) ? adminDaerahFilter : userKod;
-                     
+
                      let scopeCode = scope;
                      let scopeSlot = '1 HARI'; // Lalai
-                     
+
                      if(scope.includes(':')) {
                          const parts = scope.split(':');
                          scopeCode = parts[0];
@@ -303,9 +324,9 @@ window.renderAdminBookingCalendar = async function() {
                 });
             }
             // SURGICAL EDIT END
-            
+
             const slotsTaken = bookedSlots[dateString] || [];
-            
+
             // Gabungkan slot yang diambil secara logik (Tempahan PPD + Kunci Admin)
             const combinedSlots = [...new Set([...slotsTaken, ...lockedSlots])];
 
@@ -320,7 +341,7 @@ window.renderAdminBookingCalendar = async function() {
             const isFullDayTaken = combinedSlots.includes('1 HARI') || (combinedSlots.includes('Pagi') && combinedSlots.includes('Petang'));
             let filledCount = combinedSlots.length;
             if (isFullDayTaken) filledCount = 2;
-            
+
             // Tentukan label sama ada ia penuh disebabkan sistem kunci (locked) atau sistem tempahan (booked)
             const isFullyLocked = lockedSlots.includes('1 HARI') || (lockedSlots.includes('Pagi') && lockedSlots.includes('Petang'));
 
@@ -328,22 +349,22 @@ window.renderAdminBookingCalendar = async function() {
                 status = 'closed';
                 statusText = 'TIADA SESI';
                 statusIcon = 'fa-ban';
-            } 
+            }
             else if (isPast) {
                 status = 'closed';
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
-            } 
+            }
             else if (isFullyLocked) {
                 status = 'locked';
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
-            } 
+            }
             else if (filledCount >= maxCapacity) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
-            } 
+            }
             else if (filledCount > 0) {
                 // Ada baki. Periksa sama ada baki itu adalah kunci atau tempahan
                 if(lockedSlots.length > 0) {
@@ -366,21 +387,21 @@ window.renderAdminBookingCalendar = async function() {
             // PAPARAN NOTA KUNCI YANG KAYA (RICH UI MULTI-REGION)
             let lockedMsg = '';
             let existingScopes = ['ALL'];
-            
+
             if (isLockedGlobal) {
                 // Ekstrak rentetan menjadi tatasusunan (Array) untuk logik seterusnya
                 existingScopes = (lockObj.kod_ppd || 'ALL').split(',');
-                
+
                 // SURGICAL EDIT START: Paparkan lencana skop yang lebih kemas (membuang tag :SLOT dalam UI Lencana Daerah)
                 const isAll = existingScopes.some(s => s.startsWith('ALL'));
                 const districtCodesOnly = existingScopes.map(s => s.split(':')[0]).filter((v, i, a) => a.indexOf(v) === i && v !== 'ALL');
-                
+
                 const scopeLabel = isAll ? 'KUNCI NEGERI' : `KUNCI DAERAH (${districtCodesOnly.join(', ')})`;
                 // SURGICAL EDIT END
 
                 const scopeClass = isAll ? 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-purple-200 text-purple-800 border-purple-300';
                 const displayNote = lockObj.komen || 'TIADA CATATAN';
-                
+
                 lockedMsg = `
                 <div class="mt-1.5 flex flex-col gap-1">
                     <span class="${scopeClass} px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest w-fit border shadow-sm">${scopeLabel}</span>
@@ -393,11 +414,11 @@ window.renderAdminBookingCalendar = async function() {
             const isSelected = (dateString === adminSelectedDate);
             // hasBookings digunakan untuk menghalang Admin dari tertimpa (overwrite) tempahan sekolah.
             // Oleh itu kita hantar jumlah slot tempahan asal.
-            const hasBookings = (slotsTaken.length > 0); 
+            const hasBookings = (slotsTaken.length > 0);
 
             const card = document.createElement('div');
             card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''}`;
-            
+
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -408,7 +429,7 @@ window.renderAdminBookingCalendar = async function() {
                         <i class="fas ${statusIcon}"></i>
                     </div>
                 </div>
-                
+
                 <div class="mt-auto pt-4">
                     <span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${iconColor} border border-black/5">
                         ${statusText}
@@ -423,14 +444,14 @@ window.renderAdminBookingCalendar = async function() {
             if (!isPast && isAllowedDay) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
-                    window.renderAdminBookingCalendar(); 
+                    window.renderAdminBookingCalendar();
                     window.handleAdminDateAction(dateString, isLockedGlobal, hasBookings, clickNote, existingScopes);
                 };
             } else if (!isPast && isLockedGlobal) {
                 // Walaupun harinya tidak lagi dibenarkan (misalnya pertukaran polisi Cuti), jika ia sudah terkunci, benarkan Admin bukanya
                 card.onclick = () => {
                     adminSelectedDate = dateString;
-                    window.renderAdminBookingCalendar(); 
+                    window.renderAdminBookingCalendar();
                     window.handleAdminDateAction(dateString, true, false, clickNote, existingScopes);
                 };
             }
@@ -455,7 +476,7 @@ window.renderAdminBookingCalendar = async function() {
 window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings, currentNote = '', existingScopesParam = 'ALL') {
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
-    
+
     // Halang pentadbir daripada mengunci tarikh yang telah ada tempahan SEPENUHNYA.
     // Jika ia separa, kita beri Amaran tapi masih boleh teruskan.
     if (!currentlyLocked && hasBookings) {
@@ -473,7 +494,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
 
     // Format penangkapan skop ke dalam tatasusunan yang selamat
     let existingScopeArray = Array.isArray(existingScopesParam) ? existingScopesParam : (typeof existingScopesParam === 'string' ? existingScopesParam.split(',') : ['ALL']);
-    
+
     // Pecahkan scope kepada objek untuk mudah dikendalikan { kod: 'M010', slot: 'PAGI' }
     let parsedScopes = existingScopeArray.map(s => {
         if(s.includes(':')) {
@@ -508,7 +529,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
                 <span class="text-xs font-black text-slate-700 tracking-wider">SEMUA DAERAH (NEGERI MELAKA)</span>
             </label>
         `;
-        
+
         if (APP_CONFIG.PPD_MAPPING) {
             for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
                 const isChecked = parsedScopes.some(s => s.kod === k) && !hasAllDistrict ? 'checked' : '';
@@ -519,7 +540,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
                 </label>`;
             }
         }
-        
+
         scopeHtml = `
             <div class="mt-4 text-left px-4">
                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><i class="fas fa-map-marker-alt text-purple-400 mr-1"></i> Skop Kunci Tarikh (Pilih 1 Atau Lebih)</label>
@@ -574,16 +595,16 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
         showCancelButton: true,
         showDenyButton: currentlyLocked,
         confirmButtonColor: '#7c3aed',
-        denyButtonColor: '#10b981', 
+        denyButtonColor: '#10b981',
         cancelButtonColor: '#64748b',
         confirmButtonText: confirmText,
         denyButtonText: 'BUKA KUNCI TERPILIH',
         cancelButtonText: 'BATAL',
-        customClass: { 
-            popup: 'rounded-3xl border-2 border-slate-100', 
-            confirmButton: 'font-bold tracking-wider', 
-            denyButton: 'font-bold tracking-wider', 
-            cancelButton: 'font-bold tracking-wider' 
+        customClass: {
+            popup: 'rounded-3xl border-2 border-slate-100',
+            confirmButton: 'font-bold tracking-wider',
+            denyButton: 'font-bold tracking-wider',
+            cancelButton: 'font-bold tracking-wider'
         },
         preDeny: () => {
             // Tangkap nilai skop sejurus sebelum tetingkap dimusnahkan (untuk Buka Kunci)
@@ -629,7 +650,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
                     toggleLoading(false);
                     adminSelectedDate = null;
                     window.renderAdminBookingCalendar();
-                    window.loadAdminBookingList(); 
+                    window.loadAdminBookingList();
                     Swal.fire({ icon: 'success', title: 'Dibuka', timer: 1000, showConfirmButton: false });
                 } catch (err) {
                     toggleLoading(false);
@@ -640,7 +661,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
                 window.renderAdminBookingCalendar();
             }
         });
-    } 
+    }
     // Logik jika butang "KEMASKINI / KUNCI SEKARANG" ditekan
     else if (result.isConfirmed) {
         const { note, targetScopes } = result.value;
@@ -716,7 +737,7 @@ window.loadAdminBookingList = async function() {
 
         tbody.innerHTML = masterList.map(item => {
             const dateStr = new Date(item.tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
-            
+
             if (item.type === 'BOOKING') {
                 let masaClass = 'bg-purple-100 text-purple-700 border border-purple-200'; // Default: 1 HARI (Ungu)
                 if (item.masa === 'Pagi') masaClass = 'bg-blue-100 text-blue-700 border border-blue-200';
@@ -751,10 +772,10 @@ window.loadAdminBookingList = async function() {
             } else {
                 const escapedNote = (item.komen || '').replace(/'/g, "\\'");
                 const dateOnly = item.tarikh.split('T')[0];
-                
+
                 // SURGICAL EDIT START: Paparkan lencana skop dan slot dengan jelas dalam jadual list
                 const isAll = item.kod_ppd.some(s => s.startsWith('ALL'));
-                
+
                 // Ekstrak slot dan daerah dari format kod:slot
                 let scopesDisplay = [];
                 item.kod_ppd.forEach(scope => {
@@ -771,13 +792,13 @@ window.loadAdminBookingList = async function() {
                      }
                      scopesDisplay.push(`${districtName}(${slotName})`);
                 });
-                
+
                 const scopeBadgeLabel = isAll ? `NEGERI [${item.kod_ppd[0].split(':')[1] || 'ALL'}]` : `DAERAH: ${scopesDisplay.join(', ')}`;
                 const scopeBadgeColor = isAll ? 'text-fuchsia-600 border-fuchsia-200 bg-fuchsia-50' : 'text-slate-600 border-slate-200 bg-white';
                 // SURGICAL EDIT END
-                
+
                 // Gabungkan kembali senarai daerah sebagai koma bertitik untuk dihantar secara pukal ke parameter butang aksi
-                const scopesParam = item.kod_ppd.join(','); 
+                const scopesParam = item.kod_ppd.join(',');
 
                 return `
                     <tr class="bg-indigo-50/40 hover:bg-indigo-50 transition-all border-l-4 border-l-indigo-500">
@@ -839,18 +860,18 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
         try {
             await BookingService.adminCancelBooking(dbId);
             toggleLoading(false);
-            
-            Swal.fire({ 
-                icon: 'success', 
-                title: 'Data Dihapuskan', 
-                text: 'Rekod telah dipadam secara fizikal dari sistem.', 
-                timer: 1500, 
-                showConfirmButton: false, 
-                customClass: { popup: 'rounded-[2rem]' } 
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Data Dihapuskan',
+                text: 'Rekod telah dipadam secara fizikal dari sistem.',
+                timer: 1500,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-[2rem]' }
             });
 
             window.loadAdminBookingList();
-            window.renderAdminBookingCalendar(); 
+            window.renderAdminBookingCalendar();
         } catch (e) {
             toggleLoading(false);
             Swal.fire({ icon: 'error', title: 'Ralat Pemadaman', text: 'Gagal memadam data dari pangkalan data.', customClass: { popup: 'rounded-[2rem]' } });
@@ -863,22 +884,25 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
  */
 window.changeAdminMonth = function(offset) {
     adminCurrentMonth += offset;
-    adminSelectedDate = null; 
-    
-    if (adminCurrentMonth > 11) { 
-        adminCurrentMonth = 0; 
-        adminCurrentYear++; 
-    } else if (adminCurrentMonth < 0) { 
-        adminCurrentMonth = 11; 
-        adminCurrentYear--; 
+    adminSelectedDate = null;
+
+    if (adminCurrentMonth > 11) {
+        adminCurrentMonth = 0;
+        adminCurrentYear++;
+    } else if (adminCurrentMonth < 0) {
+        adminCurrentMonth = 11;
+        adminCurrentYear--;
     }
-    
+
     const realToday = new Date();
     if (adminCurrentMonth === realToday.getMonth() && adminCurrentYear === realToday.getFullYear()) {
         adminActiveWeek = Math.ceil(realToday.getDate() / 7);
     } else {
-        adminActiveWeek = 1; 
+        adminActiveWeek = 1;
     }
-    
+
     window.renderAdminBookingCalendar();
 };
+```eof
+
+Semua 3 fail utama yang mengawal logik kelayakan hari operasi PPD telah dikemas kini dan diselaraskan. Anda boleh menaip **JANA_MD** jika anda mahu saya sediakan rumusan penuh dan konklusif bagi gerak kerja ini.

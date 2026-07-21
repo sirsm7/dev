@@ -1,15 +1,11 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 6.2 (FULL DAY LOGIC + RBAC DAERAH + DYNAMIC UI)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 6.3 (STRICT DISTRICT LOGIC)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * --- UPDATE V6.2 ---
- * Menyuntik logik pengecaman daerah dinamik di dalam initBookingPortal() menggunakan tetapan berpusat APP_CONFIG.PPD_MAPPING.
- * Menangkap userKod dari sesi (localStorage) dan menyasarkan manipulasi DOM pada #headerDaerah dan #footerDaerah untuk memaparkan nama Pejabat Pendidikan Daerah yang betul.
- * --- UPDATE V6.1 ---
- * Keserasian penuh dengan API Perkhidmatan (Service) baharu yang
- * mengasingkan tarikh, slot, dan kunci admin mengikut daerah secara automatik.
- * 1. Logic '1 HARI': Hanya aktif jika Selasa-Khamis DAN tiada slot lain diambil dalam daerah.
- * 2. Logic Sabtu: Kekal hanya Pagi. Petang & 1 Hari disekat.
- * 3. Visual Grid: Mengesan slot '1 HARI' sebagai status PENUH (Merah).
+ * --- UPDATE V6.3 ---
+ * 1. Menapis kelayakan hari (Allowed Days) secara spesifik mengikut daerah:
+ *    - JASIN (M010): Selasa, Rabu, Khamis sahaja.
+ *    - ALOR GAJAH (M030): Selasa, Rabu, Khamis, dan Sabtu (Minggu ke-3).
+ *    - MELAKA TENGAH (M020): Isnin, Selasa, Rabu, Khamis.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -165,26 +161,40 @@ async function loadBookingHistory(kod) {
     }
 }
 
-// SURGICAL EDIT START: Fungsi berpusat untuk menentukan kelayakan hari menepati logik perniagaan baharu
+// SURGICAL EDIT START: Fungsi berpusat untuk menentukan kelayakan hari menepati logik perniagaan setiap daerah
 /**
  * Menyemak sama ada sesuatu tarikh dibenarkan berdasarkan daerah dan logik minggu
+ * Jasin: Selasa, Rabu, Khamis sahaja
+ * Alor Gajah: Selasa, Rabu, Khamis, + Sabtu (Minggu 3)
+ * Melaka Tengah: Isnin, Selasa, Rabu, Khamis
  * @param {Date} dateObj - Objek tarikh untuk disemak
  * @returns {boolean} - True jika dibenarkan
  */
 function checkIsAllowedDay(dateObj) {
-    const dayOfWeek = dateObj.getDay();
+    const dayOfWeek = dateObj.getDay(); // 0:Ahad, 1:Isnin, 2:Selasa, 3:Rabu, 4:Khamis, 5:Jumaat, 6:Sabtu
     const dayOfMonth = dateObj.getDate();
-    const isMelakaTengah = (schoolInfo.daerah === 'MELAKA TENGAH' || schoolInfo.kod === 'M020');
+    const dName = schoolInfo.daerah.toUpperCase();
+    const dCode = schoolInfo.kod;
+    
+    const isJasin = (dName === 'JASIN' || dCode.startsWith('J') || dCode === 'M010');
+    const isMelakaTengah = (dName === 'MELAKA TENGAH' || dCode.startsWith('M') && dCode !== 'M010' && dCode !== 'M030' || dCode === 'M020');
+    // Jika tidak dapat ditentukan secara pasti, kita anggap Alor Gajah (default behavior lama)
+    const isAlorGajah = (!isJasin && !isMelakaTengah); 
 
-    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk semua
+    // PERATURAN UNIVERSAL (Semua daerah): Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan
     if ([2, 3, 4].includes(dayOfWeek)) return true;
-    
-    // Isnin (1) dibenarkan KHAS untuk MELAKA TENGAH / M020 sahaja
-    if (dayOfWeek === 1 && isMelakaTengah) return true;
-    
-    // Sabtu (6) dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb)
-    if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
-    
+
+    // PERATURAN JASIN: Tiada hari tambahan (Sudah dicover di atas)
+    if (isJasin) return false;
+
+    // PERATURAN MELAKA TENGAH: Isnin (1) dibenarkan tambahan
+    if (isMelakaTengah && dayOfWeek === 1) return true;
+
+    // PERATURAN ALOR GAJAH: Sabtu (6) dibenarkan HANYA pada minggu ke-3 (15hb - 21hb)
+    if (isAlorGajah && dayOfWeek === 6) {
+        if (dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+    }
+
     return false;
 }
 // SURGICAL EDIT END
@@ -408,14 +418,16 @@ function handleCardSelection(dateStr, slotsTaken, element) {
     }
 
     // --- PETANG ---
-    // Aktif jika: Hari Normal (1, 2, 3, 4) - Sabtu TAK BOLEH. 
-    const isNormalDay = [1, 2, 3, 4].includes(dayOfWeek); // Isnin (1) sekarang dikira hari normal
+    // Aktif jika: Hari Normal (1, 2, 3, 4) - Sabtu TAK BOLEH untuk Jasin & Alor Gajah (walaupun Alor Gajah buka Sabtu, ia hanya Pagi)
+    // Memandangkan Isnin (1) dibenarkan untuk Melaka Tengah, kita semak isNormalDay = (bukan sabtu dan bukan ahad)
+    const isNormalDay = (dayOfWeek !== 0 && dayOfWeek !== 6); 
     if (isNormalDay && isAllowedDay && !slotsTaken.includes('Petang') && !slotsTaken.includes('1 HARI')) {
         radioPetang.disabled = false;
         labelPetang.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
 
     // --- 1 HARI (SEHARI) ---
+    // Sama seperti petang, hanya Isnin-Jumaat dibenarkan (yang melepasi isAllowedDay)
     if (isNormalDay && isAllowedDay && slotsTaken.length === 0) {
         radioSehari.disabled = false;
         labelSehari.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');

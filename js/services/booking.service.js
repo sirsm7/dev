@@ -1,16 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.5 (Surgical RBAC Calibration & Non-Destructive Lock Merge Fix)
- * --- UPDATE V8.5 (SUPER_ADMIN UNLOCK FIX) ---
- * Memperbetulkan pepijat (bug) di mana tindakan 'UNLOCK' oleh SUPER_ADMIN sebelum ini
- * hanya menimpa (overwrite) data berbanding menolak (subtract) daerah daripada senarai kunci.
- * --- UPDATE V8.4 ---
- * 1. Pengecaman Daerah Kebal: Membina pemetaan padanan huruf besar (.toUpperCase()) dan pencarian
- * ilike supaya pentadbir dan sekolah tidak jatuh ke zon M030 (fallback) secara salah.
- * 2. Cantuman Kunci Bersilang (Non-Destructive Overwrite): Membina logik "Tarik & Cantum".
- * Apabila Admin daerah mengunci/membuka tarikh, sistem menggabungkan daerahnya dengan
- * senarai daerah sedia ada (M010,M020), bukannya memadam rekod daerah lain.
+ * Version: 8.6 (Slots & District Filter Integration)
+ * --- UPDATE V8.6 ---
+ * 1. Menerima parameter tambahan (adminDaerah) pada getMonthlyData untuk penapisan kalendar Super Admin.
+ * 2. Mengintegrasikan logik 'kod:slot' dalam fungsi mengunci tarikh (manageDateLock).
+ * 3. Mempertingkat perlindungan pertindihan (collision) di createBooking untuk membaca slot separa admin.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -22,8 +17,9 @@ export const BookingService = {
      * Digunakan untuk menjana grid kalendar interaktif.
      * @param {number} year - Tahun yang dipilih.
      * @param {number} month - Indeks bulan (0-11).
+     * @param {string} adminDaerahFilter - (Opsyenal) Kod PPD untuk penapisan Super Admin. Default: 'ALL'
      */
-    async getMonthlyData(year, month) {
+    async getMonthlyData(year, month, adminDaerahFilter = 'ALL') {
         const db = getDatabaseClient();
         
         // Memastikan format bulan 2 digit dan menentukan julat tarikh
@@ -41,7 +37,15 @@ export const BookingService = {
         
         // Penentuan hak milik paparan yang jitu
         if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
-            ppdOwner = 'ALL_DISTRICTS';
+            // Jika Super Admin memlih daerah tertentu dari dropdown UI
+            if (adminDaerahFilter !== 'ALL') {
+                ppdOwner = adminDaerahFilter;
+                const userDaerah = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[adminDaerahFilter]) ? APP_CONFIG.PPD_MAPPING[adminDaerahFilter] : 'ALOR GAJAH';
+                const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', userDaerah);
+                if (sList) validCodes = sList.map(x => x.kod_sekolah);
+            } else {
+                ppdOwner = 'ALL_DISTRICTS';
+            }
         } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
             ppdOwner = userKod;
             const userDaerah = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) ? APP_CONFIG.PPD_MAPPING[userKod] : 'ALOR GAJAH';
@@ -64,14 +68,14 @@ export const BookingService = {
             if (sList) validCodes = sList.map(x => x.kod_sekolah);
         }
 
-        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah kecuali Super Admin)
+        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah kecuali Super Admin melihat ALL)
         let queryB = db.from('smpid_bb_tempahan')
             .select('*')
             .eq('status', 'AKTIF')
             .gte('tarikh', startStr)
             .lte('tarikh', endStr);
             
-        if (!['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && validCodes.length > 0) {
+        if (validCodes.length > 0) {
             queryB = queryB.in('kod_sekolah', validCodes);
         }
 
@@ -88,7 +92,8 @@ export const BookingService = {
             .gte('tarikh', startStr)
             .lte('tarikh', endStr);
             
-        if (!['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+        if (ppdOwner !== 'ALL_DISTRICTS') {
+            // iLike '%ALL%' akan menangkap 'ALL' dan 'ALL:PAGI' dan lain-lain format.
             queryL = queryL.or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
         }
 
@@ -126,7 +131,6 @@ export const BookingService = {
         const db = getDatabaseClient();
         const { tarikh, masa, kod_sekolah, nama_sekolah, tajuk_bengkel, nama_pic, no_tel_pic } = payload;
 
-        // SURGICAL EDIT START: Menyusun semula pertanyaan daerah ke atas untuk validasi Isnin (Melaka Tengah) & Sabtu (Minggu ke-3)
         // --- RBAC DAERAH INJECTION UNTUK KAWALAN PERTINDIHAN (COLLISION) ---
         const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', kod_sekolah).maybeSingle();
         const daerah = sData && sData.daerah ? sData.daerah.toUpperCase() : 'ALOR GAJAH';
@@ -179,19 +183,54 @@ export const BookingService = {
         if (masa === '1 HARI' && ![1, 2, 3, 4].includes(day)) {
             throw new Error("Opsyen '1 HARI' hanya tersedia untuk hari bekerja biasa (Isnin-Khamis) sahaja.");
         }
-        // SURGICAL EDIT END
 
-        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
-        const { data: isLocked } = await db
+        // SURGICAL EDIT START: Menyemak Kunci Tarikh Termasuk Pemisahan Slot 
+        // Validasi 3: Semak jika tarikh/slot telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
+        const { data: lockRecord } = await db
             .from('smpid_bb_kunci')
-            .select('id')
+            .select('kod_ppd')
             .eq('tarikh', tarikh)
             .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`)
             .maybeSingle();
         
-        if (isLocked) {
-            throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi jabatan.");
+        if (lockRecord) {
+            const scopes = lockObj.kod_ppd ? lockObj.kod_ppd.split(',') : [];
+            let isSlotLocked = false;
+
+            for (const scope of scopes) {
+                let sCode = scope;
+                let sSlot = 'ALL';
+                
+                if (scope.includes(':')) {
+                    const parts = scope.split(':');
+                    sCode = parts[0];
+                    sSlot = parts[1]; // PAGI, PETANG, ALL
+                }
+
+                // Periksa jika skop ini berkenaan dengan sekolah pemohon
+                if (sCode === 'ALL' || sCode === ppdOwner) {
+                    if (sSlot === 'ALL') {
+                        isSlotLocked = true; // Kunci penuh
+                        break;
+                    } else if (masa === '1 HARI') {
+                        // Jika sekolah minta 1 Hari tapi salah satu slot dah kena kunci, ia tak boleh
+                        isSlotLocked = true; 
+                        break;
+                    } else if (sSlot === 'PAGI' && masa === 'Pagi') {
+                        isSlotLocked = true;
+                        break;
+                    } else if (sSlot === 'PETANG' && masa === 'Petang') {
+                        isSlotLocked = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isSlotLocked) {
+                throw new Error(`Maaf, slot tempahan pada tarikh ini telah ditutup oleh pihak pentadbir PPD bagi urusan rasmi.`);
+            }
         }
+        // SURGICAL EDIT END
 
         // Validasi 4: Konflik Masa & Kapasiti (Saringan Khusus Daerah)
         if (masa === '1 HARI') {
@@ -363,7 +402,7 @@ export const BookingService = {
      * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
-     * @param {Array<string>} targetPpds - Senarai kod PPD baharu untuk dikunci (contoh: ['M010', 'M020'] atau ['ALL']).
+     * @param {Array<string>} targetPpds - Senarai kod PPD baharu untuk dikunci dalam format kod:slot (contoh: ['M010:PAGI', 'ALL:ALL']).
      */
     async manageDateLock(action, tarikh, note, targetPpds) {
         const db = getDatabaseClient();
@@ -390,42 +429,104 @@ export const BookingService = {
         let finalScopes = [];
         let currentScopes = (existingLock && existingLock.kod_ppd) ? existingLock.kod_ppd.split(',') : [];
 
-        // 2. Logik Penggabungan Pintar (Smart Merge)
+        // Helper untuk parse scope string "M010:PAGI" -> { kod: "M010", slot: "PAGI" }
+        const parseScope = (s) => {
+            if(s.includes(':')) {
+                const p = s.split(':');
+                return { kod: p[0], slot: p[1], raw: s };
+            }
+            return { kod: s, slot: 'ALL', raw: s };
+        };
+
+        // 2. Logik Penggabungan Pintar (Smart Merge - Slot Support)
         if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
-            // ── SURGICAL EDIT START: Memisahkan logik UNLOCK dan LOCK bagi Super Admin ──
             if (action === 'UNLOCK') {
-                if (targetPpds.includes('ALL')) {
-                    finalScopes = []; // Buka semua kunci
+                // targetPpds datang dalam bentuk array string ['ALL:ALL'] atau ['M010:PAGI', 'M020:ALL']
+                
+                // Cari sama ada 'ALL' daerah wujud di dalam array yang ingin dibuka (dengan apa-apa slot)
+                const isUnlockAllDistricts = targetPpds.some(s => parseScope(s).kod === 'ALL');
+
+                if (isUnlockAllDistricts) {
+                    finalScopes = []; // Buka semua kunci (Padam terus baris dari jadual nanti)
                 } else {
-                    if (currentScopes.includes('ALL')) {
-                        // Jika sebelum ini kunci 'ALL', kita perlu kembangkan kepada semua daerah, kemudian tolak yang dipilih
+                    const currentHasAll = currentScopes.some(s => parseScope(s).kod === 'ALL');
+                    
+                    if (currentHasAll) {
+                        // Jika sebelum ini kunci 'ALL', kita perlu kembangkan kepada semua daerah yang ada
+                        // Kemudian tolak (buang) skop yang ingin di UNLOCK
                         const allPPDs = Object.keys(APP_CONFIG.PPD_MAPPING || {});
-                        finalScopes = allPPDs.filter(k => !targetPpds.includes(k));
+                        
+                        // Kembangkan
+                        let expandedScopes = [];
+                        allPPDs.forEach(k => {
+                            // Anggap slot asalnya adalah slot dari kunci 'ALL' tersebut
+                            const originalSlot = parseScope(currentScopes.find(s => parseScope(s).kod === 'ALL')).slot;
+                            expandedScopes.push(`${k}:${originalSlot}`);
+                        });
+                        
+                        // Buang yang diminta
+                        finalScopes = expandedScopes.filter(expanded => {
+                            const expParsed = parseScope(expanded);
+                            // Semak adakah kombinasi kod dan slot ini ada dalam list targetPpds yang minta dibuang
+                            const isRequestedToRemove = targetPpds.some(target => {
+                                const trgParsed = parseScope(target);
+                                // Padankan kod, dan padankan slot (jika target minta buang ALL slot, ia buang apa-apa slot yg ada)
+                                return (trgParsed.kod === expParsed.kod) && (trgParsed.slot === 'ALL' || trgParsed.slot === expParsed.slot);
+                            });
+                            
+                            return !isRequestedToRemove;
+                        });
                     } else {
-                        // Tolak daerah yang dipilih dari senarai kunci sedia ada
-                        finalScopes = currentScopes.filter(code => !targetPpds.includes(code));
+                        // Tolak spesifik kombinasi Kod:Slot
+                        finalScopes = currentScopes.filter(curr => {
+                            const curParsed = parseScope(curr);
+                            const isRequestedToRemove = targetPpds.some(target => {
+                                const trgParsed = parseScope(target);
+                                return (trgParsed.kod === curParsed.kod) && (trgParsed.slot === 'ALL' || trgParsed.slot === curParsed.slot);
+                            });
+                            return !isRequestedToRemove;
+                        });
                     }
                 }
             } else {
                 // Untuk LOCK / UPDATE, Super Admin mengawal secara mutlak kotak semak (checkbox)
+                // Timpa terus, kerana format targetPpds sudah mengandungi kod:slot dari UI
                 finalScopes = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
             }
-            // ── SURGICAL EDIT END ──
         } else {
             // Admin PPD Biasa -> Tambah/Buang diri sendiri dari cantuman daerah
+            // Admin PPD biasa tidak diberi UI untuk pilih slot, jadi mereka sentiasa bawa 'ALL' slot.
+            const userScopeStr = `${userKod}:ALL`;
+            
             if (action === 'UNLOCK') {
-                if (currentScopes.includes('ALL')) {
+                const currentHasAll = currentScopes.some(s => parseScope(s).kod === 'ALL');
+
+                if (currentHasAll) {
                     const allPPDs = Object.keys(APP_CONFIG.PPD_MAPPING || {});
-                    finalScopes = allPPDs.filter(k => k !== userKod); // Tolak diri sendiri dari ALL
+                    
+                    let expandedScopes = [];
+                    allPPDs.forEach(k => {
+                        const originalSlot = parseScope(currentScopes.find(s => parseScope(s).kod === 'ALL')).slot;
+                        expandedScopes.push(`${k}:${originalSlot}`);
+                    });
+                    
+                    finalScopes = expandedScopes.filter(s => parseScope(s).kod !== userKod); 
                 } else {
-                    finalScopes = currentScopes.filter(code => code !== userKod);
+                    finalScopes = currentScopes.filter(s => parseScope(s).kod !== userKod);
                 }
             } else {
-                // LOCK & UPDATE Action
-                finalScopes = [...new Set([...currentScopes, userKod])];
+                // LOCK & UPDATE Action (Gabung dan Ganti - Jika PPD sebelum ini kunci PAGI, ia akan ganti dengan ALL)
+                finalScopes = currentScopes.filter(s => parseScope(s).kod !== userKod); // Buang skop diri sendiri lama
+                finalScopes.push(userScopeStr); // Masuk skop diri sendiri baru
+
                 const allPPDs = Object.keys(APP_CONFIG.PPD_MAPPING || {});
-                const hasAll = allPPDs.length > 0 && allPPDs.every(k => finalScopes.includes(k));
-                if (hasAll || finalScopes.includes('ALL')) finalScopes = ['ALL'];
+                const currentDistrictCodes = finalScopes.map(s => parseScope(s).kod);
+                const hasAll = allPPDs.length > 0 && allPPDs.every(k => currentDistrictCodes.includes(k));
+                
+                // Semak jika semua daerah telah dikunci, satukan kepada ALL:ALL
+                if (hasAll || currentDistrictCodes.includes('ALL')) {
+                    finalScopes = ['ALL:ALL'];
+                }
             }
         }
 

@@ -903,6 +903,3 @@ window.changeAdminMonth = function(offset) {
 
     window.renderAdminBookingCalendar();
 };
-```eof
-
-Semua 3 fail utama yang mengawal logik kelayakan hari operasi PPD telah dikemas kini dan diselaraskan. Anda boleh menaip **JANA_MD** jika anda mahu saya sediakan rumusan penuh dan konklusif bagi gerak kerja ini.

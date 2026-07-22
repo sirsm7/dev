@@ -187,13 +187,13 @@ function checkIsAllowedDayAdmin(dateObj) {
     const dayOfMonth = dateObj.getDate();
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || '';
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
-    
+
     // Tentukan daerah mana yang sedang dilihat oleh admin ini di kalendar
     let targetDaerahKod = userKod;
     if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && adminDaerahFilter !== 'ALL') {
         targetDaerahKod = adminDaerahFilter;
     }
-    
+
     // Jika Super Admin melihat "ALL", kita longgarkan sedikit paparan grid supaya semua hari yang mungkin (Isnin, Sabtu) terbuka
     // Tetapi jika melihat daerah spesifik, kita sekat mengikut logik
     if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && adminDaerahFilter === 'ALL') {
@@ -206,21 +206,21 @@ function checkIsAllowedDayAdmin(dateObj) {
     const isJasin = (targetDaerahKod === 'M010');
     const isMelakaTengah = (targetDaerahKod === 'M020');
     const isAlorGajah = (targetDaerahKod === 'M030' || (!isJasin && !isMelakaTengah)); // Lalai
-    
+
     // Universal
     if ([2, 3, 4].includes(dayOfWeek)) return true;
-    
+
     // Jasin
     if (isJasin) return false;
-    
+
     // Melaka Tengah
     if (isMelakaTengah && dayOfWeek === 1) return true;
-    
+
     // Alor Gajah
     if (isAlorGajah && dayOfWeek === 6) {
         if (dayOfMonth >= 15 && dayOfMonth <= 21) return true;
     }
-    
+
     return false;
 }
 // SURGICAL EDIT END

@@ -144,16 +144,16 @@ export const BookingService = {
         const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', daerah);
         const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
 
-        // SURGICAL EDIT START: Validasi 1: Hari Operasi yang Dibenarkan mengikut Daerah (Server-Side)
+/* [COMMENT SYNTAX] SURGICAL EDIT START: Validasi Hari Dibenarkan mengikut nama daerah */
+        // Validasi 1: Hari Operasi yang Dibenarkan mengikut Daerah (Server-Side)
         const dateObj = new Date(tarikh);
         const day = dateObj.getDay(); // 0:Ahad, 1:Isnin, ... 6:Sabtu
         const dayOfMonth = dateObj.getDate();
         
         const dName = daerah;
-        const dCode = kod_sekolah;
         
-        const isJasin = (dName === 'JASIN' || dCode.startsWith('J') || dCode === 'M010');
-        const isMelakaTengah = (dName === 'MELAKA TENGAH' || dCode.startsWith('M') && dCode !== 'M010' && dCode !== 'M030' || dCode === 'M020');
+        const isJasin = (dName === 'JASIN');
+        const isMelakaTengah = (dName === 'MELAKA TENGAH');
         const isAlorGajah = (!isJasin && !isMelakaTengah); 
 
         let isAllowedDay = false;
@@ -198,7 +198,7 @@ export const BookingService = {
         if (masa === 'Petang' && !isNormalDay) {
             throw new Error("Sesi Petang tidak ditawarkan pada hari kelepasan am atau hujung minggu.");
         }
-        // SURGICAL EDIT END
+/* [COMMENT SYNTAX] SURGICAL EDIT END */
 
         // Validasi 3: Semak jika tarikh/slot telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
         const { data: lockRecord } = await db

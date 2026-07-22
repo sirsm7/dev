@@ -176,8 +176,9 @@ function checkIsAllowedDay(dateObj) {
     const dName = schoolInfo.daerah.toUpperCase();
     const dCode = schoolInfo.kod;
     
-    const isJasin = (dName === 'JASIN' || dCode.startsWith('J') || dCode === 'M010');
-    const isMelakaTengah = (dName === 'MELAKA TENGAH' || dCode.startsWith('M') && dCode !== 'M010' && dCode !== 'M030' || dCode === 'M020');
+    // Gunakan nama daerah sebenar, padanan ID fallback
+    const isJasin = (dName === 'JASIN' || dCode === 'M010');
+    const isMelakaTengah = (dName === 'MELAKA TENGAH' || dCode === 'M020');
     // Jika tidak dapat ditentukan secara pasti, kita anggap Alor Gajah (default behavior lama)
     const isAlorGajah = (!isJasin && !isMelakaTengah); 
 
@@ -418,8 +419,7 @@ function handleCardSelection(dateStr, slotsTaken, element) {
     }
 
     // --- PETANG ---
-    // Aktif jika: Hari Normal (1, 2, 3, 4) - Sabtu TAK BOLEH untuk Jasin & Alor Gajah (walaupun Alor Gajah buka Sabtu, ia hanya Pagi)
-    // Memandangkan Isnin (1) dibenarkan untuk Melaka Tengah, kita semak isNormalDay = (bukan sabtu dan bukan ahad)
+    // Aktif jika: Hari Normal (1, 2, 3, 4)
     const isNormalDay = (dayOfWeek !== 0 && dayOfWeek !== 6); 
     if (isNormalDay && isAllowedDay && !slotsTaken.includes('Petang') && !slotsTaken.includes('1 HARI')) {
         radioPetang.disabled = false;
@@ -427,7 +427,6 @@ function handleCardSelection(dateStr, slotsTaken, element) {
     }
 
     // --- 1 HARI (SEHARI) ---
-    // Sama seperti petang, hanya Isnin-Jumaat dibenarkan (yang melepasi isAllowedDay)
     if (isNormalDay && isAllowedDay && slotsTaken.length === 0) {
         radioSehari.disabled = false;
         labelSehari.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');

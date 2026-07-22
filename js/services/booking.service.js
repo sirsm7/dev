@@ -159,24 +159,34 @@ export const BookingService = {
         let isAllowedDay = false;
         let errorMsg = "Sesi bimbingan tidak dibenarkan pada tarikh ini.";
 
-        // Universal (Selasa-Khamis dibenarkan untuk semua)
-        if ([2, 3, 4].includes(day)) {
-            isAllowedDay = true;
-        } else if (day === 1) { // Isnin
-            if (isMelakaTengah) {
+        // JASIN: Selasa, Rabu, Khamis
+        if (isJasin) {
+            if ([2, 3, 4].includes(day)) {
                 isAllowedDay = true;
             } else {
-                errorMsg = "Hari Isnin hanya dibuka untuk tempahan PPD Melaka Tengah (M020) sahaja.";
+                 errorMsg = "Bagi PPD Jasin, tempahan hanya dibenarkan pada hari Selasa, Rabu, dan Khamis sahaja.";
             }
-        } else if (day === 6) { // Sabtu
-            if (isAlorGajah) {
+        } 
+        // MELAKA TENGAH: Isnin, Selasa, Rabu, Khamis (Sabtu tidak lagi dibenarkan)
+        else if (isMelakaTengah) {
+            if ([1, 2, 3, 4].includes(day)) {
+                isAllowedDay = true;
+            } else {
+                 errorMsg = "Bagi PPD Melaka Tengah, tempahan hanya dibenarkan pada hari Isnin, Selasa, Rabu, dan Khamis sahaja.";
+            }
+        } 
+        // ALOR GAJAH: Selasa, Rabu, Khamis & Sabtu (Minggu 3)
+        else if (isAlorGajah) {
+            if ([2, 3, 4].includes(day)) {
+                isAllowedDay = true;
+            } else if (day === 6) { // Sabtu
                 if (dayOfMonth >= 15 && dayOfMonth <= 21) {
                     isAllowedDay = true;
                 } else {
                     errorMsg = "Hari Sabtu hanya dibuka untuk tempahan pada minggu ke-3 (15hb - 21hb) setiap bulan bagi Alor Gajah.";
                 }
             } else {
-                errorMsg = "Hari Sabtu hanya dibuka untuk tempahan PPD Alor Gajah sahaja.";
+                errorMsg = "Bagi PPD Alor Gajah, tempahan hanya dibenarkan pada hari Selasa, Rabu, Khamis dan Sabtu minggu ke-3.";
             }
         }
 

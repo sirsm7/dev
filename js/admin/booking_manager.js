@@ -472,26 +472,18 @@ window.renderAdminBookingCalendar = async function() {
 
             const clickNote = isLockedGlobal ? lockObj.komen : '';
 
-            // [COMMENT SYNTAX] SURGICAL EDIT START: Logik OnClick yang baharu (Toggle Selection & Single Click Modal)
+            // [COMMENT SYNTAX] SURGICAL EDIT START: Logik OnClick yang membenarkan pemilihan klik tanpa pop-up
             // Semua kad yang dibenarkan dan bukan hari lepas boleh ditekan untuk diubah (Kunci/Buka)
             if (!isPast && (isAllowedDay || isLockedGlobal)) {
                 card.onclick = (e) => {
-                    // Jika butang CTRL ditekan (atau pengguna mahu pilih pelbagai hari)
-                    if (e.ctrlKey || e.metaKey || adminSelectedDates.length > 0) {
-                         if (adminSelectedDates.includes(dateString)) {
-                             adminSelectedDates = adminSelectedDates.filter(d => d !== dateString);
-                         } else {
-                             adminSelectedDates.push(dateString);
-                         }
-                         updateMultiLockUI();
-                         window.renderAdminBookingCalendar();
-                    } else {
-                         // Aksi standard satu hari klik terus buka modal
-                         adminSelectedDates = [dateString];
-                         updateMultiLockUI();
-                         window.renderAdminBookingCalendar();
-                         window.handleAdminDateAction([dateString], isLockedGlobal, hasBookings, clickNote, existingScopes);
-                    }
+                     // Toggle state bagi tarikh yang diklik
+                     if (adminSelectedDates.includes(dateString)) {
+                         adminSelectedDates = adminSelectedDates.filter(d => d !== dateString);
+                     } else {
+                         adminSelectedDates.push(dateString);
+                     }
+                     updateMultiLockUI();
+                     window.renderAdminBookingCalendar();
                 };
             }
             // [COMMENT SYNTAX] SURGICAL EDIT END
@@ -510,11 +502,12 @@ window.renderAdminBookingCalendar = async function() {
     }
 };
 
-// [COMMENT SYNTAX] SURGICAL EDIT START: Pengendali Multi Date Action
+// [COMMENT SYNTAX] SURGICAL EDIT START: Pengendali Multi Date Action yang terus memanggil pop-up
 window.handleMultiDateAction = function() {
     if (adminSelectedDates.length === 0) return;
-    // Semak jika semua hari yang dipilih adalah 'Locked' sebelum ini,
-    // Jika bercampur, kita anggap sebagai 'LOCKED' action (Bukan update single note).
+    
+    // Anggap ini adalah tindakan berbilang (tiada kunci sedia ada yang dihantar secara spesifik)
+    // Pop-up hanya dipanggil apabila butang ini ditekan
     window.handleAdminDateAction(adminSelectedDates, false, false, '', ['ALL']);
 };
 
@@ -557,7 +550,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
         return { kod: s, slot: 'ALL' };
     });
 
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Bina Antaramuka Pemilihan Slot (Radio/Dropdown)
+    // Bina Antaramuka Pemilihan Slot (Radio/Dropdown)
     const slotOptionsHTML = `
         <div class="mt-4 text-left px-4">
             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><i class="fas fa-clock text-amber-500 mr-1"></i> Slot Masa Yang Ingin Dikunci</label>
@@ -568,7 +561,6 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
             </select>
         </div>
     `;
-    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     // Bina Ruang Checkbox Pemilihan Skop Kunci (Hanya untuk Super Admin/JPNMEL)
     let scopeHtml = '';
@@ -649,8 +641,9 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
              }
         },
         showCancelButton: true,
-        // Hanya papar butang deny (Buka Kunci) jika 1 tarikh dipilih, mengelakkan kerumitan state
-        showDenyButton: currentlyLocked && datesToProcess.length === 1,
+        // Bolehkan butang buka kunci jika kita klik dari senarai tindakan untuk satu tarikh, 
+        // atau kita boleh set showDenyButton kepada true selalu untuk membolehkan buka kunci pukal.
+        showDenyButton: true, // [SURGICAL EDIT] Membenarkan butang buka kunci untuk tindakan berbilang
         confirmButtonColor: '#7c3aed',
         denyButtonColor: '#10b981',
         cancelButtonColor: '#64748b',
@@ -687,11 +680,11 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
         }
     });
 
-    // Logik jika butang "BUKA KUNCI TERPILIH" ditekan (Hanya untuk single date)
-    if (result.isDenied && datesToProcess.length === 1) {
+    // Logik jika butang "BUKA KUNCI TERPILIH" ditekan
+    if (result.isDenied) {
         Swal.fire({
             title: 'Buka Kunci Tarikh?',
-            text: "Tarikh ini akan dibuka semula untuk tempahan sekolah bagi kawasan dan slot yang ditandakan.",
+            text: "Kunci bagi tarikh-tarikh yang dipilih akan dibuka semula untuk tempahan sekolah.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#10b981',
@@ -703,7 +696,12 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
             if (r.isConfirmed) {
                 toggleLoading(true);
                 try {
-                    await BookingService.manageDateLock('UNLOCK', datesToProcess[0], '', capturedScopes);
+                    // [SURGICAL EDIT] Proses Buka Kunci secara pukal
+                    const promises = datesToProcess.map(iso => 
+                        BookingService.manageDateLock('UNLOCK', iso, '', capturedScopes)
+                    );
+                    await Promise.all(promises);
+                    
                     toggleLoading(false);
                     adminSelectedDates = []; // Reset selections
                     updateMultiLockUI();
@@ -715,8 +713,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
                     Swal.fire('Ralat', 'Gagal membuka kunci tarikh.', 'error');
                 }
             } else {
-                adminSelectedDates = []; // Reset selections
-                updateMultiLockUI();
+                // Jangan reset selection jika batal buka kunci
                 window.renderAdminBookingCalendar();
             }
         });

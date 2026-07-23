@@ -20,10 +20,12 @@ let adminActiveWeek = Math.ceil(todayDate.getDate() / 7);
 
 let activeBookings = [];
 let lockedDatesList = [];
-let adminSelectedDate = null;
-// SURGICAL EDIT START: Tambahan State untuk Filter Daerah
+// [COMMENT SYNTAX] SURGICAL EDIT START: Menukar state adminSelectedDate kepada array untuk menyokong pelbagai tarikh
+let adminSelectedDates = [];
+// [COMMENT SYNTAX] SURGICAL EDIT END
+// [COMMENT SYNTAX] SURGICAL EDIT START: Tambahan State untuk Filter Daerah
 let adminDaerahFilter = 'ALL';
-// SURGICAL EDIT END
+// [COMMENT SYNTAX] SURGICAL EDIT END
 
 const ALLOWED_DAYS = [2, 3, 4, 6]; // Selasa, Rabu, Khamis, Sabtu
 const MALAY_MONTHS = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
@@ -60,12 +62,17 @@ window.initAdminBooking = async function() {
                                         <h3 id="adminMonthLabel" class="font-black text-slate-800 uppercase tracking-tighter text-base mx-4">...</h3>
                                         <button onclick="changeAdminMonth(1)" class="w-10 h-10 rounded-xl bg-white hover:shadow-md border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand-600 transition-all"><i class="fas fa-chevron-right"></i></button>
                                     </div>
-                                    <!-- SURGICAL EDIT START: Menyuntik Ruang Penapis Daerah -->
-                                    <div id="adminBookingFilterDaerahWrapper" class="hidden w-full sm:w-auto">
-                                         <select id="adminBookingFilterDaerah" onchange="window.setAdminBookingDaerah(this.value)" class="w-full sm:w-48 p-2 rounded-xl border-2 border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-white">
-                                         </select>
+                                    <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menyuntik Ruang Penapis Daerah dan Butang Aksi Pukal -->
+                                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                                        <div id="adminBookingFilterDaerahWrapper" class="hidden">
+                                             <select id="adminBookingFilterDaerah" onchange="window.setAdminBookingDaerah(this.value)" class="w-full sm:w-48 p-2 rounded-xl border-2 border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-white">
+                                             </select>
+                                        </div>
+                                        <button id="btnMultiLock" onclick="window.handleMultiDateAction()" class="hidden px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-md items-center gap-2">
+                                            <i class="fas fa-lock"></i> Kunci <span id="multiLockCount">0</span> Tarikh
+                                        </button>
                                     </div>
-                                    <!-- SURGICAL EDIT END -->
+                                    <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
                                 </div>
 
                                 <div class="p-6">
@@ -113,15 +120,15 @@ window.initAdminBooking = async function() {
         `;
     }
 
-    // SURGICAL EDIT START: Muatkan senarai daerah jika Super Admin
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Muatkan senarai daerah jika Super Admin
     populateAdminBookingDaerah();
-    // SURGICAL EDIT END
+    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     window.renderAdminBookingCalendar();
     window.loadAdminBookingList();
 };
 
-// SURGICAL EDIT START: Menambah Dropdown Daerah
+// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah Dropdown Daerah
 function populateAdminBookingDaerah() {
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const wrapper = document.getElementById('adminBookingFilterDaerahWrapper');
@@ -148,9 +155,12 @@ function populateAdminBookingDaerah() {
 
 window.setAdminBookingDaerah = function(daerahValue) {
     adminDaerahFilter = daerahValue;
+    // Kosongkan pilihan jika tukar daerah
+    adminSelectedDates = [];
+    updateMultiLockUI();
     window.renderAdminBookingCalendar();
 };
-// SURGICAL EDIT END
+// [COMMENT SYNTAX] SURGICAL EDIT END
 
 window.switchAdminBookingView = function(view) {
     const btnCal = document.getElementById('btnViewCal');
@@ -181,7 +191,7 @@ window.switchAdminWeek = function(weekNum) {
     window.renderAdminBookingCalendar();
 };
 
-// SURGICAL EDIT START: Memastikan Admin Calendar Filter Mematuhi Syarat Hari Daerah Terkini
+// [COMMENT SYNTAX] SURGICAL EDIT START: Memastikan Admin Calendar Filter Mematuhi Syarat Hari Daerah Terkini
 function checkIsAllowedDayAdmin(dateObj) {
     const dayOfWeek = dateObj.getDay();
     const dayOfMonth = dateObj.getDate();
@@ -223,7 +233,24 @@ function checkIsAllowedDayAdmin(dateObj) {
 
     return false;
 }
-// SURGICAL EDIT END
+// [COMMENT SYNTAX] SURGICAL EDIT END
+
+// [COMMENT SYNTAX] SURGICAL EDIT START: UI Kemaskini Butang Kunci Pukal
+function updateMultiLockUI() {
+    const btnMultiLock = document.getElementById('btnMultiLock');
+    const countSpan = document.getElementById('multiLockCount');
+    if (!btnMultiLock || !countSpan) return;
+
+    if (adminSelectedDates.length > 0) {
+        btnMultiLock.classList.remove('hidden');
+        btnMultiLock.classList.add('flex');
+        countSpan.innerText = adminSelectedDates.length;
+    } else {
+        btnMultiLock.classList.add('hidden');
+        btnMultiLock.classList.remove('flex');
+    }
+}
+// [COMMENT SYNTAX] SURGICAL EDIT END
 
 /**
  * Membina Grid Kalendar (Admin Side) dengan Sokongan Pelbagai Skop Kunci
@@ -247,12 +274,12 @@ window.renderAdminBookingCalendar = async function() {
         const pad = (n) => n.toString().padStart(2, '0');
         const monthPrefix = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}`;
 
-        // SURGICAL EDIT START: Hantar adminDaerahFilter ke Service
+        // [COMMENT SYNTAX] SURGICAL EDIT START: Hantar adminDaerahFilter ke Service
         const [{ bookedSlots }, allLocks] = await Promise.all([
             BookingService.getMonthlyData(adminCurrentYear, adminCurrentMonth, adminDaerahFilter),
             BookingService.getAllLocks()
         ]);
-        // SURGICAL EDIT END
+        // [COMMENT SYNTAX] SURGICAL EDIT END
 
         // Tapis kunci tarikh untuk bulan paparan semasa
         const activeMonthLocks = allLocks.filter(l => l.tarikh.startsWith(monthPrefix));
@@ -285,7 +312,7 @@ window.renderAdminBookingCalendar = async function() {
             const dayOfWeek = dateObj.getDay();
             const isAllowedDay = checkIsAllowedDayAdmin(dateObj);
 
-            // SURGICAL EDIT START: Pengesanan Kekunci yang lebih pintar menyokong slot
+            // [COMMENT SYNTAX] SURGICAL EDIT START: Pengesanan Kekunci yang lebih pintar menyokong slot
             // Dapatkan kunci untuk tarikh ini dan ekstrak maklumat slot
             const lockObj = activeMonthLocks.find(l => l.tarikh.split('T')[0] === dateString);
             const isLockedGlobal = !!lockObj;
@@ -323,7 +350,7 @@ window.renderAdminBookingCalendar = async function() {
                      }
                 });
             }
-            // SURGICAL EDIT END
+            // [COMMENT SYNTAX] SURGICAL EDIT END
 
             const slotsTaken = bookedSlots[dateString] || [];
 
@@ -392,12 +419,12 @@ window.renderAdminBookingCalendar = async function() {
                 // Ekstrak rentetan menjadi tatasusunan (Array) untuk logik seterusnya
                 existingScopes = (lockObj.kod_ppd || 'ALL').split(',');
 
-                // SURGICAL EDIT START: Paparkan lencana skop yang lebih kemas (membuang tag :SLOT dalam UI Lencana Daerah)
+                // [COMMENT SYNTAX] SURGICAL EDIT START: Paparkan lencana skop yang lebih kemas (membuang tag :SLOT dalam UI Lencana Daerah)
                 const isAll = existingScopes.some(s => s.startsWith('ALL'));
                 const districtCodesOnly = existingScopes.map(s => s.split(':')[0]).filter((v, i, a) => a.indexOf(v) === i && v !== 'ALL');
 
                 const scopeLabel = isAll ? 'KUNCI NEGERI' : `KUNCI DAERAH (${districtCodesOnly.join(', ')})`;
-                // SURGICAL EDIT END
+                // [COMMENT SYNTAX] SURGICAL EDIT END
 
                 const scopeClass = isAll ? 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-purple-200 text-purple-800 border-purple-300';
                 const displayNote = lockObj.komen || 'TIADA CATATAN';
@@ -411,13 +438,18 @@ window.renderAdminBookingCalendar = async function() {
                 </div>`;
             }
 
-            const isSelected = (dateString === adminSelectedDate);
+            // [COMMENT SYNTAX] SURGICAL EDIT START: Logik CSS untuk visual 'selected' bagi pelbagai tarikh
+            const isSelected = adminSelectedDates.includes(dateString);
+            // [COMMENT SYNTAX] SURGICAL EDIT END
+
             // hasBookings digunakan untuk menghalang Admin dari tertimpa (overwrite) tempahan sekolah.
             // Oleh itu kita hantar jumlah slot tempahan asal.
             const hasBookings = (slotsTaken.length > 0);
 
             const card = document.createElement('div');
-            card.className = `day-card card-${status} ${isSelected ? 'card-active' : ''}`;
+            // [COMMENT SYNTAX] SURGICAL EDIT START: Tambah border visual yang ketara jika dipilih
+            card.className = `day-card card-${status} ${isSelected ? 'card-active ring-4 ring-purple-500 transform scale-105' : ''} transition-all duration-200`;
+            // [COMMENT SYNTAX] SURGICAL EDIT END
 
             card.innerHTML = `
                 <div class="flex justify-between items-start">
@@ -440,21 +472,29 @@ window.renderAdminBookingCalendar = async function() {
 
             const clickNote = isLockedGlobal ? lockObj.komen : '';
 
+            // [COMMENT SYNTAX] SURGICAL EDIT START: Logik OnClick yang baharu (Toggle Selection & Single Click Modal)
             // Semua kad yang dibenarkan dan bukan hari lepas boleh ditekan untuk diubah (Kunci/Buka)
-            if (!isPast && isAllowedDay) {
-                card.onclick = () => {
-                    adminSelectedDate = dateString;
-                    window.renderAdminBookingCalendar();
-                    window.handleAdminDateAction(dateString, isLockedGlobal, hasBookings, clickNote, existingScopes);
-                };
-            } else if (!isPast && isLockedGlobal) {
-                // Walaupun harinya tidak lagi dibenarkan (misalnya pertukaran polisi Cuti), jika ia sudah terkunci, benarkan Admin bukanya
-                card.onclick = () => {
-                    adminSelectedDate = dateString;
-                    window.renderAdminBookingCalendar();
-                    window.handleAdminDateAction(dateString, true, false, clickNote, existingScopes);
+            if (!isPast && (isAllowedDay || isLockedGlobal)) {
+                card.onclick = (e) => {
+                    // Jika butang CTRL ditekan (atau pengguna mahu pilih pelbagai hari)
+                    if (e.ctrlKey || e.metaKey || adminSelectedDates.length > 0) {
+                         if (adminSelectedDates.includes(dateString)) {
+                             adminSelectedDates = adminSelectedDates.filter(d => d !== dateString);
+                         } else {
+                             adminSelectedDates.push(dateString);
+                         }
+                         updateMultiLockUI();
+                         window.renderAdminBookingCalendar();
+                    } else {
+                         // Aksi standard satu hari klik terus buka modal
+                         adminSelectedDates = [dateString];
+                         updateMultiLockUI();
+                         window.renderAdminBookingCalendar();
+                         window.handleAdminDateAction([dateString], isLockedGlobal, hasBookings, clickNote, existingScopes);
+                    }
                 };
             }
+            // [COMMENT SYNTAX] SURGICAL EDIT END
 
             grid.appendChild(card);
             hasContent = true;
@@ -470,16 +510,29 @@ window.renderAdminBookingCalendar = async function() {
     }
 };
 
+// [COMMENT SYNTAX] SURGICAL EDIT START: Pengendali Multi Date Action
+window.handleMultiDateAction = function() {
+    if (adminSelectedDates.length === 0) return;
+    // Semak jika semua hari yang dipilih adalah 'Locked' sebelum ini,
+    // Jika bercampur, kita anggap sebagai 'LOCKED' action (Bukan update single note).
+    window.handleAdminDateAction(adminSelectedDates, false, false, '', ['ALL']);
+};
+
 /**
  * Mengawal tindakan kunci/buka tarikh dan kemaskini skop berbilang kawasan.
+ * Dipertingkat untuk menerima array of dates.
  */
-window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings, currentNote = '', existingScopesParam = 'ALL') {
+window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBookings, currentNote = '', existingScopesParam = 'ALL') {
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
 
+    // Pastikan parameter adalah array
+    const datesToProcess = Array.isArray(isoArray) ? isoArray : [isoArray];
+    const displayDatesText = datesToProcess.length > 1 ? `${datesToProcess.length} Tarikh Dipilih` : datesToProcess[0];
+
     // Halang pentadbir daripada mengunci tarikh yang telah ada tempahan SEPENUHNYA.
     // Jika ia separa, kita beri Amaran tapi masih boleh teruskan.
-    if (!currentlyLocked && hasBookings) {
+    if (!currentlyLocked && hasBookings && datesToProcess.length === 1) {
         Swal.fire({
             icon: 'warning',
             title: 'Tempahan Aktif Wujud',
@@ -504,7 +557,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
         return { kod: s, slot: 'ALL' };
     });
 
-    // SURGICAL EDIT START: Bina Antaramuka Pemilihan Slot (Radio/Dropdown)
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Bina Antaramuka Pemilihan Slot (Radio/Dropdown)
     const slotOptionsHTML = `
         <div class="mt-4 text-left px-4">
             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"><i class="fas fa-clock text-amber-500 mr-1"></i> Slot Masa Yang Ingin Dikunci</label>
@@ -515,7 +568,7 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
             </select>
         </div>
     `;
-    // SURGICAL EDIT END
+    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     // Bina Ruang Checkbox Pemilihan Skop Kunci (Hanya untuk Super Admin/JPNMEL)
     let scopeHtml = '';
@@ -567,8 +620,8 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
         return codes.map(c => `${c}:${selectedSlot}`);
     };
 
-    const titleText = currentlyLocked ? 'Pengurusan Kunci Tarikh' : 'Kunci Tarikh Ini?';
-    const confirmText = currentlyLocked ? 'KEMASKINI CATATAN / KAWASAN' : 'KUNCI SEKARANG';
+    const titleText = (currentlyLocked && datesToProcess.length === 1) ? 'Pengurusan Kunci Tarikh' : 'Kunci Tarikh Ini?';
+    const confirmText = (currentlyLocked && datesToProcess.length === 1) ? 'KEMASKINI CATATAN / KAWASAN' : 'KUNCI SEKARANG';
 
     // Rujukan skop terakhir yang dirakam sekiranya batal
     let capturedScopes = [];
@@ -576,7 +629,10 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
     const result = await Swal.fire({
         title: titleText,
         html: `
-            <div class="text-center mb-4"><span class="text-3xl font-black text-purple-600">${iso}</span></div>
+            <div class="text-center mb-4">
+                <span class="text-xl md:text-2xl font-black text-purple-600 px-4">${displayDatesText}</span>
+                ${datesToProcess.length > 1 ? `<br><span class="text-[10px] text-slate-400 font-bold mt-1 block">${datesToProcess.join(', ')}</span>` : ''}
+            </div>
             <p class="text-sm text-slate-500 mb-4 px-4 font-medium">Nyatakan sebab atau catatan rasmi di bawah.</p>
             <div class="px-4">
                 <input id="swal-note" class="w-full p-3 rounded-xl border-2 border-slate-200 font-bold uppercase text-sm outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 text-slate-800 transition" placeholder="Contoh: CUTI UMUM / BENGKEL..." value="${currentNote}">
@@ -593,7 +649,8 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
              }
         },
         showCancelButton: true,
-        showDenyButton: currentlyLocked,
+        // Hanya papar butang deny (Buka Kunci) jika 1 tarikh dipilih, mengelakkan kerumitan state
+        showDenyButton: currentlyLocked && datesToProcess.length === 1,
         confirmButtonColor: '#7c3aed',
         denyButtonColor: '#10b981',
         cancelButtonColor: '#64748b',
@@ -630,8 +687,8 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
         }
     });
 
-    // Logik jika butang "BUKA KUNCI TERPILIH" ditekan
-    if (result.isDenied) {
+    // Logik jika butang "BUKA KUNCI TERPILIH" ditekan (Hanya untuk single date)
+    if (result.isDenied && datesToProcess.length === 1) {
         Swal.fire({
             title: 'Buka Kunci Tarikh?',
             text: "Tarikh ini akan dibuka semula untuk tempahan sekolah bagi kawasan dan slot yang ditandakan.",
@@ -646,9 +703,10 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
             if (r.isConfirmed) {
                 toggleLoading(true);
                 try {
-                    await BookingService.manageDateLock('UNLOCK', iso, '', capturedScopes);
+                    await BookingService.manageDateLock('UNLOCK', datesToProcess[0], '', capturedScopes);
                     toggleLoading(false);
-                    adminSelectedDate = null;
+                    adminSelectedDates = []; // Reset selections
+                    updateMultiLockUI();
                     window.renderAdminBookingCalendar();
                     window.loadAdminBookingList();
                     Swal.fire({ icon: 'success', title: 'Dibuka', timer: 1000, showConfirmButton: false });
@@ -657,7 +715,8 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
                     Swal.fire('Ralat', 'Gagal membuka kunci tarikh.', 'error');
                 }
             } else {
-                adminSelectedDate = null;
+                adminSelectedDates = []; // Reset selections
+                updateMultiLockUI();
                 window.renderAdminBookingCalendar();
             }
         });
@@ -665,25 +724,33 @@ window.handleAdminDateAction = async function(iso, currentlyLocked, hasBookings,
     // Logik jika butang "KEMASKINI / KUNCI SEKARANG" ditekan
     else if (result.isConfirmed) {
         const { note, targetScopes } = result.value;
-        const action = currentlyLocked ? 'UPDATE' : 'LOCK';
+        const action = (currentlyLocked && datesToProcess.length === 1) ? 'UPDATE' : 'LOCK';
 
         toggleLoading(true);
         try {
-            await BookingService.manageDateLock(action, iso, note, targetScopes);
+            // Laksanakan Promise.all untuk mengemaskini pelbagai tarikh serentak
+            const promises = datesToProcess.map(iso => 
+                BookingService.manageDateLock(action, iso, note, targetScopes)
+            );
+            await Promise.all(promises);
+
             toggleLoading(false);
-            adminSelectedDate = null;
+            adminSelectedDates = []; // Reset selections
+            updateMultiLockUI();
             window.renderAdminBookingCalendar();
             window.loadAdminBookingList();
-            Swal.fire({ icon: 'success', title: currentlyLocked ? 'Dikemaskini' : 'Dikunci', timer: 1000, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'Selesai!', text: `Berjaya mengemaskini ${datesToProcess.length} tarikh.`, timer: 1500, showConfirmButton: false });
         } catch (err) {
             toggleLoading(false);
             Swal.fire('Ralat', err.message || 'Gagal memproses kunci tarikh.', 'error');
         }
     } else {
-        adminSelectedDate = null;
+        // Jika batal, kita TIDAK kosongkan pilihan supaya admin boleh semak semula.
+        // Cuma panggil render untuk pastikan visual terkini (termasuk selection rings) kekal
         window.renderAdminBookingCalendar();
     }
 };
+// [COMMENT SYNTAX] SURGICAL EDIT END
 
 /**
  * Memproses senarai bersepadu (Tempahan + Kunci berangkai) dalam satu jadual.
@@ -773,7 +840,7 @@ window.loadAdminBookingList = async function() {
                 const escapedNote = (item.komen || '').replace(/'/g, "\\'");
                 const dateOnly = item.tarikh.split('T')[0];
 
-                // SURGICAL EDIT START: Paparkan lencana skop dan slot dengan jelas dalam jadual list
+                // [COMMENT SYNTAX] SURGICAL EDIT START: Paparkan lencana skop dan slot dengan jelas dalam jadual list
                 const isAll = item.kod_ppd.some(s => s.startsWith('ALL'));
 
                 // Ekstrak slot dan daerah dari format kod:slot
@@ -795,7 +862,7 @@ window.loadAdminBookingList = async function() {
 
                 const scopeBadgeLabel = isAll ? `NEGERI [${item.kod_ppd[0].split(':')[1] || 'ALL'}]` : `DAERAH: ${scopesDisplay.join(', ')}`;
                 const scopeBadgeColor = isAll ? 'text-fuchsia-600 border-fuchsia-200 bg-fuchsia-50' : 'text-slate-600 border-slate-200 bg-white';
-                // SURGICAL EDIT END
+                // [COMMENT SYNTAX] SURGICAL EDIT END
 
                 // Gabungkan kembali senarai daerah sebagai koma bertitik untuk dihantar secara pukal ke parameter butang aksi
                 const scopesParam = item.kod_ppd.join(',');
@@ -884,7 +951,10 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
  */
 window.changeAdminMonth = function(offset) {
     adminCurrentMonth += offset;
-    adminSelectedDate = null;
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Clear selections when changing month
+    adminSelectedDates = [];
+    updateMultiLockUI(); 
+    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     if (adminCurrentMonth > 11) {
         adminCurrentMonth = 0;

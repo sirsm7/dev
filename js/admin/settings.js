@@ -666,3 +666,194 @@ window.mulaImportCSV = async function() {
         btn.innerHTML = '<i class="fas fa-play"></i> Mulakan Proses Import';
     }
 };
+
+// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi muatTurunTemplatAnalisaCSV dan mulaImportAnalisaCSV
+/**
+ * Menjana templat CSV kosong dengan format lajur yang tepat berpandukan jadual analisa DCS.
+ */
+window.muatTurunTemplatAnalisaCSV = function() {
+    const currentYear = new Date().getFullYear();
+    const prevYear = currentYear - 1;
+
+    // Header dinamik berdasarkan tahun semasa
+    const headers = [
+        "kod_sekolah",
+        `dcs_${prevYear}`,
+        `peratus_aktif_${prevYear}`,
+        `dcs_${currentYear}`,
+        `peratus_aktif_${currentYear}`
+    ];
+    
+    // Menambah BOM (Byte Order Mark) untuk menyokong karakter khas (UTF-8) di MS Excel
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Templat_Analisa_DCS_${currentYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+/**
+ * Membaca fail CSV dari input untuk mengemas kini data DCS dan peratus aktif secara berkelompok.
+ */
+window.mulaImportAnalisaCSV = async function() {
+    // 1. Semakan Keselamatan Tambahan
+    const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    if (currentUserRole !== 'SUPER_ADMIN') {
+        return Swal.fire('Akses Dihalang', 'Operasi kritikal ini dikhaskan untuk Super Admin sahaja.', 'error');
+    }
+
+    const fileInput = document.getElementById('csvAnalisaInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        return Swal.fire('Tiada Fail', 'Sila pilih fail CSV Analisa terlebih dahulu.', 'warning');
+    }
+
+    const btn = document.getElementById('btnMulaImportAnalisa');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Membaca Fail...';
+    
+    // 2. Sediakan Terminal Log UI
+    const logContainer = document.getElementById('importLogContainer');
+    const terminal = document.getElementById('importTerminalInner');
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+    
+    logContainer.classList.remove('hidden');
+    terminal.innerHTML = '';
+    progressBar.style.width = '0%';
+    progressText.innerText = '0 / 0 Baris';
+    
+    function logMsg(msg, type='info') {
+        const time = new Date().toLocaleTimeString('ms-MY');
+        let color = 'text-slate-300';
+        if (type === 'success') color = 'text-emerald-400';
+        if (type === 'error') color = 'text-red-400';
+        if (type === 'warn') color = 'text-amber-400';
+        
+        terminal.innerHTML += `<div class="${color}">[${time}] ${msg}</div>`;
+        const termContainer = document.getElementById('importTerminal');
+        termContainer.scrollTop = termContainer.scrollHeight;
+    }
+
+    logMsg('Mula mengekstrak data CSV Analisa PPPDM & DCS...', 'info');
+
+    // 3. Ekstrak Data Menggunakan PapaParse
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+            const data = results.data;
+            logMsg(`Berjaya membaca ${data.length} baris data mentah.`, 'success');
+            
+            if (data.length === 0) {
+                logMsg('Kegagalan: Fail CSV ini kosong.', 'error');
+                resetBtn();
+                return;
+            }
+
+            if (!data[0].hasOwnProperty('kod_sekolah')) {
+                logMsg('Ralat Integriti: Lajur mandatori "kod_sekolah" tidak wujud.', 'error');
+                Swal.fire('Format Tidak Sah', 'Pengepala (Header) CSV tidak sepadan dengan struktur pangkalan data. Sila gunakan templat yang disediakan.', 'error');
+                resetBtn();
+                return;
+            }
+
+            // Dapatkan tahun semasa untuk pengesahan lajur
+            const currentYear = new Date().getFullYear();
+            const prevYear = currentYear - 1;
+            
+            // Periksa jika sekurang-kurangnya satu lajur data wujud
+            const hasDataColumn = data[0].hasOwnProperty(`dcs_${currentYear}`) || 
+                                  data[0].hasOwnProperty(`peratus_aktif_${currentYear}`) ||
+                                  data[0].hasOwnProperty(`dcs_${prevYear}`) ||
+                                  data[0].hasOwnProperty(`peratus_aktif_${prevYear}`);
+            
+            if (!hasDataColumn) {
+                logMsg(`Amaran: Tiada lajur data untuk tahun ${currentYear} atau ${prevYear} ditemui.`, 'warn');
+            }
+
+            const validData = data.filter(row => row.kod_sekolah && row.kod_sekolah.trim() !== '');
+            const totalRows = validData.length;
+            
+            logMsg(`Menemui ${totalRows} rekod analisis yang sah. Mula proses pangkalan data...`, 'info');
+            
+            const db = getDatabaseClient();
+            let successCount = 0;
+            let errorCount = 0;
+
+            const CHUNK_SIZE = 50;
+            const chunks = [];
+            for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+                chunks.push(validData.slice(i, i + CHUNK_SIZE));
+            }
+
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                logMsg(`Mengeksport Transaksi Analisa ${i+1} daripada ${chunks.length} (${chunk.length} rekod)...`, 'info');
+                
+                // Pemetaan ke format smpid_dcs_analisa
+                const payloadAnalisa = chunk.map(row => {
+                    const obj = { kod_sekolah: row.kod_sekolah.trim().toUpperCase() };
+                    
+                    // Parsing dinamik - HANYA masukkan lajur yang wujud dalam fail CSV
+                    for (const key in row) {
+                        if (key.startsWith('dcs_') || key.startsWith('peratus_aktif_')) {
+                            // Hanya masukkan nombor yang sah, atau set null
+                            const val = parseFloat(row[key]);
+                            obj[key] = isNaN(val) ? null : val;
+                        }
+                    }
+                    return obj;
+                });
+
+                try {
+                    // Operasi Upsert untuk jadual smpid_dcs_analisa
+                    const { error: errAnalisa } = await db.from('smpid_dcs_analisa').upsert(payloadAnalisa);
+                    if (errAnalisa) throw errAnalisa;
+
+                    successCount += chunk.length;
+                    logMsg(`Kumpulan ${i+1} Analisa diselaraskan tanpa ralat.`, 'success');
+
+                } catch (err) {
+                    errorCount += chunk.length;
+                    logMsg(`Kegagalan kritikal pada Kumpulan ${i+1}: ${err.message}`, 'error');
+                    console.error("[BatchImport Analisa Error]", err);
+                }
+
+                // Kemaskini Visual Progress Bar
+                const processed = Math.min((i + 1) * CHUNK_SIZE, totalRows);
+                const percent = Math.round((processed / totalRows) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressText.innerText = `${processed} / ${totalRows} Baris`;
+            }
+
+            // 7. Pengakhiran Laporan
+            logMsg(`<b>OPERASI TAMAT.</b> Berjaya: ${successCount} rekod | Gagal: ${errorCount} rekod`, successCount > 0 ? 'success' : 'error');
+            resetBtn();
+
+            Swal.fire({
+                icon: errorCount === 0 ? 'success' : 'warning',
+                title: 'Data Analisa Disegerakkan',
+                text: `Sistem telah memproses ${totalRows} baris data analisis.\nBerjaya: ${successCount} rekod.\nGagal: ${errorCount} rekod.`,
+                confirmButtonColor: '#059669',
+                customClass: { popup: 'rounded-3xl' }
+            });
+        },
+        error: function(err) {
+            logMsg(`Ralat pembacaan luaran: ${err.message}`, 'error');
+            Swal.fire('Ralat Fail', 'Format CSV tidak dapat dibaca. Pastikan tiada kerosakan pada struktur baris.', 'error');
+            resetBtn();
+        }
+    });
+
+    function resetBtn() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play"></i> Import Data Analisa';
+        fileInput.value = ''; // Kosongkan pilihan fail
+    }
+};
+// [COMMENT SYNTAX] SURGICAL EDIT END

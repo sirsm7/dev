@@ -667,7 +667,7 @@ window.mulaImportCSV = async function() {
     }
 };
 
-// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi muatTurunTemplatAnalisaCSV dan mulaImportAnalisaCSV (Dengan Logik Gabungan - Merge)
+// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi muatTurunTemplatAnalisaCSV dan mulaImportAnalisaCSV (Dengan Logik Gabungan Penuh dan Seragam - Strict Structuring)
 /**
  * Menjana templat CSV kosong dengan format lajur yang tepat berpandukan jadual analisa DCS.
  */
@@ -698,6 +698,7 @@ window.muatTurunTemplatAnalisaCSV = function() {
 /**
  * Membaca fail CSV dari input, menggabungkannya dengan data sedia ada di pangkalan data
  * untuk mengemas kini data DCS dan peratus aktif secara berkelompok tanpa menimpa data tahun lama.
+ * DIKEMASKINI: Menormalisasikan struktur objek sebelum 'upsert' untuk mengelak ralat PostgREST 400 Bad Request.
  */
 window.mulaImportAnalisaCSV = async function() {
     // 1. Semakan Keselamatan Tambahan
@@ -763,11 +764,9 @@ window.mulaImportAnalisaCSV = async function() {
                 return;
             }
 
-            // Dapatkan tahun semasa untuk pengesahan lajur
             const currentYear = new Date().getFullYear();
             const prevYear = currentYear - 1;
             
-            // Periksa jika sekurang-kurangnya satu lajur data wujud
             const hasDataColumn = data[0].hasOwnProperty(`dcs_${currentYear}`) || 
                                   data[0].hasOwnProperty(`peratus_aktif_${currentYear}`) ||
                                   data[0].hasOwnProperty(`dcs_${prevYear}`) ||
@@ -786,26 +785,47 @@ window.mulaImportAnalisaCSV = async function() {
             let successCount = 0;
             let errorCount = 0;
 
-            // --- LOGIK GABUNGAN SELAMAT (SAFE MERGE) ---
+            // --- LOGIK GABUNGAN SELAMAT DAN SERAGAM (SAFE MERGE & STRICT SCHEMA) ---
             logMsg('Menarik data analisa sedia ada dari pelayan untuk mengelakkan penimpaan (overwrite)...', 'info');
             
             let existingDataMap = {};
+            const metricColumns = new Set(); // Akan menyimpan semua nama lajur yg disokong (cth: dcs_2023)
+            
             try {
                 // Tarik semua data dari jadual untuk pemetaan (Penting untuk tidak memadamkan tahun lama)
                 const { data: dbData, error: dbError } = await db.from('smpid_dcs_analisa').select('*');
                 if (dbError) throw dbError;
                 
-                if (dbData) {
+                if (dbData && dbData.length > 0) {
                     dbData.forEach(row => {
                         existingDataMap[row.kod_sekolah.toUpperCase()] = row;
                     });
+                    
+                    // Ekstrak semua lajur metrik yang wujud dalam pangkalan data
+                    Object.keys(dbData[0]).forEach(k => {
+                        if (k.startsWith('dcs_') || k.startsWith('peratus_aktif_')) {
+                            metricColumns.add(k);
+                        }
+                    });
                 }
+                
+                // Masukkan juga lajur dari CSV ke dalam "skema" metrik jika lajur itu baru (contohnya 2026 yang baru ditambah)
+                if (validData.length > 0) {
+                    Object.keys(validData[0]).forEach(k => {
+                        if (k.startsWith('dcs_') || k.startsWith('peratus_aktif_')) {
+                            metricColumns.add(k);
+                        }
+                    });
+                }
+                
                 logMsg(`Pemetaan silang berjaya. ${Object.keys(existingDataMap).length} rekod sedia ada dimuat ke dalam memori.`, 'success');
             } catch (err) {
                 logMsg(`Ralat menarik data lama: ${err.message}`, 'error');
                 resetBtn();
                 return;
             }
+
+            const allMetricKeys = Array.from(metricColumns);
 
             // Pecahkan CSV data kepada chunk
             const CHUNK_SIZE = 50;
@@ -818,37 +838,47 @@ window.mulaImportAnalisaCSV = async function() {
                 const chunk = chunks[i];
                 logMsg(`Mengeksport Transaksi Analisa ${i+1} daripada ${chunks.length} (${chunk.length} rekod)...`, 'info');
                 
-                // Pemetaan ke format smpid_dcs_analisa
+                // Pemetaan ke format smpid_dcs_analisa DENGAN STRUKTUR KUNCI YANG TETAP (STRICT SCHEMA)
                 const payloadAnalisa = chunk.map(row => {
                     const kod = row.kod_sekolah.trim().toUpperCase();
                     
-                    // Ambil rekod lama sebagai asas. Jika tiada, mula dengan objek baharu yang mempunyai kod_sekolah
-                    const baseObj = existingDataMap[kod] ? { ...existingDataMap[kod] } : { kod_sekolah: kod };
+                    // 1. Mulakan objek dengan kod sekolah sahaja. 
+                    // Kita tidak menggunakan `{...existingDataMap[kod]}` kerana ia akan mengandungi 'id' dan 'created_at' 
+                    // yang mana jika tiada dalam rekod baharu, akan menyebabkan saiz kunci (key length) tidak sama dalam array.
+                    const finalObj = { kod_sekolah: kod };
                     
-                    // Parsing dinamik - Timpa HANYA data yang disediakan dalam CSV
+                    // 2. Pra-isi semua kunci metrik dengan nilai `null`. 
+                    // Ini memastikan SEMUA objek dalam array mempunyai kunci yang GENAP DAN SAMA (Mencegah ralat Supabase 400).
+                    allMetricKeys.forEach(k => finalObj[k] = null);
+                    
+                    // 3. Masukkan data sedia ada dari DB ke dalam finalObj untuk mengekalkan tahun-tahun lama.
+                    if (existingDataMap[kod]) {
+                        allMetricKeys.forEach(k => {
+                            if (existingDataMap[kod][k] !== undefined) {
+                                finalObj[k] = existingDataMap[kod][k];
+                            }
+                        });
+                    }
+                    
+                    // 4. Timpa dengan data terbaharu yang dibaca dari fail CSV.
                     for (const key in row) {
-                        if (key.startsWith('dcs_') || key.startsWith('peratus_aktif_')) {
+                        if (allMetricKeys.includes(key)) {
                             const valStr = row[key].trim();
                             // Jika sel CSV tidak kosong, kita proses dan timpa
                             if (valStr !== '') {
                                 const val = parseFloat(valStr);
                                 // Set sebagai null hanya jika ia bukan nombor yang sah (cth: "N/A" atau huruf)
-                                // Jika sah, gunakan nilainya.
-                                baseObj[key] = isNaN(val) ? null : val;
+                                finalObj[key] = isNaN(val) ? null : val;
                             }
-                            // PERHATIAN: Jika sel CSV kosong (valStr === ''), kita abaikan key ini 
-                            // supaya nilai baseObj (rekod lama) dikekalkan.
+                            // Jika valStr kosong, kita abaikan. Secara logiknya nilai dari langkah 3 (data lama) atau null (langkah 2) kekal.
                         }
                     }
                     
-                    // Kami hanya mahu hantar balik lajur yang mematuhi skema (buang metadata yang tidak berkaitan jika ada dari existingDataMap)
-                    // Supabase `upsert` akan menimpa keseluruhan row dengan objek yang dihantar.
-                    // Objek ini sekarang mengandungi data lama yang digabung dengan input CSV terkini.
-                    return baseObj;
+                    return finalObj;
                 });
 
                 try {
-                    // Operasi Upsert untuk jadual smpid_dcs_analisa dengan data yang telah digabung (merged)
+                    // Operasi Upsert untuk jadual smpid_dcs_analisa dengan struktur yang seragam dan selamat
                     const { error: errAnalisa } = await db.from('smpid_dcs_analisa').upsert(payloadAnalisa);
                     if (errAnalisa) throw errAnalisa;
 
@@ -880,7 +910,7 @@ window.mulaImportAnalisaCSV = async function() {
             Swal.fire({
                 icon: errorCount === 0 ? 'success' : 'warning',
                 title: 'Data Analisa Disegerakkan',
-                text: `Sistem telah memproses ${totalRows} baris data analisis menggunakan kaedah gabungan (Merge).\nBerjaya: ${successCount} rekod.\nGagal: ${errorCount} rekod.`,
+                text: `Sistem telah memproses ${totalRows} baris data analisis menggunakan kaedah gabungan berstruktur (Strict Schema Merge).\nBerjaya: ${successCount} rekod.\nGagal: ${errorCount} rekod.`,
                 confirmButtonColor: '#059669',
                 customClass: { popup: 'rounded-3xl' }
             });

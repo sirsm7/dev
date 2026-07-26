@@ -667,7 +667,7 @@ window.mulaImportCSV = async function() {
     }
 };
 
-// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi muatTurunTemplatAnalisaCSV dan mulaImportAnalisaCSV
+// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi muatTurunTemplatAnalisaCSV dan mulaImportAnalisaCSV (Dengan Logik Gabungan - Merge)
 /**
  * Menjana templat CSV kosong dengan format lajur yang tepat berpandukan jadual analisa DCS.
  */
@@ -696,7 +696,8 @@ window.muatTurunTemplatAnalisaCSV = function() {
 };
 
 /**
- * Membaca fail CSV dari input untuk mengemas kini data DCS dan peratus aktif secara berkelompok.
+ * Membaca fail CSV dari input, menggabungkannya dengan data sedia ada di pangkalan data
+ * untuk mengemas kini data DCS dan peratus aktif secara berkelompok tanpa menimpa data tahun lama.
  */
 window.mulaImportAnalisaCSV = async function() {
     // 1. Semakan Keselamatan Tambahan
@@ -785,6 +786,28 @@ window.mulaImportAnalisaCSV = async function() {
             let successCount = 0;
             let errorCount = 0;
 
+            // --- LOGIK GABUNGAN SELAMAT (SAFE MERGE) ---
+            logMsg('Menarik data analisa sedia ada dari pelayan untuk mengelakkan penimpaan (overwrite)...', 'info');
+            
+            let existingDataMap = {};
+            try {
+                // Tarik semua data dari jadual untuk pemetaan (Penting untuk tidak memadamkan tahun lama)
+                const { data: dbData, error: dbError } = await db.from('smpid_dcs_analisa').select('*');
+                if (dbError) throw dbError;
+                
+                if (dbData) {
+                    dbData.forEach(row => {
+                        existingDataMap[row.kod_sekolah.toUpperCase()] = row;
+                    });
+                }
+                logMsg(`Pemetaan silang berjaya. ${Object.keys(existingDataMap).length} rekod sedia ada dimuat ke dalam memori.`, 'success');
+            } catch (err) {
+                logMsg(`Ralat menarik data lama: ${err.message}`, 'error');
+                resetBtn();
+                return;
+            }
+
+            // Pecahkan CSV data kepada chunk
             const CHUNK_SIZE = 50;
             const chunks = [];
             for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
@@ -797,23 +820,42 @@ window.mulaImportAnalisaCSV = async function() {
                 
                 // Pemetaan ke format smpid_dcs_analisa
                 const payloadAnalisa = chunk.map(row => {
-                    const obj = { kod_sekolah: row.kod_sekolah.trim().toUpperCase() };
+                    const kod = row.kod_sekolah.trim().toUpperCase();
                     
-                    // Parsing dinamik - HANYA masukkan lajur yang wujud dalam fail CSV
+                    // Ambil rekod lama sebagai asas. Jika tiada, mula dengan objek baharu yang mempunyai kod_sekolah
+                    const baseObj = existingDataMap[kod] ? { ...existingDataMap[kod] } : { kod_sekolah: kod };
+                    
+                    // Parsing dinamik - Timpa HANYA data yang disediakan dalam CSV
                     for (const key in row) {
                         if (key.startsWith('dcs_') || key.startsWith('peratus_aktif_')) {
-                            // Hanya masukkan nombor yang sah, atau set null
-                            const val = parseFloat(row[key]);
-                            obj[key] = isNaN(val) ? null : val;
+                            const valStr = row[key].trim();
+                            // Jika sel CSV tidak kosong, kita proses dan timpa
+                            if (valStr !== '') {
+                                const val = parseFloat(valStr);
+                                // Set sebagai null hanya jika ia bukan nombor yang sah (cth: "N/A" atau huruf)
+                                // Jika sah, gunakan nilainya.
+                                baseObj[key] = isNaN(val) ? null : val;
+                            }
+                            // PERHATIAN: Jika sel CSV kosong (valStr === ''), kita abaikan key ini 
+                            // supaya nilai baseObj (rekod lama) dikekalkan.
                         }
                     }
-                    return obj;
+                    
+                    // Kami hanya mahu hantar balik lajur yang mematuhi skema (buang metadata yang tidak berkaitan jika ada dari existingDataMap)
+                    // Supabase `upsert` akan menimpa keseluruhan row dengan objek yang dihantar.
+                    // Objek ini sekarang mengandungi data lama yang digabung dengan input CSV terkini.
+                    return baseObj;
                 });
 
                 try {
-                    // Operasi Upsert untuk jadual smpid_dcs_analisa
+                    // Operasi Upsert untuk jadual smpid_dcs_analisa dengan data yang telah digabung (merged)
                     const { error: errAnalisa } = await db.from('smpid_dcs_analisa').upsert(payloadAnalisa);
                     if (errAnalisa) throw errAnalisa;
+
+                    // Kemaskini map dalam memori sekiranya kita ada fail chunk seterusnya yang merujuk kod yang sama
+                    payloadAnalisa.forEach(updatedRow => {
+                        existingDataMap[updatedRow.kod_sekolah] = updatedRow;
+                    });
 
                     successCount += chunk.length;
                     logMsg(`Kumpulan ${i+1} Analisa diselaraskan tanpa ralat.`, 'success');
@@ -838,7 +880,7 @@ window.mulaImportAnalisaCSV = async function() {
             Swal.fire({
                 icon: errorCount === 0 ? 'success' : 'warning',
                 title: 'Data Analisa Disegerakkan',
-                text: `Sistem telah memproses ${totalRows} baris data analisis.\nBerjaya: ${successCount} rekod.\nGagal: ${errorCount} rekod.`,
+                text: `Sistem telah memproses ${totalRows} baris data analisis menggunakan kaedah gabungan (Merge).\nBerjaya: ${successCount} rekod.\nGagal: ${errorCount} rekod.`,
                 confirmButtonColor: '#059669',
                 customClass: { popup: 'rounded-3xl' }
             });

@@ -951,6 +951,55 @@ window.ubahPenyediaPukalAdmin = async function() {
     }
 };
 
+// [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi ubahKategoriPukalAdmin
+window.ubahKategoriPukalAdmin = async function() {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
+    if (checkboxes.length === 0) return;
+
+    const idsToUpdate = Array.from(checkboxes).map(cb => cb.value);
+
+    const { value: newKategori } = await Swal.fire({
+        title: 'Ubah Kategori (Pukal)',
+        html: `Sila pilih kategori baharu untuk <b>${idsToUpdate.length}</b> rekod yang ditandakan.<br><br><span class="text-xs text-red-500 font-bold">Amaran: Pastikan rekod yang dipilih benar-benar milik kategori baharu ini.</span>`,
+        input: 'select',
+        inputOptions: {
+            'MURID': 'MURID',
+            'GURU': 'GURU',
+            'SEKOLAH': 'SEKOLAH',
+            'PEGAWAI': 'PEGAWAI PPD',
+            'PPD': 'UNIT PPD'
+        },
+        inputPlaceholder: '- Sila Pilih Kategori -',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Simpan Pukal',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' },
+        inputValidator: (value) => {
+            if (!value) return 'Anda mesti memilih salah satu kategori!';
+        }
+    });
+
+    if (newKategori) {
+        toggleLoading(true);
+        try {
+            await AchievementService.batchUpdateKategori(idsToUpdate, newKategori);
+            toggleLoading(false);
+
+            const selectAllCb = document.getElementById('selectAllPencapaian');
+            if (selectAllCb) selectAllCb.checked = false;
+            window.checkBulkStatusPencapaian();
+
+            Swal.fire({ icon: 'success', title: 'Berjaya', text: `${idsToUpdate.length} rekod telah dikemaskini kategorinya.`, timer: 1500, showConfirmButton: false })
+            .then(() => window.loadMasterPencapaian());
+        } catch (e) {
+            toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal mengubah kategori secara pukal.', 'error');
+        }
+    }
+};
+// [COMMENT SYNTAX] SURGICAL EDIT END
+
 // --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC - ADMIN) ---
 
 window.openEditPencapaian = function(id) {

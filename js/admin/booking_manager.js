@@ -51,6 +51,48 @@ window.initAdminBooking = async function() {
                         <button onclick="switchAdminBookingView('list')" id="btnViewList" class="px-6 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-600 border-2 border-transparent transition-all">SENARAI AKTIF</button>
                     </div>
                 </div>
+                
+                <!-- SUNTIKAN DASHBOARD KPI MINI -->
+                <div id="adminBookingDashboardPanel" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-up">
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between group hover:border-purple-300 transition-colors">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dikunci Sebahagian</p>
+                            <h3 class="text-2xl font-black text-slate-800 leading-none" id="kpiKunciSepara">0</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-lock-open"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between group hover:border-red-300 transition-colors">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dikunci Sepenuhnya</p>
+                            <h3 class="text-2xl font-black text-slate-800 leading-none" id="kpiKunciPenuh">0</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-colors">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tahun Semasa</p>
+                            <h3 class="text-2xl font-black text-slate-800 leading-none" id="kpiTahunSemasa">-</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            <i class="far fa-calendar-alt"></i>
+                        </div>
+                    </div>
+                     <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 border border-slate-700 shadow-md flex items-center justify-between relative overflow-hidden group">
+                        <div class="absolute -right-4 -bottom-4 opacity-10 transform group-hover:scale-110 transition-transform">
+                            <i class="fas fa-shield-alt text-7xl"></i>
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jumlah Keseluruhan</p>
+                            <h3 class="text-3xl font-black text-white leading-none" id="kpiJumlahKunci">0</h3>
+                        </div>
+                    </div>
+                </div>
 
                 <div id="adminBookingCalendarView" class="animate-fade-up">
                     <div class="grid grid-cols-1 lg:grid-cols-1 gap-8">
@@ -124,8 +166,12 @@ window.initAdminBooking = async function() {
     populateAdminBookingDaerah();
     // [COMMENT SYNTAX] SURGICAL EDIT END
 
+    // Paparkan tahun di KPI
+    document.getElementById('kpiTahunSemasa').innerText = new Date().getFullYear();
+
     window.renderAdminBookingCalendar();
     window.loadAdminBookingList();
+    window.renderAdminBookingDashboard();
 };
 
 // [COMMENT SYNTAX] SURGICAL EDIT START: Menambah Dropdown Daerah
@@ -159,8 +205,75 @@ window.setAdminBookingDaerah = function(daerahValue) {
     adminSelectedDates = [];
     updateMultiLockUI();
     window.renderAdminBookingCalendar();
+    window.renderAdminBookingDashboard();
 };
 // [COMMENT SYNTAX] SURGICAL EDIT END
+
+/**
+ * FUNGSI BAHARU: Mengira KPI Papan Pemuka bagi Tarikh yang Dikunci
+ */
+window.renderAdminBookingDashboard = async function() {
+    try {
+        const locks = await BookingService.getAllLocks();
+        const currentYearString = new Date().getFullYear().toString();
+        
+        let countSepara = 0;
+        let countPenuh = 0;
+        let countTotal = 0;
+
+        // Tapis hanya untuk tahun semasa
+        const currentYearLocks = locks.filter(l => l.tarikh.startsWith(currentYearString));
+
+        currentYearLocks.forEach(lock => {
+            // Semak jika lock ini relevan dengan penapis daerah semasa
+            const scopes = lock.kod_ppd ? lock.kod_ppd.split(',') : [];
+            let isRelevant = false;
+            let isFullDay = false;
+            let isPartial = false;
+
+            for (const scope of scopes) {
+                let sCode = scope;
+                let sSlot = 'ALL';
+
+                if (scope.includes(':')) {
+                    const parts = scope.split(':');
+                    sCode = parts[0];
+                    sSlot = parts[1]; // PAGI, PETANG, ALL
+                }
+
+                // Periksa keserasian kod PPD
+                const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+                const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+                const viewTarget = ['SUPER_ADMIN', 'JPNMEL'].includes(userRole) ? adminDaerahFilter : userKod;
+
+                if (sCode === 'ALL' || (viewTarget !== 'ALL' && sCode === viewTarget) || (viewTarget === 'ALL')) {
+                    isRelevant = true;
+                    if (sSlot === 'ALL' || sSlot === '1 HARI') {
+                        isFullDay = true;
+                    } else {
+                        isPartial = true;
+                    }
+                }
+            }
+
+            if (isRelevant) {
+                countTotal++;
+                if (isFullDay) {
+                    countPenuh++;
+                } else if (isPartial) {
+                    countSepara++;
+                }
+            }
+        });
+
+        document.getElementById('kpiKunciSepara').innerText = countSepara;
+        document.getElementById('kpiKunciPenuh').innerText = countPenuh;
+        document.getElementById('kpiJumlahKunci').innerText = countTotal;
+
+    } catch (e) {
+        console.error("Gagal mengira KPI Dashboard Kunci:", e);
+    }
+};
 
 window.switchAdminBookingView = function(view) {
     const btnCal = document.getElementById('btnViewCal');
@@ -707,6 +820,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
                     updateMultiLockUI();
                     window.renderAdminBookingCalendar();
                     window.loadAdminBookingList();
+                    window.renderAdminBookingDashboard();
                     Swal.fire({ icon: 'success', title: 'Dibuka', timer: 1000, showConfirmButton: false });
                 } catch (err) {
                     toggleLoading(false);
@@ -736,6 +850,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
             updateMultiLockUI();
             window.renderAdminBookingCalendar();
             window.loadAdminBookingList();
+            window.renderAdminBookingDashboard();
             Swal.fire({ icon: 'success', title: 'Selesai!', text: `Berjaya mengemaskini ${datesToProcess.length} tarikh.`, timer: 1500, showConfirmButton: false });
         } catch (err) {
             toggleLoading(false);
@@ -936,6 +1051,7 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
 
             window.loadAdminBookingList();
             window.renderAdminBookingCalendar();
+            window.renderAdminBookingDashboard();
         } catch (e) {
             toggleLoading(false);
             Swal.fire({ icon: 'error', title: 'Ralat Pemadaman', text: 'Gagal memadam data dari pangkalan data.', customClass: { popup: 'rounded-[2rem]' } });

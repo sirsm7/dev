@@ -270,6 +270,18 @@ function populateAdminBookingDaerah() {
 
 window.setAdminBookingDaerah = function(daerahValue) {
     adminDaerahFilter = daerahValue;
+    
+    // Sync to Audit
+    const auditSelect = document.getElementById('auditDaerahFilter');
+    if (auditSelect && auditSelect.value !== daerahValue) {
+        auditSelect.value = daerahValue;
+        auditDaerahFilter = daerahValue;
+        const viewAudit = document.getElementById('adminBookingAuditView');
+        if (viewAudit && !viewAudit.classList.contains('hidden')) {
+             window.filterAudit();
+        }
+    }
+
     // Kosongkan pilihan jika tukar daerah
     adminSelectedDates = [];
     updateMultiLockUI();
@@ -302,7 +314,7 @@ window.renderAdminBookingDashboard = async function() {
             if (window.globalDashboardData) {
                 const targetDaerahName = APP_CONFIG.PPD_MAPPING[viewTarget] || viewTarget;
                 const validSchoolCodesForDaerah = window.globalDashboardData
-                    .filter(s => s.daerah === targetDaerahName || s.kod_sekolah === viewTarget)
+                    .filter(s => (s.daerah && s.daerah.toUpperCase() === targetDaerahName.toUpperCase()) || s.kod_sekolah === viewTarget)
                     .map(s => s.kod_sekolah);
                 relevantBookings = currentYearBookings.filter(b => validSchoolCodesForDaerah.includes(b.kod_sekolah));
             }
@@ -1156,12 +1168,22 @@ window.filterAudit = function() {
     
     auditDaerahFilter = daerahTarget;
 
+    // SYNC the main filter so that KPIs update
+    if (adminDaerahFilter !== daerahTarget) {
+        adminDaerahFilter = daerahTarget;
+        const mainSelect = document.getElementById('adminBookingFilterDaerah');
+        if (mainSelect) mainSelect.value = daerahTarget;
+        window.renderAdminBookingDashboard();
+        window.renderAdminBookingCalendar();
+    }
+
     filteredAuditBookings = globalAuditBookings.filter(b => {
         let matchDaerah = true;
         let matchSearch = true;
 
         if (daerahTarget !== 'ALL') {
-            matchDaerah = b.daerah === daerahTarget;
+            const targetName = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[daerahTarget]) ? APP_CONFIG.PPD_MAPPING[daerahTarget] : daerahTarget;
+            matchDaerah = b.daerah === targetName.toUpperCase();
         }
 
         if (query) {

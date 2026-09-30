@@ -35,20 +35,22 @@
     }
   </script>
 
-  <style>
-    .disabled-form { @apply opacity-50 pointer-events-none grayscale transition-all duration-300; }
-    .enabled-form { @apply opacity-100 pointer-events-auto grayscale-0; }
-    .hidden { display: none !important; }
-    .uppercase-input { text-transform: uppercase; }
+  <style type="text/tailwindcss">
+    @layer components {
+        .disabled-form { @apply opacity-50 pointer-events-none grayscale transition-all duration-300; }
+        .enabled-form { @apply opacity-100 pointer-events-auto grayscale-0; }
+        .hidden { display: none !important; }
+        .uppercase-input { text-transform: uppercase; }
 
-    /* Likert Scale Custom Styles */
-    .likert-radio { @apply hidden; }
-    .likert-label { @apply flex flex-col items-center justify-center p-3 border-2 border-slate-100 rounded-xl cursor-pointer transition-all duration-200 bg-white text-center hover:bg-indigo-50 hover:border-indigo-200; }
-    .likert-radio:checked + .likert-label { @apply bg-indigo-50 border-indigo-500 shadow-md transform scale-105; }
-    .likert-icon { @apply text-2xl mb-1 text-slate-300 transition-colors duration-200; }
-    .likert-radio:checked + .likert-label .likert-icon { @apply text-indigo-600; }
-    .likert-text { @apply text-[10px] font-bold text-slate-500; }
-    .likert-radio:checked + .likert-label .likert-text { @apply text-indigo-700; }
+        /* Likert Scale Custom Styles */
+        .likert-radio { @apply hidden; }
+        .likert-label { @apply flex flex-col items-center justify-center p-3 border-2 border-slate-100 rounded-xl cursor-pointer transition-all duration-200 bg-white text-center hover:bg-indigo-50 hover:border-indigo-200; }
+        .likert-radio:checked + .likert-label { @apply bg-indigo-50 border-indigo-500 shadow-md transform scale-105; }
+        .likert-icon { @apply text-2xl mb-1 text-slate-300 transition-colors duration-200; }
+        .likert-radio:checked + .likert-label .likert-icon { @apply text-indigo-600; }
+        .likert-text { @apply text-[10px] font-bold text-slate-500; }
+        .likert-radio:checked + .likert-label .likert-text { @apply text-indigo-700; }
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -309,7 +311,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q1 - Kefahaman</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">BBM yang ditunjukkan oleh guru membantu saya faham tajuk ini.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ1" id="q1_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q1_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -331,7 +333,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q2 - Penguasaan</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">Penerangan guru menjadi lebih jelas dengan bantuan BBM ini.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ2" id="q2_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q2_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -353,7 +355,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q3 - Ingatan</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">Visual dan contoh pada BBM ini memudahkan saya ingat isi pelajaran.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ3" id="q3_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q3_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -375,7 +377,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q4 - Minat</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">Saya rasa lebih seronok apabila guru mengajar menggunakan BBM ini.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ4" id="q4_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q4_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -397,7 +399,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q5 - Idea & Pemikiran</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">BBM yang ditunjukkan memberikan gambaran yang lebih jelas tentang topik ini.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ5" id="q5_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q5_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -419,7 +421,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q6 - Keyakinan</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">Saya rasa lebih yakin untuk menjawab soalan guru selepas melihat BBM tersebut.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ6" id="q6_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q6_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -441,7 +443,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q7 - Persediaan Ujian</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">BBM yang ditunjukkan membantu saya mengingat fakta untuk ujian.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ7" id="q7_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q7_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -463,7 +465,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q8 - Keseluruhan</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">Secara keseluruhan, BBM ini sangat membantu pembelajaran saya hari ini.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ8" id="q8_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q8_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -485,7 +487,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q9 - Penglibatan</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">Saya menjadi lebih fokus dan berminat untuk mengambil bahagian di dalam kelas.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ9" id="q9_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q9_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         
@@ -507,7 +509,7 @@
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q10 - Penerangan Guru</label>
                     <p class="text-xs text-slate-700 font-bold mb-4">BBM ini membantu saya membayangkan apa yang sedang diterangkan oleh guru.</p>
-                    <div class="grid grid-cols-5 gap-2">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                         <input type="radio" name="impakQ10" id="q10_5" value="Sangat Setuju" class="likert-radio" required>
                         <label for="q10_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
                         

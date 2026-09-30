@@ -31,7 +31,7 @@ export const ImpactService = {
             p_q8: payload.q8_keseluruhan,
             p_q9: payload.q9_penglibatan,
             p_q10: payload.q10_penerangan_guru,
-            p_q11: payload.q11_komponen_bbm, -- Dihantar sebagai Array (JSONB akan diparse oleh Supabase)
+            p_q11: payload.q11_komponen_bbm, // Dihantar sebagai Array (JSONB akan diparse oleh Supabase)
             p_q12: payload.q12_perkara_dipelajari || null,
             p_q13: payload.q13_cadangan || null,
             p_q14: payload.q14_pengesahan_sesi

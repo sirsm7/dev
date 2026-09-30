@@ -2,20 +2,23 @@
  * PUBLIC FORM MODULE (FULL PRODUCTION VERSION)
  * Menguruskan logik borang serahan data awam, pengesahan sekolah,
  * penapisan kategori, dan integrasi mod PPD (Dinamik).
- * --- UPDATE V2.1 ---
+ * --- UPDATE V2.2 ---
+ * Integration: Modul Penilaian Impak BBM Berbantukan AI.
  * Integration: Sokongan PPD Dinamik (Membuang hardcode M030) menggunakan APP_CONFIG.
  * Integration: Modul Upload Fail Base64 menggantikan input URL manual.
  */
 
 import { SchoolService } from './services/school.service.js';
 import { AchievementService } from './services/achievement.service.js';
+import { ImpactService } from './services/impact.service.js'; // Import perkhidmatan Impak BBM
 import { toggleLoading, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
-import { populateDropdown } from './config/dropdowns.js';
+import { populateDropdown, DROPDOWN_DATA } from './config/dropdowns.js';
 import { APP_CONFIG } from './config/app.config.js';
 
 // --- GLOBAL STATE ---
 let globalSchoolList = [];
 let currentPpdCode = null; // Menyimpan kod PPD semasa dari URL
+let isImpakClosed = false; // Penanda status kuota Impak BBM
 
 /**
  * Inisialisasi portal awam apabila DOM sedia.
@@ -44,18 +47,21 @@ async function initPublicPortal() {
         }
 
         // 2. Standardisasi Dropdown (Surgical Injection)
-        // Mengisi semua dropdown menggunakan data berpusat dari dropdowns.js
         const currentYear = new Date().getFullYear().toString();
         
         populateDropdown('pubJawatan', 'JAWATAN', 'GURU AKADEMIK BIASA');
         populateDropdown('pubPeringkat', 'PERINGKAT', 'KEBANGSAAN');
         populateDropdown('pubPenyedia', 'PENYEDIA', 'LAIN-LAIN');
-        populateDropdown('pubTahun', 'TAHUN', currentYear); // Dropdown Tahun Baru
+        populateDropdown('pubTahun', 'TAHUN', currentYear); 
         
-        // PPD Dropdowns (Kini Dinamik)
+        // PPD Dropdowns
         populateDropdown('ppdPeringkat', 'PERINGKAT', 'KEBANGSAAN');
         populateDropdown('ppdPenyedia', 'PENYEDIA', 'LAIN-LAIN');
-        populateDropdown('ppdTahun', 'TAHUN', currentYear); // Dropdown Tahun PPD Baru
+        populateDropdown('ppdTahun', 'TAHUN', currentYear); 
+
+        // Modul Impak Dropdowns
+        populateDropdown('impakUmur', 'UMUR_MURID');
+        renderImpakCheckboxes();
 
         // 3. Semak Parameter URL (Auto-lock sekolah)
         const urlParams = new URLSearchParams(window.location.search);
@@ -64,14 +70,14 @@ async function initPublicPortal() {
         const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
 
         if (kodURL && senaraiKodPPD.includes(kodURL)) {
-            // Aktifkan mod khas PPD secara dinamik berdasarkan senarai PPD
+            // Aktifkan mod khas PPD
             currentPpdCode = kodURL;
             setupPPDMode(kodURL);
         } else if (kodURL) {
-            // Sahkan kod sekolah dari URL
+            // Sahkan kod sekolah dari URL dan semak kuota
             validateAndLockSchool(kodURL);
         } else {
-            // Benarkan carian manual jika tiada parameter
+            // Benarkan carian manual
             setupManualSearch();
         }
 
@@ -100,7 +106,7 @@ function setupManualSearch() {
 
     if(input) {
         input.disabled = false;
-        input.addEventListener('change', function() {
+        input.addEventListener('change', async function() {
             const val = this.value;
             const parts = val.split(' - ');
             if (parts.length >= 2) {
@@ -108,6 +114,10 @@ function setupManualSearch() {
                 const school = globalSchoolList.find(s => s.kod_sekolah === kodPotensi);
                 if (school) {
                     if(finalInput) finalInput.value = school.kod_sekolah;
+                    
+                    // Semak status kuota modul impak
+                    await checkImpakStatus(school.kod_sekolah);
+                    
                     enableForm();
                     if (btnGallery) {
                         btnGallery.classList.remove('hidden');
@@ -126,7 +136,7 @@ function setupManualSearch() {
 /**
  * Mengunci borang kepada sekolah tertentu jika parameter URL sah.
  */
-function validateAndLockSchool(kod) {
+async function validateAndLockSchool(kod) {
     const school = globalSchoolList.find(s => s.kod_sekolah === kod);
     const input = document.getElementById('inputCariSekolah');
     const statusMsg = document.getElementById('schoolStatusMsg');
@@ -141,6 +151,9 @@ function validateAndLockSchool(kod) {
         }
 
         if(finalInput) finalInput.value = school.kod_sekolah;
+        
+        // Semak status kuota modul impak
+        await checkImpakStatus(school.kod_sekolah);
         
         if(statusMsg) {
             statusMsg.classList.remove('hidden', 'text-red-500');
@@ -163,6 +176,25 @@ function validateAndLockSchool(kod) {
         }
         if (btnGallery) btnGallery.classList.add('hidden');
         setupManualSearch();
+    }
+}
+
+/**
+ * Menyemak sama ada sekolah telah mencapai had minimum 10 respons sah
+ */
+async function checkImpakStatus(kodSekolah) {
+    try {
+        const result = await ImpactService.checkSchoolQuota(kodSekolah);
+        isImpakClosed = result.isClosed;
+        
+        // Jika pengguna sudah berada di tab IMPAK, kemaskini UI serta-merta
+        const currentTab = document.getElementById('pubKategori')?.value;
+        if (currentTab === 'IMPAK') {
+            updateImpakUI();
+        }
+    } catch (e) {
+        console.error("Gagal menyemak kuota impak:", e);
+        isImpakClosed = false; // Fallback untuk mengelakkan borang tersekat
     }
 }
 
@@ -193,72 +225,155 @@ function disableForm() {
 // --- 2. FORM INTERACTION LOGIC ---
 
 /**
- * Menukar UI borang mengikut kategori (Murid, Guru, Sekolah).
+ * Menukar UI borang mengikut kategori (Murid, Guru, Sekolah, Impak).
  */
 window.setPublicType = function(type) {
     document.getElementById('pubKategori').value = type;
 
     // Kemaskini Visual Tab (Tailwind)
-    const buttons = document.querySelectorAll('#publicTabs button');
-    buttons.forEach(btn => {
-        if (btn.innerText === type) {
-            btn.className = 'flex-1 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 shadow-md transition-all text-center transform scale-105';
+    const tabs = ['MURID', 'GURU', 'SEKOLAH', 'IMPAK'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (!btn) return;
+        
+        if (t === type) {
+            if (t === 'IMPAK') {
+                btn.className = 'flex-1 min-w-[80px] py-2.5 rounded-xl text-[10px] md:text-xs font-black text-indigo-700 bg-indigo-100 shadow-md transition-all text-center border-indigo-300 transform scale-105';
+            } else {
+                btn.className = 'flex-1 min-w-[70px] py-2.5 rounded-xl text-xs font-black text-white bg-brand-600 shadow-md transition-all text-center transform scale-105';
+            }
         } else {
-            btn.className = 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all text-center';
+            if (t === 'IMPAK') {
+                btn.className = 'flex-1 min-w-[80px] py-2.5 rounded-xl text-[10px] md:text-xs font-bold text-indigo-600 hover:bg-indigo-50 border border-dashed border-indigo-200 transition-all text-center bg-white shadow-sm';
+            } else {
+                btn.className = 'flex-1 min-w-[70px] py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all text-center';
+            }
         }
     });
 
-    const lblNama = document.getElementById('lblPubNama');
-    const inpNama = document.getElementById('pubNama');
-    const wrapperJenis = document.getElementById('wrapperPubJenis');
-    const divJawatan = document.getElementById('divPubJawatan');
+    const formMain = document.getElementById('formPublic');
+    const formImpak = document.getElementById('formImpak');
+    const impakClosedMsg = document.getElementById('impakClosedMsg');
+    
+    // Logik Paparan Borang Kemenjadian vs Borang Impak
+    if (type === 'IMPAK') {
+        if(formMain) formMain.classList.add('hidden');
+        updateImpakUI();
+    } else {
+        if(formMain) formMain.classList.remove('hidden');
+        if(formImpak) formImpak.classList.add('hidden');
+        if(impakClosedMsg) impakClosedMsg.classList.add('hidden');
+        
+        // Teruskan logik borang kemenjadian asal
+        const lblNama = document.getElementById('lblPubNama');
+        const inpNama = document.getElementById('pubNama');
+        const wrapperJenis = document.getElementById('wrapperPubJenis');
+        const divJawatan = document.getElementById('divPubJawatan');
 
-    if (type === 'GURU') {
-        if(wrapperJenis) wrapperJenis.classList.remove('hidden');
-        if(divJawatan) divJawatan.classList.remove('hidden');
-        if(lblNama) lblNama.innerText = "NAMA GURU";
-        if(inpNama) {
-            inpNama.placeholder = "TAIP NAMA PENUH GURU...";
-            inpNama.readOnly = false;
-            inpNama.value = ""; 
+        if (type === 'GURU') {
+            if(wrapperJenis) wrapperJenis.classList.remove('hidden');
+            if(divJawatan) divJawatan.classList.remove('hidden');
+            if(lblNama) lblNama.innerText = "NAMA GURU";
+            if(inpNama) {
+                inpNama.placeholder = "TAIP NAMA PENUH GURU...";
+                inpNama.readOnly = false;
+                inpNama.value = ""; 
+            }
+            
+            const radPertandingan = document.getElementById('radPubPertandingan');
+            if(radPertandingan) radPertandingan.checked = true;
+            
+            window.togglePubJenis();
+        } 
+        else if (type === 'MURID') {
+            if(wrapperJenis) wrapperJenis.classList.add('hidden');
+            if(divJawatan) divJawatan.classList.add('hidden');
+            if(lblNama) lblNama.innerText = "NAMA MURID / KUMPULAN";
+            if(inpNama) {
+                inpNama.placeholder = "TAIP NAMA PENUH MURID...";
+                inpNama.readOnly = false;
+                inpNama.value = ""; 
+            }
+            document.getElementById('pubJenisRekod').value = 'PERTANDINGAN';
+            window.togglePubJenis(); 
         }
-        
-        const radPertandingan = document.getElementById('radPubPertandingan');
-        if(radPertandingan) radPertandingan.checked = true;
-        
-        window.togglePubJenis();
-    } 
-    else if (type === 'MURID') {
-        if(wrapperJenis) wrapperJenis.classList.add('hidden');
-        if(divJawatan) divJawatan.classList.add('hidden');
-        if(lblNama) lblNama.innerText = "NAMA MURID / KUMPULAN";
-        if(inpNama) {
-            inpNama.placeholder = "TAIP NAMA PENUH MURID...";
-            inpNama.readOnly = false;
-            inpNama.value = ""; 
+        else if (type === 'SEKOLAH') {
+            if(wrapperJenis) wrapperJenis.classList.add('hidden');
+            if(divJawatan) divJawatan.classList.add('hidden');
+            if(lblNama) lblNama.innerText = "NAMA SEKOLAH";
+            
+            const searchInput = document.getElementById('inputCariSekolah');
+            let schoolName = "";
+            if(searchInput && searchInput.value.includes(' - ')) {
+                 schoolName = searchInput.value.split(' - ')[1];
+            } else if(searchInput) {
+                 schoolName = searchInput.value;
+            }
+            
+            if(inpNama) {
+                inpNama.value = schoolName || ""; 
+                inpNama.readOnly = true;
+            }
+            document.getElementById('pubJenisRekod').value = 'PERTANDINGAN';
+            window.togglePubJenis();
         }
-        document.getElementById('pubJenisRekod').value = 'PERTANDINGAN';
-        window.togglePubJenis(); 
     }
-    else if (type === 'SEKOLAH') {
-        if(wrapperJenis) wrapperJenis.classList.add('hidden');
-        if(divJawatan) divJawatan.classList.add('hidden');
-        if(lblNama) lblNama.innerText = "NAMA SEKOLAH";
+};
+
+/**
+ * Mengawal paparan borang impak vs mesej penutupan
+ */
+function updateImpakUI() {
+    const formImpak = document.getElementById('formImpak');
+    const impakClosedMsg = document.getElementById('impakClosedMsg');
+    
+    // Semak sekali lagi untuk keselamatan (double-check) 
+    // jika fungsi ini dipanggil sebelum promise `checkImpakStatus` selesai
+    if (isImpakClosed) {
+        if(formImpak) formImpak.classList.add('hidden');
+        if(impakClosedMsg) impakClosedMsg.classList.remove('hidden');
+    } else {
+        if(formImpak) formImpak.classList.remove('hidden');
+        if(impakClosedMsg) impakClosedMsg.classList.add('hidden');
+    }
+}
+
+/**
+ * Membina checkbox Q11 secara dinamik berdasarkan konfigurasi
+ */
+function renderImpakCheckboxes() {
+    const container = document.getElementById('impakQ11Container');
+    if (!container) return;
+    
+    const komponen = DROPDOWN_DATA['KOMPONEN_BBM'];
+    let html = '';
+    
+    komponen.forEach((k, index) => {
+        const id = `chk_bbm_${index}`;
+        // Jika ini adalah opsyen "Lain-lain", kita tambah event handler khas
+        const isLain = k.val === "Lain-lain";
+        const extraAttrs = isLain ? `onchange="window.toggleQ11Lain(this.checked)"` : '';
         
-        const searchInput = document.getElementById('inputCariSekolah');
-        let schoolName = "";
-        if(searchInput && searchInput.value.includes(' - ')) {
-             schoolName = searchInput.value.split(' - ')[1];
-        } else if(searchInput) {
-             schoolName = searchInput.value;
+        html += `
+        <label class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm group">
+            <input type="checkbox" name="impakQ11" value="${k.val}" class="accent-indigo-600 w-4 h-4" ${extraAttrs}> 
+            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">${k.txt}</span>
+        </label>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+window.toggleQ11Lain = function(isChecked) {
+    const inputLain = document.getElementById('impakQ11Lain');
+    if (inputLain) {
+        if (isChecked) {
+            inputLain.classList.remove('hidden');
+            inputLain.focus();
+        } else {
+            inputLain.classList.add('hidden');
+            inputLain.value = '';
         }
-        
-        if(inpNama) {
-            inpNama.value = schoolName || ""; 
-            inpNama.readOnly = true;
-        }
-        document.getElementById('pubJenisRekod').value = 'PERTANDINGAN';
-        window.togglePubJenis();
     }
 };
 
@@ -277,7 +392,6 @@ window.togglePubJenis = function() {
     const lblPencapaian = document.getElementById('lblPubPencapaian');
     const inpPencapaian = document.getElementById('pubPencapaian');
 
-    // ── SUNTIKAN ELEMEN SIJIL ──
     const wrapperSijil = document.getElementById('wrapperPubSijil');
     const dropdownSijil = document.getElementById('pubSijilDropdown');
     const dropdownPenyedia = document.getElementById('pubPenyedia');
@@ -289,7 +403,6 @@ window.togglePubJenis = function() {
         if(colPeringkat) colPeringkat.classList.add('hidden'); 
         if(lblProgram) lblProgram.innerText = "NAMA SIJIL / PROGRAM";
         
-        // Logik Dinamik Sijil
         if(wrapperSijil) wrapperSijil.classList.remove('hidden');
         if(dropdownSijil) dropdownSijil.value = ""; 
         if(dropdownPenyedia) {
@@ -298,7 +411,7 @@ window.togglePubJenis = function() {
         }
         if(inpProgram) {
             inpProgram.placeholder = "NYATAKAN NAMA SIJIL (JIKA LAIN-LAIN)";
-            inpProgram.classList.add('hidden'); // Sembunyikan sehingga LAIN-LAIN dipilih
+            inpProgram.classList.add('hidden');
             inpProgram.required = false;
         }
 
@@ -309,7 +422,6 @@ window.togglePubJenis = function() {
         if(colPeringkat) colPeringkat.classList.remove('hidden');
         if(lblProgram) lblProgram.innerText = "NAMA PERTANDINGAN";
         
-        // Reset ke keadaan Pertandingan
         if(wrapperSijil) wrapperSijil.classList.add('hidden');
         if(dropdownPenyedia) dropdownPenyedia.disabled = false;
         if(inpProgram) {
@@ -324,7 +436,6 @@ window.togglePubJenis = function() {
     }
 };
 
-// ── FUNGSI BAHARU: KAWALAN PERTUKARAN SIJIL ──
 window.handleSijilChange = function() {
     const dropdownSijil = document.getElementById('pubSijilDropdown');
     const manualInput = document.getElementById('pubProgram');
@@ -334,7 +445,6 @@ window.handleSijilChange = function() {
     
     const selectedVal = dropdownSijil.value;
     
-    // [SINTAKS KOMEN] SURGICAL EDIT START: Pengesahan dan penyelarasan pemetaan penyediaMap sijil terkini
     const penyediaMap = {
         "GOOGLE CERTIFIED EDUCATOR LEVEL 1": "GOOGLE",
         "GOOGLE CERTIFIED EDUCATOR LEVEL 2": "GOOGLE",
@@ -354,7 +464,6 @@ window.handleSijilChange = function() {
         "MICROSOFT INNOVATIVE EDUCATOR EXPERT": "MICROSOFT",
         "MICROSOFT CERTIFIED EDUCATOR": "MICROSOFT"
     };
-    // [SINTAKS KOMEN] SURGICAL EDIT END
     
     if (selectedVal === "LAIN-LAIN") {
         manualInput.classList.remove('hidden');
@@ -366,10 +475,9 @@ window.handleSijilChange = function() {
         dropdownPenyedia.value = "LAIN-LAIN";
     } else if (selectedVal) {
         manualInput.classList.add('hidden');
-        manualInput.value = selectedVal; // Simpan nilai secara tersembunyi untuk dihantar ke DB
+        manualInput.value = selectedVal; 
         manualInput.required = false;
         
-        // Auto-lock dan isi penyedia
         if (penyediaMap[selectedVal]) {
             dropdownPenyedia.value = penyediaMap[selectedVal];
             dropdownPenyedia.disabled = true;
@@ -380,7 +488,7 @@ window.handleSijilChange = function() {
 // --- 3. SUBMISSION LOGIC WITH FILE UPLOAD ---
 
 /**
- * Menghantar borang serahan data awam berserta muat naik fail.
+ * Menghantar borang serahan data awam (Kemenjadian)
  */
 window.hantarBorangAwam = async function() {
     const kod = document.getElementById('finalKodSekolah').value;
@@ -395,7 +503,6 @@ window.hantarBorangAwam = async function() {
         });
     }
 
-    // Pengumpulan Data
     const kategori = document.getElementById('pubKategori').value;
     const jenisRekod = document.getElementById('pubJenisRekod').value;
     const nama = document.getElementById('pubNama').value.trim().toUpperCase();
@@ -415,13 +522,12 @@ window.hantarBorangAwam = async function() {
     }
 
     if (jenisRekod === 'PENSIJILAN') {
-        peringkat = 'ANTARABANGSA'; // Auto-set untuk pensijilan
+        peringkat = 'ANTARABANGSA'; 
         penyedia = document.getElementById('pubPenyedia').value;
     } else {
         peringkat = document.getElementById('pubPeringkat').value;
     }
 
-    // Validasi Asas
     if (!nama || !program || !pencapaian || !file || !tahun) {
         return Swal.fire({
             icon: 'warning',
@@ -431,7 +537,6 @@ window.hantarBorangAwam = async function() {
         });
     }
 
-    // Validasi Saiz Fail (Max 5MB)
     if (file.size > 5 * 1024 * 1024) {
         return Swal.fire({
             icon: 'warning',
@@ -441,7 +546,6 @@ window.hantarBorangAwam = async function() {
         });
     }
 
-    // UI Feedback (Loading Upload)
     if(btn) { 
         btn.disabled = true; 
         btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL BUKTI...`;
@@ -449,10 +553,8 @@ window.hantarBorangAwam = async function() {
     }
 
     try {
-        // 1. Muat naik fail dahulu ke Google Drive melalui GAS
         const uploadedUrl = await uploadFileToDrive(file);
 
-        // 2. Tukar status UI
         if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD PANGKALAN DATA...`;
 
         const payload = {
@@ -469,7 +571,6 @@ window.hantarBorangAwam = async function() {
             jawatan
         };
 
-        // 3. Simpan ke Supabase
         await AchievementService.create(payload);
 
         Swal.fire({
@@ -499,14 +600,112 @@ window.hantarBorangAwam = async function() {
     }
 };
 
+/**
+ * Menghantar borang penilaian Impak BBM
+ */
+window.hantarImpakBBM = async function() {
+    const kod = document.getElementById('finalKodSekolah').value;
+    const btn = document.getElementById('btnSubmitImpak');
+
+    if (!kod) {
+        return Swal.fire('Ralat Pengesahan', 'Sila pilih dan sahkan sekolah anda di atas terlebih dahulu.', 'warning');
+    }
+
+    // Ekstrak data dari checkbox (Q11)
+    const q11Checkboxes = document.querySelectorAll('input[name="impakQ11"]:checked');
+    let q11Values = Array.from(q11Checkboxes).map(cb => cb.value);
+    
+    // Jika "Lain-lain" dipilih, ekstrak nilainya
+    if (q11Values.includes("Lain-lain")) {
+        const lainVal = document.getElementById('impakQ11Lain')?.value.trim();
+        if (lainVal) {
+            // Gantikan "Lain-lain" dengan nilai sebenar ATAU simpan kedua-duanya
+            // Kita keluarkan "Lain-lain" dan masukkan nilai spesifik
+            q11Values = q11Values.filter(val => val !== "Lain-lain");
+            q11Values.push(lainVal);
+        }
+    }
+
+    if (q11Values.length === 0) {
+        return Swal.fire('Data Tidak Lengkap', 'Sila pilih sekurang-kurangnya SATU komponen BBM pada soalan Q11.', 'warning');
+    }
+
+    // Bina Payload Data
+    const payload = {
+        kod_sekolah: kod,
+        jantina: document.getElementById('impakJantina').value,
+        kumpulan_umur: document.getElementById('impakUmur').value,
+        q1_kefahaman: document.getElementById('impakQ1').value,
+        q2_penguasaan: document.getElementById('impakQ2').value,
+        q3_ingatan: document.getElementById('impakQ3').value,
+        q4_minat: document.getElementById('impakQ4').value,
+        q5_idea: document.getElementById('impakQ5').value,
+        q6_keyakinan: document.getElementById('impakQ6').value,
+        q7_persediaan_ujian: document.getElementById('impakQ7').value,
+        q8_keseluruhan: document.getElementById('impakQ8').value,
+        q9_penglibatan: document.getElementById('impakQ9').value,
+        q10_penerangan_guru: document.getElementById('impakQ10').value,
+        q11_komponen_bbm: q11Values, // Dihantar sebagai Array -> JSONB
+        q12_perkara_dipelajari: document.getElementById('impakQ12').value.trim(),
+        q13_cadangan: document.getElementById('impakQ13').value.trim(),
+        q14_pengesahan_sesi: document.querySelector('input[name="impakQ14"]:checked')?.value
+    };
+
+    if(btn) { 
+        btn.disabled = true; 
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEREKOD MAKLUM BALAS...`;
+    }
+
+    try {
+        const result = await ImpactService.submitImpact(payload);
+        
+        // Memeriksa jika pangkalan data berjaya menerima tetapi ada pesanan khas 
+        // (contohnya pengguna menghantar serentak semasa kuota baru sahaja penuh)
+        if (result.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Terima Kasih!',
+                text: 'Maklum balas anda telah direkodkan. Penghargaan atas penyertaan anda.',
+                confirmButtonColor: '#4f46e5' // indigo-600
+            }).then(() => {
+                // Sentiasa reset form selepas hantar
+                document.getElementById('formImpak').reset();
+                window.toggleQ11Lain(false); // Sembunyikan input text "Lain-lain"
+                
+                // Semak semula status kuota untuk pastikan UI dikunci jika sudah mencapai 10
+                checkImpakStatus(kod);
+            });
+        }
+    } catch (err) {
+        console.error("Impak Submit Error:", err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Penolakan Sistem',
+            text: err.message || 'Ralat teknikal. Gagal menghantar rekod.',
+            confirmButtonColor: '#ef4444'
+        });
+        
+        // PENTING: Jika error adalah "kuota penuh", kita perlu pastikan UI dikunci terus
+        if (err.message && err.message.includes('sasaran')) {
+            checkImpakStatus(kod);
+        }
+    } finally {
+        if(btn) { 
+            btn.disabled = false; 
+            btn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>HANTAR MAKLUM BALAS`;
+        }
+    }
+};
+
 window.resetBorang = function(fullReset = true) {
     const form = document.getElementById('formPublic');
+    const formImpak = document.getElementById('formImpak');
+    
     if(form) {
         document.getElementById('pubProgram').value = "";
         document.getElementById('pubPencapaian').value = "";
-        document.getElementById('pubFile').value = ""; // Reset file input
+        document.getElementById('pubFile').value = ""; 
         
-        // ── SUNTIKAN KEMASKINI RESET UI SIJIL ──
         const pubSijilDropdown = document.getElementById('pubSijilDropdown');
         if (pubSijilDropdown) pubSijilDropdown.value = "";
         
@@ -519,9 +718,14 @@ window.resetBorang = function(fullReset = true) {
         }
         
         const cat = document.getElementById('pubKategori').value;
-        if (cat !== 'SEKOLAH') {
+        if (cat !== 'SEKOLAH' && cat !== 'IMPAK') {
             document.getElementById('pubNama').value = "";
         }
+    }
+
+    if (formImpak) {
+        formImpak.reset();
+        window.toggleQ11Lain(false);
     }
 
     if (fullReset) {
@@ -545,7 +749,6 @@ window.setupPPDMode = function(kodPPD) {
     if(cardPPD) cardPPD.classList.remove('hidden');
     if(formPPD) formPPD.classList.remove('hidden');
 
-    // Suntik nama PPD secara dinamik ke UI HTML
     const ppdNameSubtitle = document.getElementById('ppdNameSubtitle');
     if (ppdNameSubtitle) {
         const namaPpd = APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kodPPD] ? APP_CONFIG.PPD_MAPPING[kodPPD] : 'PEJABAT PENDIDIKAN DAERAH';
@@ -637,7 +840,6 @@ window.hantarBorangPPD = async function() {
         });
     }
 
-    // Validasi Saiz Fail
     if (file.size > 5 * 1024 * 1024) {
         return Swal.fire({
             icon: 'warning',
@@ -654,13 +856,12 @@ window.hantarBorangPPD = async function() {
     }
 
     try {
-        // 1. Muat naik fail
         const uploadedUrl = await uploadFileToDrive(file);
         
         if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD...`;
 
         const payload = {
-            kod_sekolah: currentPpdCode || 'M030', // DIKEMASKINI UNTUK KOD DINAMIK
+            kod_sekolah: currentPpdCode || 'M030', 
             kategori, 
             nama_peserta: nama, 
             nama_pertandingan: program,
@@ -672,7 +873,6 @@ window.hantarBorangPPD = async function() {
             penyedia
         };
 
-        // 2. Simpan DB
         await AchievementService.create(payload);
 
         Swal.fire({
@@ -703,7 +903,7 @@ window.resetBorangPPD = function() {
         document.getElementById('ppdNama').value = "";
         document.getElementById('ppdProgram').value = "";
         document.getElementById('ppdPencapaian').value = "";
-        document.getElementById('ppdFile').value = ""; // Reset fail
+        document.getElementById('ppdFile').value = ""; 
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };

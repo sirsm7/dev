@@ -2,6 +2,7 @@
  * IMPACT SERVICE (MODUL PENILAIAN IMPAK BBM BERBANTUKAN AI)
  * Menguruskan interaksi dengan pangkalan data Supabase untuk
  * menyimpan maklum balas murid dan mendapatkan analitik untuk admin.
+ * KEMASKINI: Menambah fungsi `resetSchoolImpactData` untuk kebolehan pemadaman rekod oleh Admin.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -32,9 +33,9 @@ export const ImpactService = {
             p_q9: payload.q9_penglibatan,
             p_q10: payload.q10_penerangan_guru,
             p_q11: payload.q11_komponen_bbm, // Dihantar sebagai Array (JSONB akan diparse oleh Supabase)
-            p_q12: payload.q12_perkara_dipelajari || null,
-            p_q13: payload.q13_cadangan || null,
-            p_q14: payload.q14_pengesahan_sesi
+            p_q12: payload.q12_perkara_dipelajari || null, // Kini Data Berstruktur (Bukan Subjektif)
+            p_q13: payload.q13_cadangan || null,           // Kini Data Berstruktur Array (JSONB diparse oleh Supabase)
+            p_q14: payload.q14_pengesahan_sesi             // Kini Merupakan Mata Pelajaran (Bukan Ya/Tidak)
         });
 
         if (error) throw error;
@@ -86,5 +87,28 @@ export const ImpactService = {
 
         if (error) throw error;
         return data || [];
+    },
+
+    /**
+     * Memadam semua rekod impak bagi sesebuah sekolah.
+     * Tindakan ini hanya boleh dilakukan oleh Admin untuk mereset data.
+     * @param {string} kodSekolah Kod Sekolah (Cth: MBA0001)
+     * @returns {Promise<boolean>} Status kejayaan
+     */
+    async resetSchoolImpactData(kodSekolah) {
+        if (!db) throw new Error("Tiada sambungan pangkalan data.");
+        if (!kodSekolah) throw new Error("Kod Sekolah wajib disertakan untuk tindakan pemadaman.");
+
+        const { error } = await db
+            .from('smpid_impak_bbm')
+            .delete()
+            .eq('kod_sekolah', kodSekolah);
+
+        if (error) {
+            console.error("Gagal memadam jadual:", error);
+            throw new Error("Gagal mereset data sekolah dari pangkalan data.");
+        }
+
+        return true;
     }
 };

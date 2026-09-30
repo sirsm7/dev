@@ -40,6 +40,15 @@
     .enabled-form { @apply opacity-100 pointer-events-auto grayscale-0; }
     .hidden { display: none !important; }
     .uppercase-input { text-transform: uppercase; }
+
+    /* Likert Scale Custom Styles */
+    .likert-radio { @apply hidden; }
+    .likert-label { @apply flex flex-col items-center justify-center p-3 border-2 border-slate-100 rounded-xl cursor-pointer transition-all duration-200 bg-white text-center hover:bg-indigo-50 hover:border-indigo-200; }
+    .likert-radio:checked + .likert-label { @apply bg-indigo-50 border-indigo-500 shadow-md transform scale-105; }
+    .likert-icon { @apply text-2xl mb-1 text-slate-300 transition-colors duration-200; }
+    .likert-radio:checked + .likert-label .likert-icon { @apply text-indigo-600; }
+    .likert-text { @apply text-[10px] font-bold text-slate-500; }
+    .likert-radio:checked + .likert-label .likert-text { @apply text-indigo-700; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -61,7 +70,6 @@
         <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20 mb-6">
             <i class="fas fa-arrow-left"></i> Kembali ke Portal
         </a>
-        <!-- Logo PPD: Memperbesarkan saiz kepada w-44 (Optimum Prominent Size V11.0) -->
         <img src="icoppdag.png" alt="Logo PPD" class="w-44 h-auto mx-auto mb-4 drop-shadow-lg transform hover:scale-105 transition duration-500">
         <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Portal Serahan Data</h1>
         <p class="text-emerald-200 text-xs font-bold uppercase tracking-widest mt-2 opacity-90">Unit Sumber Teknologi Pendidikan (USTP)</p>
@@ -168,7 +176,6 @@
                 <div id="divPubPenyedia" class="hidden">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">PENYEDIA / JENAMA</label>
                     <div class="relative">
-                        <!-- UPDATE: Ditambah class disabled:bg-slate-100 disabled:opacity-75 supaya nampak terkunci -->
                         <select id="pubPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none disabled:bg-slate-100 disabled:opacity-75 transition-all">
                             <!-- Populated by JS -->
                         </select>
@@ -179,7 +186,6 @@
                 <div>
                     <label id="lblPubProgram" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">NAMA PERTANDINGAN</label>
                     
-                    <!-- SUNTIKAN: Dropdown untuk Sijil Pra-tetap (Disembunyikan secara lalai) -->
                     <div id="wrapperPubSijil" class="hidden mb-3 relative animate-fade-up">
                         <select id="pubSijilDropdown" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none transition-colors" onchange="if(window.handleSijilChange) window.handleSijilChange()">
                             <option value="" disabled selected>- PILIH SIJIL PROFESIONAL (PILIHAN) -</option>
@@ -302,211 +308,321 @@
                 <!-- SOALAN 1 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q1 - Kefahaman</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Selepas menggunakan bahan ini, sejauh mana bahan ini membantu anda memahami topik yang dipelajari?</p>
-                    <div class="relative">
-                        <select id="impakQ1" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat membantu">Sangat membantu</option>
-                            <option value="Membantu">Membantu</option>
-                            <option value="Sedikit membantu">Sedikit membantu</option>
-                            <option value="Tidak membantu">Tidak membantu</option>
-                            <option value="Saya masih kurang faham">Saya masih kurang faham</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">BBM yang ditunjukkan oleh guru membantu saya faham tajuk ini.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ1" id="q1_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q1_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ1" id="q1_4" value="Setuju" class="likert-radio">
+                        <label for="q1_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ1" id="q1_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q1_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ1" id="q1_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q1_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ1" id="q1_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q1_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 2 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q2 - Penguasaan</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Selepas menggunakan bahan ini, sejauh mana anda rasa anda menguasai perkara yang dipelajari?</p>
-                    <div class="relative">
-                        <select id="impakQ2" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat menguasai">Sangat menguasai</option>
-                            <option value="Menguasai">Menguasai</option>
-                            <option value="Sedikit menguasai">Sedikit menguasai</option>
-                            <option value="Masih kurang menguasai">Masih kurang menguasai</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Penerangan guru menjadi lebih jelas dengan bantuan BBM ini.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ2" id="q2_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q2_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ2" id="q2_4" value="Setuju" class="likert-radio">
+                        <label for="q2_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ2" id="q2_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q2_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ2" id="q2_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q2_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ2" id="q2_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q2_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 3 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q3 - Ingatan</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Selepas pembelajaran tadi, sejauh mana anda masih ingat perkara penting yang dipelajari?</p>
-                    <div class="relative">
-                        <select id="impakQ3" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat banyak">Sangat banyak</option>
-                            <option value="Banyak">Banyak</option>
-                            <option value="Sedikit">Sedikit</option>
-                            <option value="Sangat sedikit">Sangat sedikit</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Visual dan contoh pada BBM ini memudahkan saya ingat isi pelajaran.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ3" id="q3_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q3_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ3" id="q3_4" value="Setuju" class="likert-radio">
+                        <label for="q3_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ3" id="q3_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q3_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ3" id="q3_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q3_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ3" id="q3_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q3_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 4 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q4 - Minat</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Selepas menggunakan bahan ini, bagaimana minat anda untuk belajar topik ini?</p>
-                    <div class="relative">
-                        <select id="impakQ4" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Lebih berminat">Lebih berminat</option>
-                            <option value="Sedikit lebih berminat">Sedikit lebih berminat</option>
-                            <option value="Tidak berubah">Tidak berubah</option>
-                            <option value="Kurang berminat">Kurang berminat</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Saya rasa lebih seronok apabila guru mengajar menggunakan BBM ini.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ4" id="q4_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q4_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ4" id="q4_4" value="Setuju" class="likert-radio">
+                        <label for="q4_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ4" id="q4_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q4_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ4" id="q4_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q4_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ4" id="q4_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q4_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 5 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q5 - Idea & Pemikiran</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Adakah bahan ini membantu anda mendapat idea atau cara baharu untuk memahami topik?</p>
-                    <div class="relative">
-                        <select id="impakQ5" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat membantu">Sangat membantu</option>
-                            <option value="Membantu">Membantu</option>
-                            <option value="Sedikit membantu">Sedikit membantu</option>
-                            <option value="Tidak membantu">Tidak membantu</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">BBM yang ditunjukkan memberikan gambaran yang lebih jelas tentang topik ini.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ5" id="q5_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q5_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ5" id="q5_4" value="Setuju" class="likert-radio">
+                        <label for="q5_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ5" id="q5_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q5_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ5" id="q5_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q5_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ5" id="q5_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q5_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 6 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q6 - Keyakinan</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Selepas menggunakan bahan ini, bagaimana keyakinan anda untuk menjawab soalan atau melakukan aktiviti berkaitan topik ini?</p>
-                    <div class="relative">
-                        <select id="impakQ6" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat yakin">Sangat yakin</option>
-                            <option value="Yakin">Yakin</option>
-                            <option value="Sedikit yakin">Sedikit yakin</option>
-                            <option value="Masih kurang yakin">Masih kurang yakin</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Saya rasa lebih yakin untuk menjawab soalan guru selepas melihat BBM tersebut.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ6" id="q6_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q6_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ6" id="q6_4" value="Setuju" class="likert-radio">
+                        <label for="q6_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ6" id="q6_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q6_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ6" id="q6_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q6_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ6" id="q6_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q6_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 7 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q7 - Persediaan Ujian</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Adakah bahan ini membantu anda lebih bersedia untuk menghadapi ujian atau peperiksaan?</p>
-                    <div class="relative">
-                        <select id="impakQ7" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat membantu">Sangat membantu</option>
-                            <option value="Membantu">Membantu</option>
-                            <option value="Sedikit membantu">Sedikit membantu</option>
-                            <option value="Tidak membantu">Tidak membantu</option>
-                            <option value="Belum pasti">Belum pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">BBM yang ditunjukkan membantu saya mengingat fakta untuk ujian.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ7" id="q7_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q7_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ7" id="q7_4" value="Setuju" class="likert-radio">
+                        <label for="q7_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ7" id="q7_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q7_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ7" id="q7_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q7_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ7" id="q7_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q7_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 8 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q8 - Keseluruhan</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Secara keseluruhan, bagaimana bahan ini membantu pembelajaran anda?</p>
-                    <div class="relative">
-                        <select id="impakQ8" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat membantu">Sangat membantu</option>
-                            <option value="Membantu">Membantu</option>
-                            <option value="Sedikit membantu">Sedikit membantu</option>
-                            <option value="Tidak membantu">Tidak membantu</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Secara keseluruhan, BBM ini sangat membantu pembelajaran saya hari ini.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ8" id="q8_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q8_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ8" id="q8_4" value="Setuju" class="likert-radio">
+                        <label for="q8_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ8" id="q8_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q8_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ8" id="q8_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q8_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ8" id="q8_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q8_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 9 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q9 - Penglibatan</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Semasa menggunakan bahan ini, bagaimana penglibatan anda dalam pembelajaran?</p>
-                    <div class="relative">
-                        <select id="impakQ9" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat aktif">Sangat aktif</option>
-                            <option value="Aktif">Aktif</option>
-                            <option value="Kurang aktif">Kurang aktif</option>
-                            <option value="Tidak aktif">Tidak aktif</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Saya menjadi lebih fokus dan berminat untuk mengambil bahagian di dalam kelas.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ9" id="q9_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q9_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ9" id="q9_4" value="Setuju" class="likert-radio">
+                        <label for="q9_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ9" id="q9_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q9_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ9" id="q9_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q9_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ9" id="q9_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q9_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 10 -->
                 <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q10 - Penerangan Guru</label>
-                    <p class="text-xs text-slate-700 font-bold mb-3">Adakah bahan ini memudahkan anda memahami perkara yang diterangkan oleh guru?</p>
-                    <div class="relative">
-                        <select id="impakQ10" class="w-full p-3.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold focus:border-indigo-500 outline-none appearance-none shadow-sm" required>
-                            <option value="" disabled selected>- PILIH JAWAPAN -</option>
-                            <option value="Sangat membantu">Sangat membantu</option>
-                            <option value="Membantu">Membantu</option>
-                            <option value="Sedikit membantu">Sedikit membantu</option>
-                            <option value="Tidak membantu">Tidak membantu</option>
-                            <option value="Tidak pasti">Tidak pasti</option>
-                        </select>
-                        <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    <p class="text-xs text-slate-700 font-bold mb-4">BBM ini membantu saya membayangkan apa yang sedang diterangkan oleh guru.</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <input type="radio" name="impakQ10" id="q10_5" value="Sangat Setuju" class="likert-radio" required>
+                        <label for="q10_5" class="likert-label"><i class="fas fa-laugh-beam likert-icon"></i><span class="likert-text">Sangat Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ10" id="q10_4" value="Setuju" class="likert-radio">
+                        <label for="q10_4" class="likert-label"><i class="fas fa-smile likert-icon"></i><span class="likert-text">Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ10" id="q10_3" value="Tidak Pasti" class="likert-radio">
+                        <label for="q10_3" class="likert-label"><i class="fas fa-meh likert-icon"></i><span class="likert-text">Tidak Pasti</span></label>
+                        
+                        <input type="radio" name="impakQ10" id="q10_2" value="Tidak Setuju" class="likert-radio">
+                        <label for="q10_2" class="likert-label"><i class="fas fa-frown likert-icon"></i><span class="likert-text">Tidak Setuju</span></label>
+                        
+                        <input type="radio" name="impakQ10" id="q10_1" value="Sangat Tidak Setuju" class="likert-radio">
+                        <label for="q10_1" class="likert-label"><i class="fas fa-sad-tear likert-icon"></i><span class="likert-text">Sangat Tidak Setuju</span></label>
                     </div>
                 </div>
 
                 <!-- SOALAN 11 (MULTIPLE) -->
                 <div>
                     <label class="block text-[10px] font-black text-indigo-600 uppercase mb-2 ml-1">Q11 - KOMPONEN BBM</label>
-                    <p class="text-xs text-slate-700 font-bold mb-4 ml-1">Apakah bahagian bahan ini yang paling membantu anda belajar? (Boleh pilih lebih daripada satu)</p>
+                    <p class="text-xs text-slate-700 font-bold mb-4 ml-1">Apakah bahagian BBM yang paling menarik perhatian kamu semasa guru mengajar? (Boleh pilih lebih daripada satu)</p>
                     <div id="impakQ11Container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                         <!-- Diisi oleh public.js -->
                     </div>
-                    <input type="text" id="impakQ11Lain" class="w-full p-4 mt-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-sm font-bold text-slate-700 hidden" placeholder="Sila nyatakan...">
                 </div>
 
-                <!-- SOALAN 12 -->
+                <!-- SOALAN 12 (RADIO BERSTRUKTUR BAHARU) -->
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <label class="block text-[10px] font-black text-indigo-600 uppercase mb-1">Q12 - PERKARA DIPELAJARI</label>
+                    <p class="text-xs text-slate-700 font-bold mb-4">Aspek manakah yang paling banyak dibantu oleh BBM ini?</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 transition shadow-sm group">
+                            <input type="radio" name="impakQ12" value="Mendapat fakta dan maklumat baharu" class="accent-indigo-600 w-4 h-4" required>
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Mendapat fakta dan maklumat baharu</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 transition shadow-sm group">
+                            <input type="radio" name="impakQ12" value="Memahami konsep yang sukar" class="accent-indigo-600 w-4 h-4">
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Memahami konsep yang sukar</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 transition shadow-sm group">
+                            <input type="radio" name="impakQ12" value="Mengetahui cara menyelesaikan masalah" class="accent-indigo-600 w-4 h-4">
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Mengetahui cara menyelesaikan masalah</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 transition shadow-sm group">
+                            <input type="radio" name="impakQ12" value="Mengingat kembali pelajaran lepas" class="accent-indigo-600 w-4 h-4">
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Mengingat kembali pelajaran lepas</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- SOALAN 13 (CHECKBOX BERSTRUKTUR BAHARU) -->
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Q12 - PERKARA DIPELAJARI (PILIHAN)</label>
-                    <p class="text-xs text-slate-600 mb-2 ml-1">Apakah perkara paling penting yang anda dapat daripada pembelajaran menggunakan bahan ini?</p>
-                    <textarea id="impakQ12" rows="3" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none text-sm font-semibold text-slate-700" placeholder="Taip jawapan ringkas di sini..."></textarea>
+                    <label class="block text-[10px] font-black text-indigo-600 uppercase mb-2 ml-1">Q13 - CADANGAN PENAMBAHBAIKAN</label>
+                    <p class="text-xs text-slate-700 font-bold mb-4 ml-1">Apakah yang boleh guru tambah pada BBM ini pada masa akan datang? (Boleh pilih lebih daripada satu)</p>
+                    <div id="impakQ13Container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <!-- Diisi oleh public.js secara statik -->
+                        <label class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm group">
+                            <input type="checkbox" name="impakQ13" value="Lebihkan gambar, animasi, atau video" class="accent-indigo-600 w-4 h-4"> 
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Lebihkan gambar, animasi, atau video</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm group">
+                            <input type="checkbox" name="impakQ13" value="Masukkan elemen permainan atau kuiz" class="accent-indigo-600 w-4 h-4"> 
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Masukkan elemen permainan atau kuiz</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm group">
+                            <input type="checkbox" name="impakQ13" value="Gunakan warna yang lebih terang dan menarik" class="accent-indigo-600 w-4 h-4"> 
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Gunakan warna yang lebih terang dan menarik</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm group">
+                            <input type="checkbox" name="impakQ13" value="Besarkan saiz tulisan" class="accent-indigo-600 w-4 h-4"> 
+                            <span class="text-xs font-bold text-slate-700 group-hover:text-indigo-800">Besarkan saiz tulisan</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl cursor-pointer hover:bg-emerald-100 transition shadow-sm group md:col-span-2">
+                            <input type="checkbox" name="impakQ13" value="BBM ini sudah cukup bagus" class="accent-emerald-600 w-4 h-4" onchange="document.querySelectorAll('input[name=impakQ13]:not([value=\'BBM ini sudah cukup bagus\'])').forEach(cb => { if(this.checked) cb.checked = false; })"> 
+                            <span class="text-xs font-bold text-emerald-800">BBM ini sudah cukup bagus (Tiada cadangan)</span>
+                        </label>
+                    </div>
                 </div>
 
-                <!-- SOALAN 13 -->
-                <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Q13 - CADANGAN (PILIHAN)</label>
-                    <p class="text-xs text-slate-600 mb-2 ml-1">Apakah yang boleh diperbaiki supaya bahan ini lebih membantu anda belajar?</p>
-                    <textarea id="impakQ13" rows="3" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none text-sm font-semibold text-slate-700" placeholder="Taip cadangan anda di sini..."></textarea>
-                </div>
-
-                <!-- SOALAN 14 (PENGESAHAN) -->
+                <!-- SOALAN 14 (PENGESAHAN MATAPELAJARAN - LOGIK BERSYARAT BAHARU) -->
                 <div class="bg-orange-50 p-6 rounded-3xl border border-orange-100">
                     <label class="block text-[10px] font-black text-orange-600 uppercase mb-2 ml-1">Q14 - PENGESAHAN SESI (WAJIB)</label>
-                    <p class="text-sm text-orange-900 mb-4 ml-1 font-bold">Adakah bahan pembelajaran ini digunakan oleh guru anda dalam pembelajaran tadi?</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <p class="text-sm text-orange-900 mb-4 ml-1 font-bold">Pilih mata pelajaran bagi sesi pembelajaran menggunakan BBM ini.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                         <label class="flex items-center gap-3 p-3.5 bg-white border border-orange-200 rounded-xl cursor-pointer hover:bg-orange-100 transition shadow-sm">
-                            <input type="radio" name="impakQ14" value="Ya" class="accent-orange-600 w-4 h-4" required> <span class="text-sm font-bold text-orange-900">Ya</span>
+                            <input type="radio" name="impakQ14Main" value="BAHASA MELAYU" class="accent-orange-600 w-4 h-4" required onchange="window.toggleQ14Subjek()"> <span class="text-xs font-bold text-orange-900">BAHASA MELAYU</span>
                         </label>
                         <label class="flex items-center gap-3 p-3.5 bg-white border border-orange-200 rounded-xl cursor-pointer hover:bg-orange-100 transition shadow-sm">
-                            <input type="radio" name="impakQ14" value="Tidak" class="accent-orange-600 w-4 h-4"> <span class="text-sm font-bold text-orange-900">Tidak</span>
+                            <input type="radio" name="impakQ14Main" value="SEJARAH" class="accent-orange-600 w-4 h-4" onchange="window.toggleQ14Subjek()"> <span class="text-xs font-bold text-orange-900">SEJARAH</span>
                         </label>
                         <label class="flex items-center gap-3 p-3.5 bg-white border border-orange-200 rounded-xl cursor-pointer hover:bg-orange-100 transition shadow-sm">
-                            <input type="radio" name="impakQ14" value="Tidak pasti" class="accent-orange-600 w-4 h-4"> <span class="text-sm font-bold text-orange-900">Tidak pasti</span>
+                            <input type="radio" name="impakQ14Main" value="SUBJEK STEM" class="accent-orange-600 w-4 h-4" onchange="window.toggleQ14Subjek()"> <span class="text-xs font-bold text-orange-900">SUBJEK STEM</span>
                         </label>
+                    </div>
+
+                    <div id="containerSubjekSTEM" class="hidden animate-fade-in mt-4 pt-4 border-t border-orange-200">
+                        <label class="block text-[10px] font-black text-orange-600 uppercase mb-2 ml-1">SILA NYATAKAN SUBJEK STEM SECARA SPESIFIK</label>
+                        <div class="relative">
+                            <select id="impakQ14Sub" class="w-full p-3.5 rounded-xl bg-white border border-orange-200 text-slate-700 text-sm font-semibold focus:border-orange-500 outline-none appearance-none shadow-sm">
+                                <option value="" disabled selected>- PILIH SUBJEK STEM -</option>
+                                <option value="MATEMATIK">MATEMATIK</option>
+                                <option value="SAINS">SAINS</option>
+                                <option value="REKA BENTUK DAN TEKNOLOGI (RBT)">REKA BENTUK DAN TEKNOLOGI (RBT)</option>
+                                <option value="ASAS SAINS KOMPUTER (ASK)">ASAS SAINS KOMPUTER (ASK)</option>
+                                <option value="MATEMATIK TAMBAHAN">MATEMATIK TAMBAHAN</option>
+                                <option value="FIZIK">FIZIK</option>
+                                <option value="KIMIA">KIMIA</option>
+                                <option value="BIOLOGI">BIOLOGI</option>
+                                <option value="SAINS KOMPUTER">SAINS KOMPUTER</option>
+                                <option value="SAINS TAMBAHAN">SAINS TAMBAHAN</option>
+                                <option value="GRAFIK KOMUNIKASI TEKNIKAL (GKT)">GRAFIK KOMUNIKASI TEKNIKAL (GKT)</option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                        </div>
                     </div>
                 </div>
 

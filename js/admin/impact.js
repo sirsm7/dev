@@ -1,7 +1,10 @@
 /**
  * ADMIN MODULE: IMPACT ANALYSIS (MODUL PENILAIAN IMPAK BBM BERBANTUKAN AI)
  * Fungsi: Menguruskan pemuatan data analitik, penjanaan carta, 
- * pengiraan agregat (Indeks Impak), dan visualisasi Suara Murid.
+ * pengiraan agregat (Indeks Impak), visualisasi Suara Murid dan kemudahan Reset.
+ * --- KEMASKINI UI ---
+ * Menyokong format baharu data Q12 (Tunggal) dan Q13 (Berbilang) yang diubah ke
+ * representasi visual (Doughnut & Bar Charts) menggunakan Chart.js. Menambah kawalan Reset Data.
  */
 
 import { ImpactService } from '../services/impact.service.js';
@@ -10,6 +13,8 @@ import { APP_CONFIG } from '../config/app.config.js';
 
 let rawImpactData = [];
 let impactChartInstance = null;
+let chartQ12Instance = null;
+let chartQ13Instance = null;
 
 /**
  * Fungsi inisialisasi yang dipanggil apabila tab Impak BBM dibuka.
@@ -58,7 +63,7 @@ function calculateImpactDashboard(data) {
     let sekolahSet = new Set();
     let muridCount = 0;
     
-    // Hanya ambil respons yang sah (Q14 = Ya) untuk analisis teras
+    // Hanya ambil respons yang sah (Q14 valid subject string) untuk analisis teras
     const validData = data.filter(d => d.is_valid === true);
     
     // B. Pengiraan Komponen BBM (Q11)
@@ -80,12 +85,15 @@ function calculateImpactDashboard(data) {
             });
         }
 
-        // Kiraan Sentimen (Menganggap "Sangat membantu", "Membantu" sebagai positif)
-        if (item.q8_keseluruhan === 'Sangat membantu' || item.q8_keseluruhan === 'Membantu') {
+        // Kiraan Sentimen (Menganggap "Sangat Setuju", "Setuju" sebagai positif untuk Skala Baharu)
+        // Sokong juga data legacy lama (Sangat membantu, Membantu)
+        const isPosOverall = ['Sangat Setuju', 'Setuju', 'Sangat membantu', 'Membantu'].includes(item.q8_keseluruhan);
+        if (isPosOverall) {
             totalPositiveResponses++;
         }
         
-        if (item.q7_persediaan_ujian === 'Sangat membantu' || item.q7_persediaan_ujian === 'Membantu') {
+        const isPosExam = ['Sangat Setuju', 'Setuju', 'Sangat membantu', 'Membantu'].includes(item.q7_persediaan_ujian);
+        if (isPosExam) {
             totalUjianPositive++;
         }
     });
@@ -133,9 +141,10 @@ function renderLikertBars(validData) {
 
     const total = validData.length;
     
-    // Helper function untuk kira peratusan respons positif
-    const calculatePositivePercent = (questionKey, positiveValues) => {
-        const count = validData.filter(d => positiveValues.includes(d[questionKey])).length;
+    // Helper function untuk kira peratusan respons positif menyokong kedua-dua format lama dan baharu
+    const calculatePositivePercent = (questionKey) => {
+        const positiveKeywords = ['Sangat Setuju', 'Setuju', 'Sangat membantu', 'Membantu', 'Lebih berminat', 'Sedikit lebih berminat', 'Sangat yakin', 'Yakin'];
+        const count = validData.filter(d => positiveKeywords.includes(d[questionKey])).length;
         return Math.round((count / total) * 100);
     };
 
@@ -143,27 +152,27 @@ function renderLikertBars(validData) {
     const metrics = [
         { 
             label: "Kefahaman Topik", 
-            pct: calculatePositivePercent('q1_kefahaman', ['Sangat membantu', 'Membantu']),
+            pct: calculatePositivePercent('q1_kefahaman'),
             icon: "fa-brain", color: "bg-blue-500"
         },
         { 
             label: "Lebih Berminat Belajar", 
-            pct: calculatePositivePercent('q4_minat', ['Lebih berminat', 'Sedikit lebih berminat']),
+            pct: calculatePositivePercent('q4_minat'),
             icon: "fa-heart", color: "bg-red-500"
         },
         { 
             label: "Mendapat Idea Baharu", 
-            pct: calculatePositivePercent('q5_idea', ['Sangat membantu', 'Membantu']),
+            pct: calculatePositivePercent('q5_idea'),
             icon: "fa-lightbulb", color: "bg-amber-500"
         },
         { 
             label: "Keyakinan Menjawab", 
-            pct: calculatePositivePercent('q6_keyakinan', ['Sangat yakin', 'Yakin']),
+            pct: calculatePositivePercent('q6_keyakinan'),
             icon: "fa-shield-alt", color: "bg-emerald-500"
         },
         { 
             label: "Memahami Penerangan Guru", 
-            pct: calculatePositivePercent('q10_penerangan_guru', ['Sangat membantu', 'Membantu']),
+            pct: calculatePositivePercent('q10_penerangan_guru'),
             icon: "fa-chalkboard-teacher", color: "bg-indigo-500"
         }
     ];
@@ -253,7 +262,7 @@ function renderBBMChart(componentCounts) {
 }
 
 /**
- * Menjana Jadual Status Pelaksanaan Mengikut Sekolah
+ * Menjana Jadual Status Pelaksanaan Mengikut Sekolah beserta butang Reset.
  */
 function renderImpactTable(data) {
     const tbody = document.getElementById('tbodyImpactAdmin');
@@ -305,6 +314,15 @@ function renderImpactTable(data) {
             
         const rowClass = isReached ? 'bg-slate-50/50 grayscale-[0.2]' : 'bg-white hover:bg-slate-50';
 
+        // Hanya SUPER_ADMIN dibenarkan mereset/memadam rekod impak bagi sekolah secara berasingan (elak terpadam rekod sah sekolah lain)
+        const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        let btnReset = '';
+        if (currentUserRole === 'SUPER_ADMIN') {
+            btnReset = `<button onclick="window.resetImpactDataAdmin('${s.kod_sekolah}')" class="p-2.5 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-500 border border-transparent hover:border-red-200 transition-all shadow-sm" title="Reset (Padam) Jadual Impak Sekolah Ini">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>`;
+        }
+
         return `
         <tr class="${rowClass} transition-colors border-b border-slate-100 last:border-0 group">
             <td class="px-6 py-5 text-center font-mono font-bold text-slate-400 align-middle">${index + 1}</td>
@@ -318,16 +336,50 @@ function renderImpactTable(data) {
             </td>
             <td class="px-6 py-5 text-center align-middle">${statusBadge}</td>
             <td class="px-6 py-5 text-center align-middle">
-                <button onclick="window.viewImpactDetail('${s.kod_sekolah}', '${s.nama_sekolah.replace(/'/g, "\\'")}')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-md uppercase tracking-wider flex items-center justify-center mx-auto gap-2 transform active:scale-95">
-                    <i class="fas fa-comments"></i> Analisis
-                </button>
+                <div class="flex items-center justify-center gap-2">
+                    <button onclick="window.viewImpactDetail('${s.kod_sekolah}', '${s.nama_sekolah.replace(/'/g, "\\'")}')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-md uppercase tracking-wider flex items-center justify-center gap-2 transform active:scale-95">
+                        <i class="fas fa-chart-pie"></i> Analisis
+                    </button>
+                    ${btnReset}
+                </div>
             </td>
         </tr>`;
     }).join('');
 }
 
 /**
- * Membuka tetingkap modal Suara Murid (Jawapan Subjektif) bagi sekolah yang dipilih
+ * Logik pemadaman (reset) data impak sebuah sekolah
+ */
+window.resetImpactDataAdmin = async function(kodSekolah) {
+    Swal.fire({
+        title: `Padam Jadual Tinjauan Impak?`,
+        html: `Anda pasti mahu memadam <b>SEMUA</b> rekod respons Impak BBM untuk sekolah <b>${kodSekolah}</b>?<br><br>Tindakan ini tidak boleh dibatalkan.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            try {
+                await ImpactService.resetSchoolImpactData(kodSekolah);
+                toggleLoading(false);
+                Swal.fire({ icon: 'success', title: 'Data Direset', text: 'Jadual maklum balas sekolah ini telah dikosongkan.', timer: 1500, showConfirmButton: false });
+                
+                // Refresh data list
+                window.loadImpactAdmin();
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat Sistem', e.message || 'Gagal memadam rekod pangkalan data.', 'error');
+            }
+        }
+    });
+};
+
+/**
+ * Membuka tetingkap modal Suara Murid (Kini memaparkan Graf Q12 & Q13)
  */
 window.viewImpactDetail = function(kodSekolah, namaSekolah) {
     const subtitle = document.getElementById('impactDetailSubtitle');
@@ -335,40 +387,155 @@ window.viewImpactDetail = function(kodSekolah, namaSekolah) {
         subtitle.innerText = `${namaSekolah} (${kodSekolah})`;
     }
 
-    const listLearned = document.getElementById('impactListLearned');
-    const listSuggestions = document.getElementById('impactListSuggestions');
-    
     // Tapis rekod untuk sekolah berkenaan sahaja (Hanya yang SAH)
     const schoolData = rawImpactData.filter(d => d.kod_sekolah === kodSekolah && d.is_valid === true);
 
-    let htmlLearned = '';
-    let htmlSuggestions = '';
-
+    // KIRAAN Q12 (PERKARA DIPELAJARI - RADIO BUTTON TUNGGAL)
+    let q12Counts = {};
     schoolData.forEach(item => {
-        // Paparkan jika ada teks (bukan kosong/null)
-        if (item.q12_perkara_dipelajari && item.q12_perkara_dipelajari.trim() !== '') {
-            htmlLearned += `
-            <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-slate-700 text-xs leading-relaxed italic">
-                <i class="fas fa-quote-left text-emerald-200 mr-1"></i> "${item.q12_perkara_dipelajari}"
-            </div>`;
-        }
-        
-        if (item.q13_cadangan && item.q13_cadangan.trim() !== '') {
-            htmlSuggestions += `
-            <div class="p-3 bg-amber-50 rounded-xl border border-amber-100 text-slate-700 text-xs leading-relaxed italic">
-                <i class="fas fa-quote-left text-amber-200 mr-1"></i> "${item.q13_cadangan}"
-            </div>`;
+        if (item.q12_perkara_dipelajari) {
+            const label = item.q12_perkara_dipelajari;
+            q12Counts[label] = (q12Counts[label] || 0) + 1;
         }
     });
 
-    if (htmlLearned === '') htmlLearned = '<div class="text-slate-400 text-xs italic text-center py-4">Tiada rekod (murid tidak mengisi ruangan ini).</div>';
-    if (htmlSuggestions === '') htmlSuggestions = '<div class="text-slate-400 text-xs italic text-center py-4">Tiada rekod (murid tidak mengisi ruangan ini).</div>';
+    // KIRAAN Q13 (CADANGAN - CHECKBOX ARRAY)
+    let q13Counts = {};
+    schoolData.forEach(item => {
+        if (Array.isArray(item.q13_cadangan)) {
+            item.q13_cadangan.forEach(cadangan => {
+                q13Counts[cadangan] = (q13Counts[cadangan] || 0) + 1;
+            });
+        }
+    });
 
-    listLearned.innerHTML = htmlLearned;
-    listSuggestions.innerHTML = htmlSuggestions;
+    // Render Carta Chart.js
+    renderQ12Chart(q12Counts);
+    renderQ13Chart(q13Counts);
 
     document.getElementById('modalImpactDetail').classList.remove('hidden');
 };
+
+/**
+ * Menjana Carta Pai/Doughnut untuk Q12 (Perkara Dipelajari)
+ */
+function renderQ12Chart(dataObj) {
+    const ctx = document.getElementById('chartQ12Detail');
+    if (!ctx) return;
+    if (chartQ12Instance) chartQ12Instance.destroy();
+
+    const labels = Object.keys(dataObj);
+    const dataValues = Object.values(dataObj);
+
+    if (labels.length === 0) {
+        // Fallback jika tiada data
+        chartQ12Instance = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: ['Tiada Rekod'], datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }] },
+            options: { plugins: { tooltip: { enabled: false }, legend: { display: false } } }
+        });
+        return;
+    }
+
+    chartQ12Instance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: dataValues,
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15,
+                        font: { family: "'Inter', sans-serif", size: 10, weight: 'bold' }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return ` ${context.raw} Orang Murid`; }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Menjana Carta Bar Menegak untuk Q13 (Cadangan)
+ */
+function renderQ13Chart(dataObj) {
+    const ctx = document.getElementById('chartQ13Detail');
+    if (!ctx) return;
+    if (chartQ13Instance) chartQ13Instance.destroy();
+
+    // Sort Descending
+    const sortedEntries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
+    const labels = sortedEntries.map(e => e[0]);
+    const dataValues = sortedEntries.map(e => e[1]);
+
+    if (labels.length === 0) {
+        // Fallback
+        chartQ13Instance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Tiada Cadangan'], datasets: [{ data: [0], backgroundColor: '#e2e8f0' }] },
+            options: { plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
+        });
+        return;
+    }
+
+    chartQ13Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Kekerapan Cadangan',
+                data: dataValues,
+                backgroundColor: 'rgba(245, 158, 11, 0.2)', // Amber
+                borderColor: 'rgba(245, 158, 11, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return ` Dicadangkan oleh ${context.raw} Murid`; }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, font: { size: 10 } },
+                    grid: { borderDash: [2, 4], color: '#f1f5f9' }
+                },
+                x: {
+                    ticks: { 
+                        font: { size: 9, weight: 'bold' },
+                        maxRotation: 45,
+                        minRotation: 45
+                    },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
 
 /**
  * Mengeksport data mentah Impak BBM ke dalam format CSV
@@ -381,19 +548,15 @@ window.eksportImpactData = function() {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     
     // Header Column
-    csvContent += "KOD_SEKOLAH,TARIKH,SAH,JANTINA,UMUR,Q1_KEFAHAMAN,Q2_PENGUASAAN,Q3_INGATAN,Q4_MINAT,Q5_IDEA,Q6_KEYAKINAN,Q7_PERSEDIAAN_UJIAN,Q8_KESELURUHAN,Q9_PENGLIBATAN,Q10_PENERANGAN_GURU,Q11_KOMPONEN_BBM,Q12_DIPELAJARI,Q13_CADANGAN\n";
+    csvContent += "KOD_SEKOLAH,TARIKH,SAH,JANTINA,UMUR,Q1_KEFAHAMAN,Q2_PENGUASAAN,Q3_INGATAN,Q4_MINAT,Q5_IDEA,Q6_KEYAKINAN,Q7_PERSEDIAAN_UJIAN,Q8_KESELURUHAN,Q9_PENGLIBATAN,Q10_PENERANGAN_GURU,Q11_KOMPONEN_BBM,Q12_DIPELAJARI,Q13_CADANGAN,Q14_SUBJEK\n";
 
     rawImpactData.forEach(item => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         const tarikh = new Date(item.created_at).toLocaleDateString('ms-MY');
         
-        // Komponen BBM adalah JSONB (Array) - Tukar jadi string dipisahkan koma
-        let komponenBBM = '';
-        if (Array.isArray(item.q11_komponen_bbm)) {
-            komponenBBM = item.q11_komponen_bbm.join(', ');
-        } else {
-            komponenBBM = item.q11_komponen_bbm;
-        }
+        // Pembersihan Array ke Teks (Q11, Q13)
+        let komponenBBM = Array.isArray(item.q11_komponen_bbm) ? item.q11_komponen_bbm.join(', ') : item.q11_komponen_bbm;
+        let cadanganBBM = Array.isArray(item.q13_cadangan) ? item.q13_cadangan.join(', ') : item.q13_cadangan;
 
         let row = [
             clean(item.kod_sekolah),
@@ -413,7 +576,8 @@ window.eksportImpactData = function() {
             clean(item.q10_penerangan_guru),
             clean(komponenBBM),
             clean(item.q12_perkara_dipelajari),
-            clean(item.q13_cadangan)
+            clean(cadanganBBM),
+            clean(item.q14_pengesahan_sesi)
         ];
         
         csvContent += row.join(",") + "\n";

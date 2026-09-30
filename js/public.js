@@ -6,6 +6,9 @@
  * Integration: Modul Penilaian Impak BBM Berbantukan AI.
  * Integration: Sokongan PPD Dinamik (Membuang hardcode M030) menggunakan APP_CONFIG.
  * Integration: Modul Upload Fail Base64 menggantikan input URL manual.
+ * --- UPDATE V2.3 (UI & DATA IMPAK) ---
+ * Integration: Menyokong Q14 logik bersyarat Subjek STEM.
+ * Integration: Mengekstrak Q12 & Q13 menggunakan Array (JSONB/TEXT).
  */
 
 import { SchoolService } from './services/school.service.js';
@@ -378,6 +381,26 @@ window.toggleQ11Lain = function(isChecked) {
 };
 
 /**
+ * Memaparkan atau menyembunyikan kotak lungsur spesifik subjek STEM untuk Q14
+ */
+window.toggleQ14Subjek = function() {
+    const containerSubjek = document.getElementById('containerSubjekSTEM');
+    const radMain = document.querySelector('input[name="impakQ14Main"]:checked');
+    const selSubjek = document.getElementById('impakQ14Sub');
+    
+    if (radMain && radMain.value === 'SUBJEK STEM') {
+        containerSubjek.classList.remove('hidden');
+        if (selSubjek) selSubjek.required = true;
+    } else {
+        containerSubjek.classList.add('hidden');
+        if (selSubjek) {
+            selSubjek.required = false;
+            selSubjek.value = '';
+        }
+    }
+};
+
+/**
  * Menukar medan input berdasarkan jenis rekod (Pertandingan vs Pensijilan).
  */
 window.togglePubJenis = function() {
@@ -611,16 +634,13 @@ window.hantarImpakBBM = async function() {
         return Swal.fire('Ralat Pengesahan', 'Sila pilih dan sahkan sekolah anda di atas terlebih dahulu.', 'warning');
     }
 
-    // Ekstrak data dari checkbox (Q11)
+    // Ekstrak data dari checkbox (Q11 - Komponen BBM)
     const q11Checkboxes = document.querySelectorAll('input[name="impakQ11"]:checked');
     let q11Values = Array.from(q11Checkboxes).map(cb => cb.value);
     
-    // Jika "Lain-lain" dipilih, ekstrak nilainya
     if (q11Values.includes("Lain-lain")) {
         const lainVal = document.getElementById('impakQ11Lain')?.value.trim();
         if (lainVal) {
-            // Gantikan "Lain-lain" dengan nilai sebenar ATAU simpan kedua-duanya
-            // Kita keluarkan "Lain-lain" dan masukkan nilai spesifik
             q11Values = q11Values.filter(val => val !== "Lain-lain");
             q11Values.push(lainVal);
         }
@@ -630,25 +650,48 @@ window.hantarImpakBBM = async function() {
         return Swal.fire('Data Tidak Lengkap', 'Sila pilih sekurang-kurangnya SATU komponen BBM pada soalan Q11.', 'warning');
     }
 
-    // Bina Payload Data
+    // Ekstrak data radio (Q12 - Perkara Dipelajari)
+    const q12Radio = document.querySelector('input[name="impakQ12"]:checked');
+    const q12Val = q12Radio ? q12Radio.value : null;
+
+    // Ekstrak data checkbox (Q13 - Cadangan Penambahbaikan)
+    const q13Checkboxes = document.querySelectorAll('input[name="impakQ13"]:checked');
+    let q13Values = Array.from(q13Checkboxes).map(cb => cb.value);
+
+    // Pengurusan Logik Pengesahan Mata Pelajaran (Q14)
+    const q14MainRadio = document.querySelector('input[name="impakQ14Main"]:checked');
+    if (!q14MainRadio) {
+        return Swal.fire('Data Tidak Lengkap', 'Sila pilih Mata Pelajaran pada soalan Q14.', 'warning');
+    }
+    
+    let subjekAkhir = q14MainRadio.value;
+    if (subjekAkhir === 'SUBJEK STEM') {
+        const selSubjek = document.getElementById('impakQ14Sub')?.value;
+        if (!selSubjek) {
+            return Swal.fire('Data Tidak Lengkap', 'Anda telah memilih SUBJEK STEM. Sila nyatakan subjek tersebut secara spesifik pada ruangan yang disediakan.', 'warning');
+        }
+        subjekAkhir = selSubjek;
+    }
+
+    // Bina Payload Data yang dipetakan dengan Skema Database baharu
     const payload = {
         kod_sekolah: kod,
         jantina: document.getElementById('impakJantina').value,
         kumpulan_umur: document.getElementById('impakUmur').value,
-        q1_kefahaman: document.getElementById('impakQ1').value,
-        q2_penguasaan: document.getElementById('impakQ2').value,
-        q3_ingatan: document.getElementById('impakQ3').value,
-        q4_minat: document.getElementById('impakQ4').value,
-        q5_idea: document.getElementById('impakQ5').value,
-        q6_keyakinan: document.getElementById('impakQ6').value,
-        q7_persediaan_ujian: document.getElementById('impakQ7').value,
-        q8_keseluruhan: document.getElementById('impakQ8').value,
-        q9_penglibatan: document.getElementById('impakQ9').value,
-        q10_penerangan_guru: document.getElementById('impakQ10').value,
-        q11_komponen_bbm: q11Values, // Dihantar sebagai Array -> JSONB
-        q12_perkara_dipelajari: document.getElementById('impakQ12').value.trim(),
-        q13_cadangan: document.getElementById('impakQ13').value.trim(),
-        q14_pengesahan_sesi: document.querySelector('input[name="impakQ14"]:checked')?.value
+        q1_kefahaman: document.querySelector('input[name="impakQ1"]:checked')?.value,
+        q2_penguasaan: document.querySelector('input[name="impakQ2"]:checked')?.value,
+        q3_ingatan: document.querySelector('input[name="impakQ3"]:checked')?.value,
+        q4_minat: document.querySelector('input[name="impakQ4"]:checked')?.value,
+        q5_idea: document.querySelector('input[name="impakQ5"]:checked')?.value,
+        q6_keyakinan: document.querySelector('input[name="impakQ6"]:checked')?.value,
+        q7_persediaan_ujian: document.querySelector('input[name="impakQ7"]:checked')?.value,
+        q8_keseluruhan: document.querySelector('input[name="impakQ8"]:checked')?.value,
+        q9_penglibatan: document.querySelector('input[name="impakQ9"]:checked')?.value,
+        q10_penerangan_guru: document.querySelector('input[name="impakQ10"]:checked')?.value,
+        q11_komponen_bbm: q11Values, // Dihantar sebagai Array -> Supabase RPC JSONB
+        q12_perkara_dipelajari: q12Val, // Radio Button Tunggal
+        q13_cadangan: q13Values.length > 0 ? q13Values : null, // Dihantar sebagai Array
+        q14_pengesahan_sesi: subjekAkhir // Menyimpan Mata Pelajaran Sebenar
     };
 
     if(btn) { 
@@ -659,20 +702,16 @@ window.hantarImpakBBM = async function() {
     try {
         const result = await ImpactService.submitImpact(payload);
         
-        // Memeriksa jika pangkalan data berjaya menerima tetapi ada pesanan khas 
-        // (contohnya pengguna menghantar serentak semasa kuota baru sahaja penuh)
         if (result.status === 'success') {
             Swal.fire({
                 icon: 'success',
                 title: 'Terima Kasih!',
                 text: 'Maklum balas anda telah direkodkan. Penghargaan atas penyertaan anda.',
-                confirmButtonColor: '#4f46e5' // indigo-600
+                confirmButtonColor: '#4f46e5' 
             }).then(() => {
-                // Sentiasa reset form selepas hantar
                 document.getElementById('formImpak').reset();
-                window.toggleQ11Lain(false); // Sembunyikan input text "Lain-lain"
-                
-                // Semak semula status kuota untuk pastikan UI dikunci jika sudah mencapai 10
+                window.toggleQ11Lain(false); 
+                window.toggleQ14Subjek(); // Reset Subjek STEM Dropdown
                 checkImpakStatus(kod);
             });
         }
@@ -685,7 +724,6 @@ window.hantarImpakBBM = async function() {
             confirmButtonColor: '#ef4444'
         });
         
-        // PENTING: Jika error adalah "kuota penuh", kita perlu pastikan UI dikunci terus
         if (err.message && err.message.includes('sasaran')) {
             checkImpakStatus(kod);
         }
@@ -726,6 +764,7 @@ window.resetBorang = function(fullReset = true) {
     if (formImpak) {
         formImpak.reset();
         window.toggleQ11Lain(false);
+        window.toggleQ14Subjek();
     }
 
     if (fullReset) {

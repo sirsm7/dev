@@ -44,12 +44,41 @@
 
         /* Likert Scale Custom Styles */
         .likert-radio { @apply hidden; }
-        .likert-label { @apply flex flex-col items-center justify-center p-3 border-2 border-slate-100 rounded-xl cursor-pointer transition-all duration-200 bg-white text-center hover:bg-indigo-50 hover:border-indigo-200; }
-        .likert-radio:checked + .likert-label { @apply bg-indigo-50 border-indigo-500 shadow-md transform scale-105; }
+        .likert-label { @apply flex flex-col items-center justify-center p-3 border-2 border-slate-100 rounded-xl cursor-pointer transition-all duration-200 bg-white text-center hover:bg-slate-50 hover:border-slate-300; }
         .likert-icon { @apply text-2xl mb-1 text-slate-300 transition-colors duration-200; }
-        .likert-radio:checked + .likert-label .likert-icon { @apply text-indigo-600; }
-        .likert-text { @apply text-[10px] font-bold text-slate-500; }
-        .likert-radio:checked + .likert-label .likert-text { @apply text-indigo-700; }
+        .likert-text { @apply text-[10px] font-bold text-slate-500 transition-colors duration-200; }
+        
+        /* Default checked state fallback */
+        .likert-radio:checked + .likert-label { @apply bg-slate-50 border-slate-400 shadow-md transform scale-105; }
+        .likert-radio:checked + .likert-label .likert-icon { @apply text-slate-600; }
+        .likert-radio:checked + .likert-label .likert-text { @apply text-slate-700; }
+
+        /* SENTIMENT COLORS (Dynamic based on value) */
+        
+        /* 5 - Sangat Setuju (Emerald) */
+        input[value="Sangat Setuju"]:checked + .likert-label { @apply bg-emerald-50 border-emerald-500 shadow-md transform scale-105; }
+        input[value="Sangat Setuju"]:checked + .likert-label .likert-icon { @apply text-emerald-500; }
+        input[value="Sangat Setuju"]:checked + .likert-label .likert-text { @apply text-emerald-700; }
+        
+        /* 4 - Setuju (Blue/Sky) */
+        input[value="Setuju"]:checked + .likert-label { @apply bg-sky-50 border-sky-500 shadow-md transform scale-105; }
+        input[value="Setuju"]:checked + .likert-label .likert-icon { @apply text-sky-500; }
+        input[value="Setuju"]:checked + .likert-label .likert-text { @apply text-sky-700; }
+
+        /* 3 - Tidak Pasti (Amber) */
+        input[value="Tidak Pasti"]:checked + .likert-label { @apply bg-amber-50 border-amber-500 shadow-md transform scale-105; }
+        input[value="Tidak Pasti"]:checked + .likert-label .likert-icon { @apply text-amber-500; }
+        input[value="Tidak Pasti"]:checked + .likert-label .likert-text { @apply text-amber-700; }
+
+        /* 2 - Tidak Setuju (Orange) */
+        input[value="Tidak Setuju"]:checked + .likert-label { @apply bg-orange-50 border-orange-500 shadow-md transform scale-105; }
+        input[value="Tidak Setuju"]:checked + .likert-label .likert-icon { @apply text-orange-500; }
+        input[value="Tidak Setuju"]:checked + .likert-label .likert-text { @apply text-orange-700; }
+
+        /* 1 - Sangat Tidak Setuju (Red) */
+        input[value="Sangat Tidak Setuju"]:checked + .likert-label { @apply bg-red-50 border-red-500 shadow-md transform scale-105; }
+        input[value="Sangat Tidak Setuju"]:checked + .likert-label .likert-icon { @apply text-red-500; }
+        input[value="Sangat Tidak Setuju"]:checked + .likert-label .likert-text { @apply text-red-700; }
     }
   </style>
 
@@ -297,7 +326,7 @@
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1">TAHUN / TINGKATAN</label>
                         <div class="relative">
                             <select id="impakUmur" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-indigo-500 outline-none appearance-none" required>
-                                <!-- Populated by JS -->
+                                <!-- Populated by JS dynamically based on school type -->
                             </select>
                             <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                         </div>

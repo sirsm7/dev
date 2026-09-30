@@ -63,7 +63,7 @@ async function initPublicPortal() {
         populateDropdown('ppdTahun', 'TAHUN', currentYear); 
 
         // Modul Impak Dropdowns
-        populateDropdown('impakUmur', 'UMUR_MURID');
+        populateDropdown('impakUmur', 'UMUR_MURID'); // Fallback initial populate
         renderImpakCheckboxes();
 
         // 3. Semak Parameter URL (Auto-lock sekolah)
@@ -121,6 +121,9 @@ function setupManualSearch() {
                     // Semak status kuota modul impak
                     await checkImpakStatus(school.kod_sekolah);
                     
+                    // Kemaskini dropdown TAHUN / TINGKATAN secara dinamik
+                    updateImpakUmurDropdown(school);
+                    
                     enableForm();
                     if (btnGallery) {
                         btnGallery.classList.remove('hidden');
@@ -157,6 +160,9 @@ async function validateAndLockSchool(kod) {
         
         // Semak status kuota modul impak
         await checkImpakStatus(school.kod_sekolah);
+        
+        // Kemaskini dropdown TAHUN / TINGKATAN secara dinamik
+        updateImpakUmurDropdown(school);
         
         if(statusMsg) {
             statusMsg.classList.remove('hidden', 'text-red-500');
@@ -226,6 +232,52 @@ function disableForm() {
 }
 
 // --- 2. FORM INTERACTION LOGIC ---
+
+/**
+ * Mengemaskini dropdown TAHUN / TINGKATAN berdasarkan jenis sekolah.
+ */
+function updateImpakUmurDropdown(school) {
+    const selectUmur = document.getElementById('impakUmur');
+    if (!selectUmur || !DROPDOWN_DATA || !DROPDOWN_DATA['UMUR_MURID']) return;
+
+    const jenisSekolah = (school.jenis_sekolah || '').toUpperCase();
+    const umurData = DROPDOWN_DATA['UMUR_MURID'];
+    
+    // Tentukan sama ada ia sekolah menengah atau rendah berdasarkan kata kunci
+    const isSekolahMenengah = ['SMK', 'SBP', 'SM SABK', 'KV'].some(keyword => jenisSekolah.includes(keyword));
+    const isSekolahRendah = ['SK', 'SJKC', 'SJKT', 'SR SABK'].some(keyword => jenisSekolah.includes(keyword));
+
+    selectUmur.innerHTML = '<option value="" disabled selected>- SILA PILIH -</option>';
+
+    umurData.forEach(item => {
+        const val = item.val;
+        // Jika Menengah, hanya papar pilihan 'TINGKATAN'
+        if (isSekolahMenengah) {
+            if (val.includes('TINGKATAN')) {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.innerText = item.txt;
+                selectUmur.appendChild(opt);
+            }
+        } 
+        // Jika Rendah, hanya papar pilihan 'TAHUN'
+        else if (isSekolahRendah) {
+            if (val.includes('TAHUN')) {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.innerText = item.txt;
+                selectUmur.appendChild(opt);
+            }
+        }
+        // Jika jenis sekolah tidak spesifik (atau belum diset), papar semua
+        else {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.innerText = item.txt;
+            selectUmur.appendChild(opt);
+        }
+    });
+}
 
 /**
  * Menukar UI borang mengikut kategori (Murid, Guru, Sekolah, Impak).

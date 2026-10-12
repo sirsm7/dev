@@ -1,6 +1,8 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V3.0 SURGICAL EDIT)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V3.1 SURGICAL EDIT)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh dan kalis ralat terbina.
+ * UPDATE V3.1: Membaiki logik kiraan Prestasi PPD (mengambil kira semua sumbangan sekolah di bawah daerah)
+ * serta mengemas kini UI jadual pensijilan menggunakan text wrapping (wrap-safe).
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -579,11 +581,27 @@ function renderTopPensijilanLists(data) {
     dataPensijilan.forEach(item => {
         const kod = item.kod_sekolah;
         
-        // Asingkan PPD
-        if (senaraiKodPPD.includes(kod)) {
-            countPPD[kod] = (countPPD[kod] || 0) + 1;
-        } else {
-            // Asingkan SM dan SR
+        // PEMBAIKAN: Asingkan Kiraan untuk PPD dengan menyemak Daerah setiap rekod
+        const rekodDaerah = getPencapaianDaerah(item); // Contoh: "ALOR GAJAH"
+
+        if (rekodDaerah) {
+            // Ambil Kod PPD rasmi bagi daerah ini berpandukan pemetaan APP_CONFIG
+            let targetKodPpd = Object.keys(APP_CONFIG.PPD_MAPPING).find(key => APP_CONFIG.PPD_MAPPING[key].toUpperCase() === rekodDaerah.toUpperCase());
+            
+            // Fallback: Jika rekod adalah secara langsung kod PPD (cth: M030)
+            if (!targetKodPpd && senaraiKodPPD.includes(kod)) {
+                targetKodPpd = kod;
+            }
+
+            if (targetKodPpd) {
+                 // Tambah kiraan ke akaun PPD secara menyeluruh (gabungan data PPD + Sekolah di bawahnya)
+                 countPPD[targetKodPpd] = (countPPD[targetKodPpd] || 0) + 1;
+            }
+        }
+
+        // Pengiraan tambahan untuk Top 3 Sekolah Rendah & Menengah 
+        // Rekod yang asalnya dari kod PPD itu sendiri (pejabat PPD) tidak dikira sebagai sekolah
+        if (!senaraiKodPPD.includes(kod)) {
             const meta = getSchoolMetaByKod(kod);
             if (meta) {
                 const jenis = (meta.jenis_sekolah || '').toUpperCase();
@@ -624,12 +642,13 @@ function renderTopPensijilanLists(data) {
             else if (idx === 1) rankColor = 'bg-slate-200 text-slate-600';
             else if (idx === 2) rankColor = 'bg-orange-100 text-orange-600';
 
+            // PEMBAIKAN: Gantikan 'truncate' dengan 'wrap-safe leading-snug'
             return `
                 <div class="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100 group cursor-pointer" onclick="window.filterBySchoolFromTop5('${kod}')">
                     <div class="flex items-center gap-3 w-4/5">
                         <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${rankColor}">${idx + 1}</div>
-                        <div class="truncate">
-                            <div class="text-xs font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors" title="${nama}">${nama}</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-700 wrap-safe leading-snug group-hover:text-indigo-600 transition-colors" title="${nama}">${nama}</div>
                             <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
                         </div>
                     </div>

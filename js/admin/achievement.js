@@ -426,6 +426,8 @@ window.renderPencapaianTable = function() {
         });
 
         currentPencapaianFiltered = data;
+        
+        // Pulihkan panggillan yang tercicir sebelum ini
         renderTopSchools(data);
 
         // --- PANGGILAN RENDER STATISTIK PENSIJILAN BAHARU ---
@@ -500,6 +502,49 @@ window.renderPencapaianTable = function() {
         console.error("Render Table Error:", err);
     }
 };
+
+function renderTopSchools(data) {
+    const table = document.getElementById('tableTopContributors');
+    const badge = document.getElementById('totalRecordsBadge');
+    if(badge) badge.innerText = `${data.length} Rekod`;
+    if(!table) return;
+    
+    const senaraiKodPPD = getPpdCodeList();
+    const schoolCounts = {};
+    data.forEach(i => {
+        if(!senaraiKodPPD.includes(i.kod_sekolah)) {
+            schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
+        }
+    });
+    
+    const sorted = Object.entries(schoolCounts).sort(([,a], [,b]) => b - a).slice(0, 5);
+    
+    if(sorted.length === 0) {
+        table.innerHTML = `<tr><td class="text-center p-4 text-slate-400 text-xs italic">Tiada data sekolah.</td></tr>`;
+        return;
+    }
+    
+    table.innerHTML = sorted.map(([kod, count], idx) => {
+        let nama = kod;
+        const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
+        if(s) nama = s.nama_sekolah;
+        
+        return `<tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 cursor-pointer group" onclick="window.filterBySchoolFromTop5('${kod}')">
+            <td class="p-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 flex items-center justify-center text-[10px] font-black transition-colors">${idx + 1}</div>
+                        <div>
+                            <div class="text-xs font-black text-slate-800 leading-tight whitespace-normal" title="${nama}">${nama}</div>
+                            <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">${count}</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
 
 // --- FUNGSI BAHARU: RENDER TOP PENSIJILAN ---
 function renderTopPensijilanLists(data) {

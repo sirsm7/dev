@@ -233,7 +233,6 @@ document.addEventListener('click', (e) => {
 });
 
 // --- INITIALIZATION ---
-
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
     const tbody = document.getElementById('tbodyPencapaianMaster');
@@ -355,7 +354,6 @@ function populateSekolahFilter(data) {
 }
 
 // --- RENDERING LOGIC ---
-
 window.renderPencapaianTable = function() {
     try {
         const tbody = document.getElementById('tbodyPencapaianMaster');
@@ -430,6 +428,9 @@ window.renderPencapaianTable = function() {
         currentPencapaianFiltered = data;
         renderTopSchools(data);
 
+        // --- PANGGILAN RENDER STATISTIK PENSIJILAN BAHARU ---
+        renderTopPensijilanLists(data);
+
         const selectAllCb = document.getElementById('selectAllPencapaian');
         if (selectAllCb) selectAllCb.checked = false;
         if(window.checkBulkStatusPencapaian) window.checkBulkStatusPencapaian();
@@ -499,6 +500,109 @@ window.renderPencapaianTable = function() {
         console.error("Render Table Error:", err);
     }
 };
+
+// --- FUNGSI BAHARU: RENDER TOP PENSIJILAN ---
+function renderTopPensijilanLists(data) {
+    const container = document.getElementById('topPensijilanContainer');
+    if (!container) return;
+
+    // Hanya papar jika tapisan semasa adalah "PENSIJILAN"
+    const elJenis = document.getElementById('filterJenisPencapaian');
+    const jenisFilter = elJenis ? elJenis.value : 'ALL';
+    
+    if (jenisFilter !== 'PENSIJILAN') {
+        container.classList.add('hidden');
+        return;
+    }
+
+    // Paparkan container jika syarat dipenuhi
+    container.classList.remove('hidden');
+
+    // Tapis data HANYA untuk PENSIJILAN dan 3 Penyedia Utama
+    const penyediaUtama = ['GOOGLE', 'APPLE', 'MICROSOFT'];
+    const dataPensijilan = data.filter(i => 
+        i.jenis_rekod === 'PENSIJILAN' && 
+        penyediaUtama.includes(i.penyedia)
+    );
+
+    // Objek untuk menyimpan kiraan
+    const countPPD = {};
+    const countSM = {};
+    const countSR = {};
+    const senaraiKodPPD = getPpdCodeList();
+
+    dataPensijilan.forEach(item => {
+        const kod = item.kod_sekolah;
+        
+        // Asingkan PPD
+        if (senaraiKodPPD.includes(kod)) {
+            countPPD[kod] = (countPPD[kod] || 0) + 1;
+        } else {
+            // Asingkan SM dan SR
+            const meta = getSchoolMetaByKod(kod);
+            if (meta) {
+                const jenis = (meta.jenis_sekolah || '').toUpperCase();
+                const isSM = ['SMK', 'SBP', 'SM SABK', 'KV'].some(keyword => jenis.includes(keyword));
+                const isSR = ['SK', 'SJKC', 'SJKT', 'SR SABK'].some(keyword => jenis.includes(keyword));
+
+                if (isSM) {
+                    countSM[kod] = (countSM[kod] || 0) + 1;
+                } else if (isSR) {
+                    countSR[kod] = (countSR[kod] || 0) + 1;
+                }
+            }
+        }
+    });
+
+    // Fungsi helper untuk sort dan bina HTML list
+    const generateListHTML = (countObj, limit) => {
+        const sorted = Object.entries(countObj)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, limit);
+
+        if (sorted.length === 0) {
+            return `<div class="text-center text-xs text-slate-400 italic py-4">Tiada rekod pensijilan.</div>`;
+        }
+
+        return sorted.map(([kod, count], idx) => {
+            let nama = kod;
+            if (senaraiKodPPD.includes(kod)) {
+                nama = getPpdName(kod) ? `PPD ${getPpdName(kod)}` : 'PEJABAT PENDIDIKAN DAERAH';
+            } else {
+                const meta = getSchoolMetaByKod(kod);
+                if (meta) nama = meta.nama_sekolah;
+            }
+
+            // Pilih warna nombor berdasarkan ranking
+            let rankColor = 'bg-slate-100 text-slate-500';
+            if (idx === 0) rankColor = 'bg-amber-100 text-amber-600';
+            else if (idx === 1) rankColor = 'bg-slate-200 text-slate-600';
+            else if (idx === 2) rankColor = 'bg-orange-100 text-orange-600';
+
+            return `
+                <div class="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100 group cursor-pointer" onclick="window.filterBySchoolFromTop5('${kod}')">
+                    <div class="flex items-center gap-3 w-4/5">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${rankColor}">${idx + 1}</div>
+                        <div class="truncate">
+                            <div class="text-xs font-bold text-slate-700 truncate group-hover:text-indigo-600 transition-colors" title="${nama}">${nama}</div>
+                            <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-100 shadow-sm">${count}</span>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // Render ke dalam DOM
+    const elPPD = document.getElementById('topPensijilanPPDList');
+    const elSM = document.getElementById('topPensijilanSMList');
+    const elSR = document.getElementById('topPensijilanSRList');
+
+    if (elPPD) elPPD.innerHTML = generateListHTML(countPPD, 5); // Papar Top 5 untuk PPD
+    if (elSM) elSM.innerHTML = generateListHTML(countSM, 3);    // Papar Top 3 untuk SM
+    if (elSR) elSR.innerHTML = generateListHTML(countSR, 3);    // Papar Top 3 untuk SR
+}
 
 function updateStats(data) {
     const categories = ['MURID', 'GURU', 'SEKOLAH', 'PEGAWAI', 'PPD'];
@@ -669,51 +773,6 @@ function updateProgramCloud(data) {
     }
 }
 
-function renderTopSchools(data) {
-    const table = document.getElementById('tableTopContributors');
-    const badge = document.getElementById('totalRecordsBadge');
-    if(badge) badge.innerText = `${data.length} Rekod`;
-    if(!table) return;
-    
-    const senaraiKodPPD = getPpdCodeList();
-    const schoolCounts = {};
-    data.forEach(i => {
-        if(!senaraiKodPPD.includes(i.kod_sekolah)) {
-            schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
-        }
-    });
-    
-    const sorted = Object.entries(schoolCounts).sort(([,a], [,b]) => b - a).slice(0, 5);
-    
-    if(sorted.length === 0) {
-        table.innerHTML = `<tr><td class="text-center p-4 text-slate-400 text-xs italic">Tiada data sekolah.</td></tr>`;
-        return;
-    }
-    
-    table.innerHTML = sorted.map(([kod, count], idx) => {
-        let nama = kod;
-        const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
-        if(s) nama = s.nama_sekolah;
-        
-        return `<tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 cursor-pointer group" onclick="window.filterBySchoolFromTop5('${kod}')">
-            <td class="p-3">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 flex items-center justify-center text-[10px] font-black transition-colors">${idx + 1}</div>
-                        <div>
-                            <div class="text-xs font-black text-slate-800 leading-tight whitespace-normal" title="${nama}">${nama}</div>
-                            <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
-                        </div>
-                    </div>
-                    <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">${count}</span>
-                </div>
-            </td>
-        </tr>`;
-    }).join('');
-}
-
-// --- GLOBAL EXPORTS ---
-
 window.filterByKategori = function(k) { 
     currentKategoriFilter = (currentKategoriFilter === k) ? 'ALL' : k;
     currentJawatanFilter = 'ALL'; 
@@ -839,7 +898,6 @@ window.handlePencapaianSearch = function() {
 };
 
 // --- BULK ACTION LOGIC ---
-
 window.toggleSelectAllPencapaian = function(element) {
     const checkboxes = document.querySelectorAll('.cb-pencapaian');
     checkboxes.forEach(cb => {
@@ -996,7 +1054,6 @@ window.ubahKategoriPukalAdmin = async function() {
 };
 
 // --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC - ADMIN) ---
-
 window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
     if(!item) return;
@@ -1124,7 +1181,6 @@ window.simpanEditPencapaian = async function() {
 };
 
 // --- 6. PPD MODE OPERATIONS (FILE UPLOAD) ---
-
 window.openModalPPD = function() { 
     const currentYear = new Date().getFullYear().toString();
     populateDropdown('ppdInputPeringkat', 'PERINGKAT', 'KEBANGSAAN');

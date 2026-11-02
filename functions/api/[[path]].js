@@ -2,16 +2,24 @@ export async function onRequest(context) {
   const { request, env } = context;
   const clientUrl = new URL(request.url);
 
-  // 1. Laluan Diagnostik: Buka https://test.tech4ag.my/api/debug di pelayar untuk semakan pantas
+  // Mengutamakan Cloudflare ENV, jika tiada ia menggunakan sandaran pelayan (Edge Server sahaja)
+  const supabaseUrl =
+    (env && env.SUPABASE_URL) || "https://app.tech4ag.my";
+  const supabaseAnonKey =
+    (env && env.SUPABASE_ANON_KEY) ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY";
+
+  // 1. Laluan Semakan Diagnostik
   if (clientUrl.pathname === "/api/debug") {
     return new Response(
       JSON.stringify(
         {
           status: "Cloudflare Pages Function Berjaya Beroperasi",
           keys_ditemui_dalam_env: Object.keys(env || {}),
-          has_SUPABASE_URL: Boolean(env.SUPABASE_URL),
-          has_SUPABASE_ANON_KEY: Boolean(env.SUPABASE_ANON_KEY),
-          sampel_url: env.SUPABASE_URL ? `${env.SUPABASE_URL.slice(0, 16)}...` : null
+          has_SUPABASE_URL_env: Boolean(env && env.SUPABASE_URL),
+          has_SUPABASE_ANON_KEY_env: Boolean(env && env.SUPABASE_ANON_KEY),
+          active_backend_url: supabaseUrl,
+          active_backend_key_ready: Boolean(supabaseAnonKey)
         },
         null,
         2
@@ -23,31 +31,16 @@ export async function onRequest(context) {
     );
   }
 
-  const supabaseUrl = env.SUPABASE_URL;
-  const supabaseAnonKey = env.SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return new Response(
-      JSON.stringify({
-        error: "Configuration Error",
-        message: "SUPABASE_URL atau SUPABASE_ANON_KEY tidak ditemui pada persekitaran Cloudflare Pages ini.",
-        keys_dikesan: Object.keys(env || {}),
-        panduan: "Pastikan pemboleh ubah ditambah di ruangan Production DAN Preview, kemudian lakukan 'Retry deployment'."
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json; charset=utf-8" }
-      }
-    );
-  }
-
   const subPath = clientUrl.pathname.replace(/^\/api/, "");
   const targetUrl = new URL(
     `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
   );
 
-  // Gantikan penanda apikey kepada anon key sebenar dalam parameter URL
-  if (targetUrl.searchParams.get("apikey") === "edge-proxy-managed" || !targetUrl.searchParams.has("apikey")) {
+  // Gantikan apikey penanda kepada token sebenar untuk permintaan URL
+  if (
+    targetUrl.searchParams.get("apikey") === "edge-proxy-managed" ||
+    !targetUrl.searchParams.has("apikey")
+  ) {
     targetUrl.searchParams.set("apikey", supabaseAnonKey);
   }
 
@@ -59,11 +52,17 @@ export async function onRequest(context) {
   requestHeaders.set("apikey", supabaseAnonKey);
 
   const existingAuth = requestHeaders.get("authorization");
-  if (!existingAuth || existingAuth.trim() === "" || existingAuth.includes("null") || existingAuth.includes("undefined")) {
+  if (
+    !existingAuth ||
+    existingAuth.trim() === "" ||
+    existingAuth.includes("null") ||
+    existingAuth.includes("undefined") ||
+    existingAuth.includes("edge-proxy-managed")
+  ) {
     requestHeaders.set("authorization", `Bearer ${supabaseAnonKey}`);
   }
 
-  // Pengendalian sambungan WebSocket (Supabase Realtime)
+  // Pengendalian jabat tangan WebSocket (Supabase Realtime)
   const upgradeHeader = request.headers.get("Upgrade");
   if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
     return fetch(targetUrl.toString(), {
@@ -92,7 +91,8 @@ export async function onRequest(context) {
     responseHeaders.delete("content-encoding");
     responseHeaders.delete("transfer-encoding");
 
-    const isNullBodyStatus = upstreamResponse.status === 204 || upstreamResponse.status === 304;
+    const isNullBodyStatus =
+      upstreamResponse.status === 204 || upstreamResponse.status === 304;
     const responseBody = isNullBodyStatus ? null : upstreamResponse.body;
 
     return new Response(responseBody, {

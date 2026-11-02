@@ -23,6 +23,11 @@ export async function onRequest(context) {
     `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
   );
 
+  // Gantikan nilai apikey penanda kepada anon key sebenar dalam parameter URL
+  if (targetUrl.searchParams.get("apikey") === "edge-proxy-managed" || !targetUrl.searchParams.has("apikey")) {
+    targetUrl.searchParams.set("apikey", supabaseAnonKey);
+  }
+
   const requestHeaders = new Headers(request.headers);
 
   requestHeaders.delete("host");
@@ -34,6 +39,15 @@ export async function onRequest(context) {
   const existingAuth = requestHeaders.get("authorization");
   if (!existingAuth || existingAuth.trim() === "" || existingAuth.includes("null") || existingAuth.includes("undefined")) {
     requestHeaders.set("authorization", `Bearer ${supabaseAnonKey}`);
+  }
+
+  // Pengendalian sambungan WebSocket (Supabase Realtime)
+  const upgradeHeader = request.headers.get("Upgrade");
+  if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
+    return fetch(targetUrl.toString(), {
+      method: request.method,
+      headers: requestHeaders
+    });
   }
 
   const method = request.method.toUpperCase();

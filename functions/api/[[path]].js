@@ -1,5 +1,27 @@
 export async function onRequest(context) {
   const { request, env } = context;
+  const clientUrl = new URL(request.url);
+
+  // 1. Laluan Diagnostik: Buka https://test.tech4ag.my/api/debug di pelayar untuk semakan pantas
+  if (clientUrl.pathname === "/api/debug") {
+    return new Response(
+      JSON.stringify(
+        {
+          status: "Cloudflare Pages Function Berjaya Beroperasi",
+          keys_ditemui_dalam_env: Object.keys(env || {}),
+          has_SUPABASE_URL: Boolean(env.SUPABASE_URL),
+          has_SUPABASE_ANON_KEY: Boolean(env.SUPABASE_ANON_KEY),
+          sampel_url: env.SUPABASE_URL ? `${env.SUPABASE_URL.slice(0, 16)}...` : null
+        },
+        null,
+        2
+      ),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json; charset=utf-8" }
+      }
+    );
+  }
 
   const supabaseUrl = env.SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY;
@@ -8,7 +30,9 @@ export async function onRequest(context) {
     return new Response(
       JSON.stringify({
         error: "Configuration Error",
-        message: "SUPABASE_URL atau SUPABASE_ANON_KEY tidak dikonfigurasikan pada persekitaran Cloudflare Pages."
+        message: "SUPABASE_URL atau SUPABASE_ANON_KEY tidak ditemui pada persekitaran Cloudflare Pages ini.",
+        keys_dikesan: Object.keys(env || {}),
+        panduan: "Pastikan pemboleh ubah ditambah di ruangan Production DAN Preview, kemudian lakukan 'Retry deployment'."
       }),
       {
         status: 500,
@@ -17,19 +41,17 @@ export async function onRequest(context) {
     );
   }
 
-  const clientUrl = new URL(request.url);
   const subPath = clientUrl.pathname.replace(/^\/api/, "");
   const targetUrl = new URL(
     `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
   );
 
-  // Gantikan nilai apikey penanda kepada anon key sebenar dalam parameter URL
+  // Gantikan penanda apikey kepada anon key sebenar dalam parameter URL
   if (targetUrl.searchParams.get("apikey") === "edge-proxy-managed" || !targetUrl.searchParams.has("apikey")) {
     targetUrl.searchParams.set("apikey", supabaseAnonKey);
   }
 
   const requestHeaders = new Headers(request.headers);
-
   requestHeaders.delete("host");
   requestHeaders.delete("origin");
   requestHeaders.delete("referer");
@@ -67,7 +89,6 @@ export async function onRequest(context) {
     });
 
     const responseHeaders = new Headers(upstreamResponse.headers);
-
     responseHeaders.delete("content-encoding");
     responseHeaders.delete("transfer-encoding");
 

@@ -1,10 +1,11 @@
 import { envReady, getEnv } from "../config/config.js";
-import { APP_CONFIG } from "../config/app.config.js";
 import { IDBCache } from "./idb.js";
 
 let supabaseInstance = null;
 let initPromise = null;
 let idbInitialized = false;
+
+export let supabase = null;
 
 function ensureStorageLayer() {
   if (idbInitialized) {
@@ -20,7 +21,7 @@ function ensureStorageLayer() {
   }
 }
 
-function waitForSupabaseSdk(timeoutMs = 5000) {
+function waitForSupabaseSdk(timeoutMs = 10000) {
   if (
     typeof window !== "undefined" &&
     window.supabase &&
@@ -64,13 +65,13 @@ function createClientInstance() {
 
   const runtimeEnv = getEnv() || window.__ENV || null;
   const supabaseUrl =
-    (runtimeEnv && typeof runtimeEnv.SUPABASE_URL === "string"
+    runtimeEnv && typeof runtimeEnv.SUPABASE_URL === "string"
       ? runtimeEnv.SUPABASE_URL.trim()
-      : "") || APP_CONFIG.SUPABASE.URL;
+      : "";
   const supabaseAnonKey =
-    (runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
+    runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
       ? runtimeEnv.SUPABASE_ANON_KEY.trim()
-      : "") || APP_CONFIG.SUPABASE.ANON_KEY;
+      : "";
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
@@ -85,10 +86,12 @@ function createClientInstance() {
       }
     });
 
+    supabase = supabaseInstance;
     window._supabase = supabaseInstance;
     window.supabaseClient = supabaseInstance;
   } catch {
     supabaseInstance = null;
+    supabase = null;
     return null;
   }
 
@@ -104,7 +107,9 @@ export async function initDatabaseClient() {
 
   if (!initPromise) {
     initPromise = (async () => {
-      await envReady;
+      const activeEnvPromise =
+        typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+      await activeEnvPromise;
       await waitForSupabaseSdk();
       return createClientInstance();
     })().finally(() => {
@@ -163,4 +168,21 @@ if (typeof window !== "undefined") {
       initDatabaseClient().catch(() => {});
     }
   });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !supabaseInstance) {
+      initDatabaseClient().catch(() => {});
+    }
+  });
 }
+
+export default {
+  initDatabaseClient,
+  getDatabaseClient,
+  getDatabaseClientAsync,
+  requireDb,
+  requireDbAsync,
+  get supabase() {
+    return supabaseInstance;
+  }
+};

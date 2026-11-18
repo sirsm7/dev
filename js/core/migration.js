@@ -15,7 +15,16 @@ const CORE_TABLE_REGISTRY = {
     unique_keys: ["kod_sekolah"],
     depends_on: [],
     fallback_headers: ["kod_sekolah", "nama_sekolah"],
-    fallback_optional: ["jenis", "daerah", "created_at", "updated_at"]
+    fallback_optional: [
+      "jenis_sekolah",
+      "jenis",
+      "daerah",
+      "parlimen",
+      "telegram_id_gpict",
+      "telegram_id_admin",
+      "created_at",
+      "updated_at"
+    ]
   },
   smpid_pppdm_program: {
     table_name: "smpid_pppdm_program",
@@ -31,31 +40,51 @@ const CORE_TABLE_REGISTRY = {
     unique_keys: ["role", "telegram_id"],
     depends_on: [],
     fallback_headers: ["role"],
-    fallback_optional: ["telegram_id", "created_at", "updated_at"]
+    fallback_optional: ["telegram_id", "created_at"]
   },
   smpid_users: {
     table_name: "smpid_users",
     primary_key: "id",
-    unique_keys: ["id"],
+    unique_keys: ["id", "email"],
     depends_on: [],
     fallback_headers: ["email"],
-    fallback_optional: ["id", "role", "kod_sekolah", "created_at", "updated_at"]
+    fallback_optional: ["id", "password", "role", "kod_sekolah", "created_at", "updated_at"]
   },
   smpid_dcs_analisa: {
     table_name: "smpid_dcs_analisa",
     primary_key: "id",
     unique_keys: ["id", "kod_sekolah"],
     depends_on: [],
-    fallback_headers: ["kod_sekolah"],
-    fallback_optional: ["id", "nama_sekolah", "daerah", "created_at", "updated_at"]
+    fallback_headers: ["kod_sekolah", "nama_sekolah"],
+    fallback_optional: [
+      "id",
+      "jenis_sekolah",
+      "daerah",
+      "dcs_2023",
+      "peratus_aktif_2023",
+      "dcs_2024",
+      "peratus_aktif_2024",
+      "dcs_2025",
+      "peratus_aktif_2025",
+      "dcs_2026",
+      "peratus_aktif_2026",
+      "created_at"
+    ]
   },
   smpid_penataran_digital: {
     table_name: "smpid_penataran_digital",
     primary_key: "id",
     unique_keys: ["id", "kod_sekolah"],
     depends_on: [],
-    fallback_headers: ["kod_sekolah"],
-    fallback_optional: ["id", "created_at", "updated_at"]
+    fallback_headers: [
+      "kod_sekolah",
+      "nama_sekolah",
+      "jumlah_skor",
+      "peratus",
+      "penarafan",
+      "skor_dimensi"
+    ],
+    fallback_optional: ["id", "bil_guru", "bil_murid", "created_at", "updated_at"]
   },
   smpid_bb_kunci: {
     table_name: "smpid_bb_kunci",
@@ -63,55 +92,101 @@ const CORE_TABLE_REGISTRY = {
     unique_keys: ["id", "tarikh"],
     depends_on: [],
     fallback_headers: ["tarikh"],
-    fallback_optional: ["id", "kod_ppd", "komen", "dikunci_oleh", "created_at", "updated_at"]
+    fallback_optional: ["id", "komen", "admin_email", "kod_ppd", "dikunci_oleh", "created_at"]
   },
   smpid_bb_tempahan: {
     table_name: "smpid_bb_tempahan",
     primary_key: "id",
     unique_keys: ["id", "id_tempahan"],
     depends_on: [],
-    fallback_headers: ["id_tempahan", "kod_sekolah", "tarikh"],
-    fallback_optional: ["id", "nama_sekolah", "masa", "tajuk_bengkel", "nama_pic", "no_tel_pic", "status", "created_at", "updated_at"]
+    fallback_headers: [
+      "id_tempahan",
+      "tarikh",
+      "masa",
+      "nama_pic",
+      "no_tel_pic",
+      "kod_sekolah",
+      "nama_sekolah"
+    ],
+    fallback_optional: ["id", "status", "catatan", "tajuk_bengkel", "created_at"]
   },
   smpid_aduan: {
     table_name: "smpid_aduan",
     primary_key: "id",
     unique_keys: ["id"],
     depends_on: [],
-    fallback_headers: ["kod_sekolah", "tajuk"],
-    fallback_optional: ["id", "peranan_pengirim", "butiran_masalah", "status", "balasan_admin", "tarikh_balas", "created_at", "updated_at"]
+    fallback_headers: ["kod_sekolah", "peranan_pengirim", "tajuk", "butiran_masalah"],
+    fallback_optional: ["id", "status", "balasan_admin", "tarikh_balas", "created_at"]
   },
   smpid_delima_status: {
     table_name: "smpid_delima_status",
     primary_key: "id",
     unique_keys: ["id"],
     depends_on: [],
-    fallback_headers: ["kod_sekolah"],
-    fallback_optional: ["id", "kategori", "status", "catatan", "created_at", "updated_at"]
+    fallback_headers: ["kod_sekolah", "kategori", "nama", "id_delima", "catatan"],
+    fallback_optional: ["id", "unit_organisasi_baharu", "status_proses", "created_at"]
   },
   smpid_libat_urus: {
     table_name: "smpid_libat_urus",
     primary_key: "id",
     unique_keys: ["id"],
     depends_on: [],
-    fallback_headers: ["kod_sekolah"],
-    fallback_optional: ["id", "bulan", "tahun", "created_at", "updated_at"]
+    fallback_headers: [
+      "kod_sekolah",
+      "kategori_sasar",
+      "tarikh_laksana",
+      "bulan",
+      "tempat",
+      "jumlah_peserta",
+      "pautan_fail"
+    ],
+    fallback_optional: ["id", "mod_pelaksanaan", "created_at"]
   },
   smpid_pencapaian: {
     table_name: "smpid_pencapaian",
     primary_key: "id",
     unique_keys: ["id"],
     depends_on: ["smpid_sekolah_data"],
-    fallback_headers: ["kod_sekolah", "kategori", "nama_peserta", "nama_pertandingan", "pencapaian", "tahun"],
-    fallback_optional: ["id", "jawatan", "peringkat", "penyedia", "jenis_rekod", "pautan_bukti", "created_at", "updated_at"]
+    fallback_headers: [
+      "kod_sekolah",
+      "kategori",
+      "nama_peserta",
+      "nama_pertandingan",
+      "peringkat",
+      "tahun",
+      "pencapaian"
+    ],
+    fallback_optional: ["id", "jawatan", "pautan_bukti", "jenis_rekod", "penyedia", "created_at"]
   },
   smpid_impak_bbm: {
     table_name: "smpid_impak_bbm",
     primary_key: "id",
     unique_keys: ["id"],
     depends_on: ["smpid_sekolah_data"],
-    fallback_headers: ["kod_sekolah"],
-    fallback_optional: ["id", "created_at", "updated_at"]
+    fallback_headers: [
+      "kod_sekolah",
+      "jantina",
+      "kumpulan_umur",
+      "q1_kefahaman",
+      "q2_penguasaan",
+      "q3_ingatan",
+      "q4_minat",
+      "q5_idea",
+      "q6_keyakinan",
+      "q7_persediaan_ujian",
+      "q8_keseluruhan",
+      "q9_penglibatan",
+      "q10_penerangan_guru",
+      "q14_pengesahan_sesi"
+    ],
+    fallback_optional: [
+      "id",
+      "q11_komponen_bbm",
+      "q12_perkara_dipelajari",
+      "q13_cadangan",
+      "is_valid",
+      "created_at"
+    ]
   },
   smpid_pppdm_penyertaan: {
     table_name: "smpid_pppdm_penyertaan",
@@ -133,10 +208,7 @@ function sortTablesByDependency(tableNames) {
   const ordered = [];
 
   function visit(name) {
-    if (visited.has(name)) {
-      return;
-    }
-    if (visiting.has(name)) {
+    if (visited.has(name) || visiting.has(name)) {
       return;
     }
     visiting.add(name);
@@ -160,15 +232,17 @@ function sortTablesByDependency(tableNames) {
 }
 
 async function fetchOpenApiDefinitions(signal) {
-  await envReady;
+  const activeEnvPromise =
+    typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+  await activeEnvPromise;
+
   const runtimeEnv = getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
   const supabaseUrl =
-    (runtimeEnv && typeof runtimeEnv.SUPABASE_URL === "string" ? runtimeEnv.SUPABASE_URL.trim() : "") ||
-    APP_CONFIG.SUPABASE.URL;
+    runtimeEnv && typeof runtimeEnv.SUPABASE_URL === "string" ? runtimeEnv.SUPABASE_URL.trim() : "";
   const supabaseAnonKey =
-    (runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
+    runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
       ? runtimeEnv.SUPABASE_ANON_KEY.trim()
-      : "") || APP_CONFIG.SUPABASE.ANON_KEY;
+      : "";
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
@@ -235,8 +309,12 @@ async function resolveProjectSchemas(signal) {
     if (def && def.properties && typeof def.properties === "object") {
       allColumns = Object.keys(def.properties);
       const requiredList = Array.isArray(def.required) ? def.required : [];
-      headers = allColumns.filter((col) => requiredList.includes(col));
-      optionalHeaders = allColumns.filter((col) => !requiredList.includes(col));
+      headers = allColumns.filter((col) => {
+        const propDef = def.properties[col];
+        const hasDefault = propDef && Object.prototype.hasOwnProperty.call(propDef, "default");
+        return requiredList.includes(col) && !hasDefault;
+      });
+      optionalHeaders = allColumns.filter((col) => !headers.includes(col));
     } else if (reg) {
       headers = [...reg.fallback_headers];
       optionalHeaders = [...reg.fallback_optional];
@@ -277,13 +355,13 @@ function renderStatusFeedback(container, entries) {
     line.className = "py-1 text-xs font-mono border-b border-slate-100 last:border-0";
 
     if (item.level === "error") {
-      line.classList.add("text-red-600", "font-bold");
+      line.classList.add("text-red-500", "font-bold");
     } else if (item.level === "success") {
-      line.classList.add("text-emerald-600", "font-bold");
+      line.classList.add("text-emerald-400", "font-bold");
     } else if (item.level === "warn") {
-      line.classList.add("text-amber-600");
+      line.classList.add("text-amber-400");
     } else {
-      line.classList.add("text-slate-600");
+      line.classList.add("text-slate-300");
     }
 
     line.textContent = item.text;
@@ -589,7 +667,10 @@ export const MigrationManager = {
         "Memulakan pengesanan skema pangkalan data Supabase..."
       );
 
-      await envReady;
+      const activeEnvPromise =
+        typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+      await activeEnvPromise;
+
       const client = await initDatabaseClient();
       if (!client) {
         throw new Error("Sambungan pangkalan data Supabase tidak tersedia.");
@@ -661,7 +742,8 @@ export const MigrationManager = {
         statusContainer,
         logBuffer,
         "success",
-        `Eksport selesai: ${activeOrder.length} jadual (${totalRowsExported} rekod) dimuat turun ke ${filename}.`
+        `Eksport selesai: ${activeOrder.length} jadual (${totalRowsExported} rekod) dimuat turun ke ${filename}.`,
+        { step: activeOrder.length, total: activeOrder.length }
       );
 
       return {
@@ -731,7 +813,10 @@ export const MigrationManager = {
         throw new Error("Fail .json rosak atau mempunyai ralat sintaks JSON.");
       }
 
-      await envReady;
+      const activeEnvPromise =
+        typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+      await activeEnvPromise;
+
       const client = await initDatabaseClient();
       if (!client) {
         throw new Error("Sambungan pangkalan data Supabase tidak tersedia.");
@@ -761,7 +846,8 @@ export const MigrationManager = {
             statusContainer,
             logBuffer,
             "info",
-            `Melangkau jadual kosong [${i + 1}/${validated.tableOrder.length}]: ${tableName} (0 rekod).`
+            `Melangkau jadual kosong [${i + 1}/${validated.tableOrder.length}]: ${tableName} (0 rekod).`,
+            { table: tableName, step: i + 1, total: validated.tableOrder.length }
           );
           continue;
         }
@@ -838,7 +924,8 @@ export const MigrationManager = {
         statusContainer,
         logBuffer,
         "success",
-        `Pemulihan 1-ke-1 berjaya: ${validated.tableOrder.length} jadual (${totalRestoredRows} rekod) dipulihkan dan jujukan diselaraskan.`
+        `Pemulihan 1-ke-1 berjaya: ${validated.tableOrder.length} jadual (${totalRestoredRows} rekod) dipulihkan dan jujukan diselaraskan.`,
+        { step: validated.tableOrder.length, total: validated.tableOrder.length }
       );
 
       return {
@@ -862,6 +949,125 @@ export const MigrationManager = {
   }
 };
 
-if (typeof window !== "undefined") {
+function bindAdminBackupUiHelpers() {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+
   window.MigrationManager = MigrationManager;
+
+  const getLogUiElements = () => {
+    const logContainer = document.getElementById("importLogContainer");
+    const progressBar = document.getElementById("importProgressBar");
+    const progressText = document.getElementById("importProgressText");
+    const terminalInner = document.getElementById("importTerminalInner");
+
+    if (logContainer) {
+      logContainer.classList.remove("hidden");
+    }
+
+    return {
+      terminalInner,
+      onProgress: (entry) => {
+        if (
+          typeof entry.step === "number" &&
+          typeof entry.total === "number" &&
+          entry.total > 0
+        ) {
+          const pct = Math.min(100, Math.round((entry.step / entry.total) * 100));
+          if (progressBar) {
+            progressBar.style.width = `${pct}%`;
+          }
+          if (progressText) {
+            progressText.textContent = `${entry.step} / ${entry.total} Jadual`;
+          }
+        }
+      }
+    };
+  };
+
+  if (typeof window.muatTurunBackupKeseluruhan !== "function") {
+    window.muatTurunBackupKeseluruhan = async function () {
+      const { terminalInner, onProgress } = getLogUiElements();
+      try {
+        await MigrationManager.exportBackupJson({
+          statusContainer: terminalInner,
+          onProgress
+        });
+      } catch (err) {
+        if (window.Swal && typeof window.Swal.fire === "function") {
+          window.Swal.fire({
+            icon: "error",
+            title: "Gagal Eksport Sandaran",
+            text: err && err.message ? err.message : "Ralat tidak diketahui."
+          });
+        }
+      }
+    };
+  }
+
+  if (typeof window.mulaRestoreKeseluruhan !== "function") {
+    window.mulaRestoreKeseluruhan = async function () {
+      const fileInput = document.getElementById("jsonBackupInput");
+      const restoreBtn = document.getElementById("btnMulaRestore");
+      const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+      if (!file) {
+        if (window.Swal && typeof window.Swal.fire === "function") {
+          window.Swal.fire({
+            icon: "warning",
+            title: "Fail Tiada",
+            text: "Sila pilih fail sandaran .json terlebih dahulu."
+          });
+        }
+        return;
+      }
+
+      if (restoreBtn) {
+        restoreBtn.disabled = true;
+      }
+
+      const { terminalInner, onProgress } = getLogUiElements();
+
+      try {
+        const summary = await MigrationManager.importBackupJson(file, {
+          statusContainer: terminalInner,
+          onProgress,
+          onCompleted: async () => {
+            if (typeof window.fetchDashboardData === "function") {
+              await window.fetchDashboardData();
+            }
+          }
+        });
+
+        if (fileInput) {
+          fileInput.value = "";
+        }
+
+        if (window.Swal && typeof window.Swal.fire === "function") {
+          window.Swal.fire({
+            icon: "success",
+            title: "Pemulihan Selesai",
+            text: `${summary.tableCount} jadual (${summary.totalRows} rekod) telah dipulihkan.`
+          });
+        }
+      } catch (err) {
+        if (window.Swal && typeof window.Swal.fire === "function") {
+          window.Swal.fire({
+            icon: "error",
+            title: "Gagal Memulihkan Data",
+            text: err && err.message ? err.message : "Ralat tidak diketahui."
+          });
+        }
+      } finally {
+        if (restoreBtn) {
+          restoreBtn.disabled = false;
+        }
+      }
+    };
+  }
 }
+
+bindAdminBackupUiHelpers();
+
+export default MigrationManager;

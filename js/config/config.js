@@ -1,6 +1,8 @@
 const CONFIG_ENDPOINT = "/api/config";
 const REQUEST_TIMEOUT_MS = 10000;
 
+let inFlightRequest = null;
+
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -22,6 +24,7 @@ function validateAndFreezeEnv(rawPayload) {
 
   if (gasEndpointUrl) {
     normalizedEnv.GAS_ENDPOINT_URL = gasEndpointUrl;
+    normalizedEnv.GAS_URL = gasEndpointUrl;
   }
 
   const frozenEnv = Object.freeze(normalizedEnv);
@@ -30,6 +33,7 @@ function validateAndFreezeEnv(rawPayload) {
   window.SUPABASE_ANON_KEY = frozenEnv.SUPABASE_ANON_KEY;
 
   if (frozenEnv.GAS_ENDPOINT_URL) {
+    window.GAS_ENDPOINT_URL = frozenEnv.GAS_ENDPOINT_URL;
     window.GAS_URL = frozenEnv.GAS_ENDPOINT_URL;
   }
 
@@ -41,52 +45,61 @@ async function fetchRuntimeConfig() {
     return window.__ENV;
   }
 
+  if (inFlightRequest) {
+    return inFlightRequest;
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  try {
-    const response = await fetch(CONFIG_ENDPOINT, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
-      },
-      signal: controller.signal
-    });
-
-    const rawText = await response.text();
-    let parsedData = null;
-
+  inFlightRequest = (async () => {
     try {
-      parsedData = rawText ? JSON.parse(rawText) : null;
-    } catch {
-      throw new Error("Tindak balas konfigurasi bukan format JSON yang sah.");
-    }
+      const response = await fetch(CONFIG_ENDPOINT, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          "Accept": "application/json"
+        },
+        signal: controller.signal
+      });
 
-    if (!response.ok) {
-      const serverMsg =
-        parsedData && typeof parsedData.message === "string"
-          ? parsedData.message
-          : `Gagal mendapatkan konfigurasi pelayan (HTTP ${response.status}).`;
-      throw new Error(serverMsg);
-    }
+      const rawText = await response.text();
+      let parsedData = null;
 
-    return validateAndFreezeEnv(parsedData);
-  } catch (error) {
-    if (error && error.name === "AbortError") {
-      throw new Error("Permintaan konfigurasi /api/config melebihi had masa.");
+      try {
+        parsedData = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        throw new Error("Tindak balas konfigurasi bukan format JSON yang sah.");
+      }
+
+      if (!response.ok) {
+        const serverMsg =
+          parsedData && typeof parsedData.message === "string"
+            ? parsedData.message
+            : `Gagal mendapatkan konfigurasi pelayan (HTTP ${response.status}).`;
+        throw new Error(serverMsg);
+      }
+
+      return validateAndFreezeEnv(parsedData);
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        throw new Error("Permintaan konfigurasi /api/config melebihi had masa.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      inFlightRequest = null;
     }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  })();
+
+  return inFlightRequest;
 }
 
 if (!window.ENV_READY) {
   window.ENV_READY = fetchRuntimeConfig();
 }
 
-export const envReady = window.ENV_READY;
+export let envReady = window.ENV_READY;
 
 export function getEnv() {
   return window.__ENV || null;
@@ -95,9 +108,11 @@ export function getEnv() {
 export function reloadEnv() {
   if (window.__ENV && window.__ENV.SUPABASE_URL && window.__ENV.SUPABASE_ANON_KEY) {
     window.ENV_READY = Promise.resolve(window.__ENV);
+    envReady = window.ENV_READY;
     return window.ENV_READY;
   }
   window.ENV_READY = fetchRuntimeConfig();
+  envReady = window.ENV_READY;
   return window.ENV_READY;
 }
 
@@ -106,3 +121,15 @@ window.addEventListener("online", () => {
     reloadEnv().catch(() => {});
   }
 });
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !window.__ENV) {
+    reloadEnv().catch(() => {});
+  }
+});
+
+export default {
+  envReady,
+  getEnv,
+  reloadEnv
+};

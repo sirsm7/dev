@@ -1,10 +1,20 @@
 import { envReady } from "./config/config.js";
 import { APP_CONFIG } from "./config/app.config.js";
 import { initDatabaseClient } from "./core/db.js";
+import { clearSessionState } from "./core/auth.guard.js";
 import { AuthService } from "./services/auth.service.js";
 import { toggleLoading } from "./core/helpers.js";
 
+const ADMIN_ROLES = new Set(["ADMIN", "PPD_UNIT", "SUPER_ADMIN", "JPNMEL"]);
+
 let loginBusy = false;
+
+function awaitRuntimeEnv() {
+  if (typeof window !== "undefined" && window.ENV_READY) {
+    return window.ENV_READY;
+  }
+  return envReady;
+}
 
 function clearElement(el) {
   if (!el) {
@@ -27,6 +37,29 @@ function showAlert(options) {
     window.alert(message);
   }
   return Promise.resolve({ isConfirmed: true });
+}
+
+function persistUserSession(user, isAdmin) {
+  const sessionCfg = (APP_CONFIG && APP_CONFIG.SESSION) || {};
+  const kodKey = sessionCfg.USER_KOD || "smpid_user_kod";
+  const roleKey = sessionCfg.USER_ROLE || "smpid_user_role";
+  const idKey = sessionCfg.USER_ID || "smpid_user_id";
+  const authKey = sessionCfg.AUTH_FLAG || "smpid_auth";
+
+  const kodVal = String(user.kod_sekolah || "").trim();
+  const roleVal = String(user.role || "").trim().toUpperCase();
+  const idVal = String(user.id || "").trim();
+  const authVal = isAdmin ? "true" : "false";
+
+  localStorage.setItem(kodKey, kodVal);
+  localStorage.setItem(roleKey, roleVal);
+  localStorage.setItem(idKey, idVal);
+  localStorage.setItem(authKey, authVal);
+
+  localStorage.setItem("smpid_user_kod", kodVal);
+  localStorage.setItem("smpid_user_role", roleVal);
+  localStorage.setItem("smpid_user_id", idVal);
+  localStorage.setItem("smpid_auth", authVal);
 }
 
 function renderLoginHeader() {
@@ -55,14 +88,7 @@ function renderLoginHeader() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  localStorage.clear();
-  sessionStorage.clear();
-  window.history.replaceState(null, "", window.location.href);
-  renderLoginHeader();
-});
-
-window.togglePass = function () {
+export function togglePass() {
   const input = document.getElementById("inputPassword");
   const icon = document.getElementById("iconEye");
 
@@ -79,9 +105,9 @@ window.togglePass = function () {
     icon.classList.remove("fa-eye-slash");
     icon.classList.add("fa-eye");
   }
-};
+}
 
-window.prosesLogin = async function () {
+export async function prosesLogin() {
   if (loginBusy) {
     return;
   }
@@ -97,9 +123,9 @@ window.prosesLogin = async function () {
   }
 
   const email = inputEmail.value.trim();
-  const password = inputPass.value.trim();
+  const password = inputPass.value;
 
-  if (!email || !password) {
+  if (!email || !password || password.trim() === "") {
     await showAlert({
       icon: "warning",
       title: "Ralat",
@@ -115,29 +141,26 @@ window.prosesLogin = async function () {
   toggleLoading(true);
 
   try {
-    await envReady;
+    await awaitRuntimeEnv();
     await initDatabaseClient();
 
     const user = await AuthService.login(email, password);
+    const normalizedRole = String(user.role || "").trim().toUpperCase();
+    const isAdmin = ADMIN_ROLES.has(normalizedRole);
 
-    localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, user.kod_sekolah || "");
-    localStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, user.role || "");
-    localStorage.setItem(APP_CONFIG.SESSION.USER_ID, String(user.id || ""));
+    persistUserSession(user, isAdmin);
 
-    const adminRoles = ["ADMIN", "PPD_UNIT", "SUPER_ADMIN", "JPNMEL"];
-    if (adminRoles.includes(user.role)) {
-      localStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, "true");
-
+    if (isAdmin) {
       let welcomeTitle = "Admin Disahkan";
       let welcomeMsg = "Selamat kembali, Admin PPD.";
 
-      if (user.role === "PPD_UNIT") {
+      if (normalizedRole === "PPD_UNIT") {
         welcomeTitle = "Akses Unit PPD";
         welcomeMsg = "Log masuk sebagai Unit PPD.";
-      } else if (user.role === "SUPER_ADMIN") {
+      } else if (normalizedRole === "SUPER_ADMIN") {
         welcomeTitle = "Akses Super Admin";
         welcomeMsg = "Log masuk dengan kuasa penuh.";
-      } else if (user.role === "JPNMEL") {
+      } else if (normalizedRole === "JPNMEL") {
         welcomeTitle = "Akses JPN Melaka";
         welcomeMsg = "Log masuk pentadbir peringkat negeri.";
       }
@@ -151,7 +174,6 @@ window.prosesLogin = async function () {
       });
       window.location.replace("admin.html");
     } else {
-      localStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, "false");
       await showAlert({
         icon: "success",
         title: "Log Masuk Berjaya",
@@ -174,4 +196,15 @@ window.prosesLogin = async function () {
     }
     loginBusy = false;
   }
-};
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  clearSessionState();
+  window.history.replaceState(null, "", window.location.href);
+  renderLoginHeader();
+});
+
+if (typeof window !== "undefined") {
+  window.togglePass = togglePass;
+  window.prosesLogin = prosesLogin;
+}

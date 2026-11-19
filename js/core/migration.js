@@ -274,69 +274,7 @@ function sortTablesByDependency(tableNames) {
   return ordered;
 }
 
-async function fetchOpenApiDefinitions(signal) {
-  const activeEnvPromise =
-    typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
-  await activeEnvPromise;
-
-  const runtimeEnv = getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
-  const supabaseUrl =
-    runtimeEnv && typeof runtimeEnv.SUPABASE_URL === "string" ? runtimeEnv.SUPABASE_URL.trim() : "";
-  const supabaseAnonKey =
-    runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
-      ? runtimeEnv.SUPABASE_ANON_KEY.trim()
-      : "";
-  const activeSchema = resolveActiveSchema();
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  try {
-    const endpoint = `${supabaseUrl.replace(/\/+$/, "")}/rest/v1/`;
-    const response = await fetch(endpoint, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
-        Accept: "application/openapi+json",
-        "Accept-Profile": activeSchema
-      },
-      signal
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const spec = await response.json();
-    if (spec && typeof spec.definitions === "object" && spec.definitions !== null) {
-      return spec.definitions;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function inferPrimaryKeyFromDefinition(tableName, definition, fallbackPk) {
-  if (fallbackPk) {
-    return fallbackPk;
-  }
-  const props = definition && definition.properties ? definition.properties : {};
-  if (Object.prototype.hasOwnProperty.call(props, "id")) {
-    return "id";
-  }
-  if (Object.prototype.hasOwnProperty.call(props, "kod_sekolah")) {
-    return "kod_sekolah";
-  }
-  const keys = Object.keys(props);
-  return keys.length > 0 ? keys[0] : "id";
-}
-
-async function resolveProjectSchemas(signal) {
-  const definitions = await fetchOpenApiDefinitions(signal);
+async function resolveProjectSchemas() {
   const targetNames = Object.keys(CORE_TABLE_REGISTRY);
   const orderedNames = sortTablesByDependency(targetNames);
   const schemas = {};
@@ -344,37 +282,19 @@ async function resolveProjectSchemas(signal) {
   for (let i = 0; i < orderedNames.length; i += 1) {
     const tableName = orderedNames[i];
     const reg = CORE_TABLE_REGISTRY[tableName];
-    const def = definitions && definitions[tableName] ? definitions[tableName] : null;
-    const primaryKey = inferPrimaryKeyFromDefinition(tableName, def, reg ? reg.primary_key : "id");
-
-    let headers = [];
-    let optionalHeaders = [];
-    let allColumns = [];
-
-    if (def && def.properties && typeof def.properties === "object") {
-      allColumns = Object.keys(def.properties);
-      const requiredList = Array.isArray(def.required) ? def.required : [];
-      headers = allColumns.filter((col) => {
-        const propDef = def.properties[col];
-        const hasDefault = propDef && Object.prototype.hasOwnProperty.call(propDef, "default");
-        return requiredList.includes(col) && !hasDefault;
-      });
-      optionalHeaders = allColumns.filter((col) => !headers.includes(col));
-    } else if (reg) {
-      headers = [...reg.fallback_headers];
-      optionalHeaders = [...reg.fallback_optional];
-      allColumns = Array.from(new Set([...headers, ...optionalHeaders]));
-    }
+    const headers = [...reg.fallback_headers];
+    const optionalHeaders = [...reg.fallback_optional];
+    const allColumns = Array.from(new Set([...headers, ...optionalHeaders]));
 
     schemas[tableName] = {
       table_name: tableName,
-      primary_key: primaryKey,
-      unique_keys: reg && Array.isArray(reg.unique_keys) ? [...reg.unique_keys] : [primaryKey],
-      depends_on: reg && Array.isArray(reg.depends_on) ? [...reg.depends_on] : [],
+      primary_key: reg.primary_key || "id",
+      unique_keys: Array.isArray(reg.unique_keys) ? [...reg.unique_keys] : [reg.primary_key || "id"],
+      depends_on: Array.isArray(reg.depends_on) ? [...reg.depends_on] : [],
       headers,
       optional_headers: optionalHeaders,
       all_columns: allColumns,
-      properties: def && def.properties ? def.properties : {}
+      properties: {}
     };
   }
 
@@ -550,25 +470,96 @@ function resolveConflictTarget(schema, sampleRow) {
   return pk;
 }
 
-function preserveActiveSuperAdminInUsersRows(rows, authUser) {
-  if (!authUser || !authUser.id || !authUser.email) {
+async function resolveSuperAdminContext(client) {
+  let authUser = null;
+  try {
+    const { data: authData } = await client.auth.getUser();
+    authUser = authData && authData.user ? authData.user : null;
+  } catch {}
+
+  let existingSuperAdmins = [];
+  try {
+    const { data: saRows } = await client
+      .from("smpid_users")
+      .select("id, email, role")
+      .in("role", ["SUPER_ADMIN", "SUPER ADMIN"]);
+    if (Array.isArray(saRows)) {
+      existingSuperAdmins = saRows;
+    }
+  } catch {}
+
+  let callerIdentifier = "";
+  if (authUser && authUser.email) {
+    callerIdentifier = String(authUser.email).trim().toLowerCase();
+  } else if (typeof window !== "undefined" && window.localStorage) {
+    const roleKey =
+      (APP_CONFIG && APP_CONFIG.SESSION && APP_CONFIG.SESSION.USER_ROLE) || "smpid_user_role";
+    const idKey =
+      (APP_CONFIG && APP_CONFIG.SESSION && APP_CONFIG.SESSION.USER_ID) || "smpid_user_id";
+    const storedRole = String(window.localStorage.getItem(roleKey) || "").trim().toUpperCase();
+    const storedId = String(
+      window.localStorage.getItem(idKey) ||
+      window.localStorage.getItem("smpid_user_email") ||
+      ""
+    ).trim();
+
+    if (storedId) {
+      callerIdentifier = storedId;
+    } else if ((storedRole === "SUPER_ADMIN" || storedRole === "SUPER ADMIN") && existingSuperAdmins.length > 0) {
+      callerIdentifier = String(existingSuperAdmins[0].email || existingSuperAdmins[0].id || "").trim();
+    }
+  }
+
+  return {
+    authUser,
+    existingSuperAdmins,
+    callerIdentifier
+  };
+}
+
+function preserveSuperAdminsInUsersRows(rows, superAdminContext) {
+  const { authUser, existingSuperAdmins } = superAdminContext || {};
+  const canonicalByEmail = new Map();
+
+  if (Array.isArray(existingSuperAdmins)) {
+    existingSuperAdmins.forEach((sa) => {
+      if (sa && sa.email && sa.id) {
+        canonicalByEmail.set(String(sa.email).trim().toLowerCase(), {
+          id: sa.id,
+          email: String(sa.email).trim().toLowerCase(),
+          role: "SUPER_ADMIN"
+        });
+      }
+    });
+  }
+
+  if (authUser && authUser.id && authUser.email) {
+    const normEmail = String(authUser.email).trim().toLowerCase();
+    canonicalByEmail.set(normEmail, {
+      id: authUser.id,
+      email: normEmail,
+      role: "SUPER_ADMIN"
+    });
+  }
+
+  if (canonicalByEmail.size === 0) {
     return rows;
   }
 
-  const normalizedAuthEmail = String(authUser.email).trim().toLowerCase();
+  const seenEmails = new Set();
   const preserved = [];
-  let hasActiveSuperAdminRow = false;
 
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     const rowEmail = row && row.email ? String(row.email).trim().toLowerCase() : "";
 
-    if (row.id === authUser.id || (rowEmail && rowEmail === normalizedAuthEmail)) {
-      hasActiveSuperAdminRow = true;
+    if (rowEmail && canonicalByEmail.has(rowEmail)) {
+      const canonical = canonicalByEmail.get(rowEmail);
+      seenEmails.add(rowEmail);
       preserved.push({
         ...row,
-        id: authUser.id,
-        email: normalizedAuthEmail,
+        id: canonical.id,
+        email: canonical.email,
         role: "SUPER_ADMIN"
       });
     } else {
@@ -576,14 +567,16 @@ function preserveActiveSuperAdminInUsersRows(rows, authUser) {
     }
   }
 
-  if (!hasActiveSuperAdminRow) {
-    preserved.push({
-      id: authUser.id,
-      kod_sekolah: null,
-      email: normalizedAuthEmail,
-      role: "SUPER_ADMIN"
-    });
-  }
+  canonicalByEmail.forEach((canonical, emailKey) => {
+    if (!seenEmails.has(emailKey)) {
+      preserved.push({
+        id: canonical.id,
+        kod_sekolah: null,
+        email: canonical.email,
+        role: "SUPER_ADMIN"
+      });
+    }
+  });
 
   return preserved;
 }
@@ -717,21 +710,23 @@ function validateAndNormalizeBackupPayload(rawJson, liveSchemas) {
   };
 }
 
-async function upsertTableBatchWithFallback(client, tableName, batch, conflictTarget, signal) {
+async function upsertTableBatchWithFallback(client, tableName, batch, conflictTarget, callerIdentifier, signal) {
   const { error: rpcError } = await client.rpc(UPSERT_BATCH_RPC, {
     p_table: tableName,
     p_rows: batch,
-    p_conflict_column: conflictTarget
+    p_conflict_column: conflictTarget,
+    p_admin_email: callerIdentifier || null
   });
 
   if (!rpcError) {
     return;
   }
 
+  const errMsgLower = String(rpcError.message || "").toLowerCase();
   const isMissingRpc =
     rpcError.code === "42883" ||
     rpcError.code === "PGRST202" ||
-    String(rpcError.message || "").toLowerCase().includes("could not find the function");
+    errMsgLower.includes("could not find the function");
 
   if (!isMissingRpc) {
     throw new Error(`Ralat pemulihan pada jadual ${tableName}: ${rpcError.message}`);
@@ -794,7 +789,7 @@ export const MigrationManager = {
         throw new Error("Sambungan pangkalan data Supabase tidak tersedia.");
       }
 
-      const { tableOrder, schemas } = await resolveProjectSchemas(controller.signal);
+      const { tableOrder, schemas } = await resolveProjectSchemas();
       const activeOrder = [];
       const exportedTables = {};
       let totalRowsExported = 0;
@@ -942,13 +937,8 @@ export const MigrationManager = {
         throw new Error("Sambungan pangkalan data Supabase tidak tersedia.");
       }
 
-      let activeAuthUser = null;
-      try {
-        const { data: authData } = await client.auth.getUser();
-        activeAuthUser = authData && authData.user ? authData.user : null;
-      } catch {}
-
-      const { schemas } = await resolveProjectSchemas(controller.signal);
+      const superAdminContext = await resolveSuperAdminContext(client);
+      const { schemas } = await resolveProjectSchemas();
       const validated = validateAndNormalizeBackupPayload(parsedJson, schemas);
 
       if (validated.tableOrder.length === 0) {
@@ -967,7 +957,7 @@ export const MigrationManager = {
         let rows = tableBundle.rows;
 
         if (tableName === "smpid_users" && rows.length > 0) {
-          rows = preserveActiveSuperAdminInUsersRows(rows, activeAuthUser);
+          rows = preserveSuperAdminsInUsersRows(rows, superAdminContext);
         }
 
         if (rows.length === 0) {
@@ -1004,6 +994,7 @@ export const MigrationManager = {
             tableName,
             batch,
             conflictTarget,
+            superAdminContext.callerIdentifier,
             controller.signal
           );
         }
@@ -1020,7 +1011,8 @@ export const MigrationManager = {
       );
 
       const { error: rpcError } = await client.rpc(SEQUENCE_RESET_RPC, {
-        p_tables: validated.tableOrder
+        p_tables: validated.tableOrder,
+        p_admin_email: superAdminContext.callerIdentifier || null
       });
 
       if (rpcError) {

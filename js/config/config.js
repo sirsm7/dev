@@ -1,5 +1,6 @@
 const CONFIG_ENDPOINT = "/api/config";
 const REQUEST_TIMEOUT_MS = 10000;
+const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 
 let inFlightRequest = null;
 
@@ -7,11 +8,24 @@ function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeSchema(value) {
+  const cleaned = normalizeString(value);
+  if (!cleaned || cleaned.toLowerCase() === "public") {
+    return DEFAULT_SUPABASE_SCHEMA;
+  }
+  return cleaned;
+}
+
 function validateAndFreezeEnv(rawPayload) {
   const payload = rawPayload && typeof rawPayload === "object" ? rawPayload : {};
   const supabaseUrl = normalizeString(payload.SUPABASE_URL);
   const supabaseAnonKey = normalizeString(payload.SUPABASE_ANON_KEY);
+  const supabaseSchema = normalizeSchema(payload.SUPABASE_SCHEMA);
   const gasEndpointUrl = normalizeString(payload.GAS_ENDPOINT_URL || payload.GAS_URL);
+  const gasUploadUrl = normalizeString(payload.GAS_UPLOAD_URL);
+  const gasEmailUrl = normalizeString(payload.GAS_EMAIL_URL);
+  const gasLibatUrusUrl = normalizeString(payload.GAS_LIBAT_URUS_URL);
+  const denoApiUrl = normalizeString(payload.DENO_API_URL);
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Konfigurasi pelayan tidak lengkap: SUPABASE_URL atau SUPABASE_ANON_KEY tiada.");
@@ -19,22 +33,53 @@ function validateAndFreezeEnv(rawPayload) {
 
   const normalizedEnv = {
     SUPABASE_URL: supabaseUrl,
-    SUPABASE_ANON_KEY: supabaseAnonKey
+    SUPABASE_ANON_KEY: supabaseAnonKey,
+    SUPABASE_SCHEMA: supabaseSchema
   };
 
-  if (gasEndpointUrl) {
-    normalizedEnv.GAS_ENDPOINT_URL = gasEndpointUrl;
-    normalizedEnv.GAS_URL = gasEndpointUrl;
+  const primaryGasUrl = gasEndpointUrl || gasUploadUrl || gasEmailUrl || gasLibatUrusUrl;
+  if (primaryGasUrl) {
+    normalizedEnv.GAS_ENDPOINT_URL = primaryGasUrl;
+    normalizedEnv.GAS_URL = primaryGasUrl;
+  }
+
+  if (gasUploadUrl) {
+    normalizedEnv.GAS_UPLOAD_URL = gasUploadUrl;
+  }
+
+  if (gasEmailUrl) {
+    normalizedEnv.GAS_EMAIL_URL = gasEmailUrl;
+  }
+
+  if (gasLibatUrusUrl) {
+    normalizedEnv.GAS_LIBAT_URUS_URL = gasLibatUrusUrl;
+  }
+
+  if (denoApiUrl) {
+    normalizedEnv.DENO_API_URL = denoApiUrl;
   }
 
   const frozenEnv = Object.freeze(normalizedEnv);
   window.__ENV = frozenEnv;
   window.SUPABASE_URL = frozenEnv.SUPABASE_URL;
   window.SUPABASE_ANON_KEY = frozenEnv.SUPABASE_ANON_KEY;
+  window.SUPABASE_SCHEMA = frozenEnv.SUPABASE_SCHEMA;
 
   if (frozenEnv.GAS_ENDPOINT_URL) {
     window.GAS_ENDPOINT_URL = frozenEnv.GAS_ENDPOINT_URL;
     window.GAS_URL = frozenEnv.GAS_ENDPOINT_URL;
+  }
+
+  if (frozenEnv.GAS_UPLOAD_URL) {
+    window.GAS_UPLOAD_URL = frozenEnv.GAS_UPLOAD_URL;
+  }
+
+  if (frozenEnv.GAS_EMAIL_URL) {
+    window.GAS_EMAIL_URL = frozenEnv.GAS_EMAIL_URL;
+  }
+
+  if (frozenEnv.GAS_LIBAT_URUS_URL) {
+    window.GAS_LIBAT_URUS_URL = frozenEnv.GAS_LIBAT_URUS_URL;
   }
 
   return frozenEnv;

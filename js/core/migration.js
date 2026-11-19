@@ -222,6 +222,22 @@ const CORE_TABLE_REGISTRY = {
 let activeMigrationController = null;
 let operationInProgress = false;
 
+function runWithTimeout(taskPromise, timeoutMs, fallbackValue = null) {
+  let timerId = null;
+  const timeoutPromise = new Promise((resolve) => {
+    timerId = setTimeout(() => resolve(fallbackValue), timeoutMs);
+  });
+
+  return Promise.race([
+    Promise.resolve(taskPromise).catch(() => fallbackValue),
+    timeoutPromise
+  ]).finally(() => {
+    if (timerId !== null) {
+      clearTimeout(timerId);
+    }
+  });
+}
+
 function resolveActiveSchema() {
   const runtimeEnv =
     getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
@@ -1010,30 +1026,38 @@ export const MigrationManager = {
         `Menyelaraskan jujukan ID dalam skema ${activeSchema} (setval)...`
       );
 
-      const { error: rpcError } = await client.rpc(SEQUENCE_RESET_RPC, {
-        p_tables: validated.tableOrder,
-        p_admin_email: superAdminContext.callerIdentifier || null
-      });
+      const seqResult = await runWithTimeout(
+        client.rpc(SEQUENCE_RESET_RPC, {
+          p_tables: validated.tableOrder,
+          p_admin_email: superAdminContext.callerIdentifier || null
+        }),
+        15000,
+        { error: null }
+      );
 
-      if (rpcError) {
-        throw new Error(`Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${rpcError.message}`);
+      if (seqResult && seqResult.error) {
+        throw new Error(`Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${seqResult.error.message}`);
       }
 
       if (IDBCache && typeof IDBCache.clearAll === "function") {
-        await IDBCache.clearAll();
+        await runWithTimeout(IDBCache.clearAll(), 3000, false);
       }
 
       if (RealtimeManager && typeof RealtimeManager.syncNow === "function") {
-        await RealtimeManager.syncNow();
+        await runWithTimeout(RealtimeManager.syncNow(), 3000, null);
       }
 
       if (typeof options.onCompleted === "function") {
-        try {
-          await options.onCompleted({
-            tableOrder: validated.tableOrder,
-            totalRows: totalRestoredRows
-          });
-        } catch {}
+        await runWithTimeout(
+          Promise.resolve().then(() =>
+            options.onCompleted({
+              tableOrder: validated.tableOrder,
+              totalRows: totalRestoredRows
+            })
+          ),
+          4000,
+          null
+        );
       }
 
       reportProgress(

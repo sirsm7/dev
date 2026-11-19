@@ -5,7 +5,7 @@ import { IDBCache } from "./idb.js";
 import { RealtimeManager } from "./realtime.js";
 
 const PAGE_SIZE = 1000;
-const UPSERT_BATCH_SIZE = 200;
+const UPSERT_BATCH_SIZE = 100;
 const UPSERT_BATCH_RPC = "nadim_upsert_batch";
 const SEQUENCE_RESET_RPC = "nadim_reset_sequences";
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";

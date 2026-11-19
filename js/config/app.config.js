@@ -30,6 +30,17 @@ Object.defineProperties(supabaseConfig, {
     get() {
       return readEnvValue("SUPABASE_ANON_KEY");
     }
+  },
+  SCHEMA: {
+    enumerable: true,
+    configurable: false,
+    get() {
+      const schema = readEnvValue("SUPABASE_SCHEMA");
+      if (!schema || schema.toLowerCase() === "public") {
+        return "nadim_data";
+      }
+      return schema;
+    }
   }
 });
 
@@ -116,11 +127,11 @@ Object.defineProperties(defaultsConfig, {
 
 export const APP_CONFIG = {
   APP_NAME: "Nadi Analitik, Digital & Inovasi Melaka (NaDIM)",
-  APP_VERSION: "2.7.0",
+  APP_VERSION: "3.0.0",
   ADMIN_TABLE_LIMIT: 50,
   IDB: {
     DB_NAME: "nadim_storage_v2",
-    DB_VERSION: 2,
+    DB_VERSION: 3,
     CACHE_TTL_MS: 86400000,
     STORES: {
       SCHOOLS: "schools_cache",
@@ -147,12 +158,23 @@ export const APP_CONFIG = {
   DEFAULTS: defaultsConfig,
   DB_TABLES: {
     USERS: "smpid_users",
-    SCHOOLS: "smpid_schools",
-    ACHIEVEMENTS: "smpid_achievements",
-    GALLERY: "smpid_gallery",
-    BOOKINGS: "smpid_bookings",
-    PENATARAN: "smpid_penataran",
-    SETTINGS: "smpid_settings",
+    ADMIN_USERS: "smpid_admin_users",
+    SCHOOLS: "smpid_sekolah_data",
+    SEKOLAH_DATA: "smpid_sekolah_data",
+    ACHIEVEMENTS: "smpid_pencapaian",
+    PENCAPAIAN: "smpid_pencapaian",
+    GALLERY: "smpid_pencapaian",
+    ADUAN: "smpid_aduan",
+    DCS_ANALISA: "smpid_dcs_analisa",
+    BOOKINGS: "smpid_bb_tempahan",
+    BB_TEMPAHAN: "smpid_bb_tempahan",
+    BB_KUNCI: "smpid_bb_kunci",
+    DELIMA_STATUS: "smpid_delima_status",
+    IMPAK_BBM: "smpid_impak_bbm",
+    PENATARAN: "smpid_penataran_digital",
+    PENATARAN_DIGITAL: "smpid_penataran_digital",
+    PPPDM_PROGRAM: "smpid_pppdm_program",
+    PPPDM_PENYERTAAN: "smpid_pppdm_penyertaan",
     LIBAT_URUS: "smpid_libat_urus"
   },
   PAGINATION: {

@@ -1,14 +1,45 @@
-import { envReady } from "../config/config.js";
-import { initDatabaseClient, getDatabaseClient } from "./db.js";
+import { envReady, getEnv } from "../config/config.js";
+import { initDatabaseClient, getDatabaseClient, getDatabaseSchema } from "./db.js";
 import { IDBCache } from "./idb.js";
 
 const DEFAULT_CACHE_STORE = "query_cache";
+const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 const FOREGROUND_SYNC_COOLDOWN_MS = 3000;
 
 const subscriptions = new Map();
 const syncHandlers = new Map();
 let lifecycleInitialized = false;
 let lastForegroundSyncAt = 0;
+
+function resolveTargetSchema(explicitSchema) {
+  if (
+    typeof explicitSchema === "string" &&
+    explicitSchema.trim() &&
+    explicitSchema.trim().toLowerCase() !== "public"
+  ) {
+    return explicitSchema.trim();
+  }
+
+  const runtimeEnv =
+    getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
+  if (
+    runtimeEnv &&
+    typeof runtimeEnv.SUPABASE_SCHEMA === "string" &&
+    runtimeEnv.SUPABASE_SCHEMA.trim() &&
+    runtimeEnv.SUPABASE_SCHEMA.trim().toLowerCase() !== "public"
+  ) {
+    return runtimeEnv.SUPABASE_SCHEMA.trim();
+  }
+
+  if (typeof getDatabaseSchema === "function") {
+    const dbSchema = getDatabaseSchema();
+    if (dbSchema && dbSchema.toLowerCase() !== "public") {
+      return dbSchema;
+    }
+  }
+
+  return DEFAULT_SUPABASE_SCHEMA;
+}
 
 function extractRecordKey(record, primaryKey) {
   if (!record || typeof record !== "object") {
@@ -107,9 +138,9 @@ async function createChannelSubscription(config) {
     return null;
   }
 
-  const schema = config.schema || "public";
+  const schema = resolveTargetSchema(config.schema);
   const event = config.event || "*";
-  const channelName = `nadim_rt_${config.key}_${Date.now()}`;
+  const channelName = `nadim_rt_${schema}_${config.key}_${Date.now()}`;
 
   const pgConfig = {
     event,
@@ -253,7 +284,8 @@ export const RealtimeManager = {
 
     bindLifecycleListeners();
 
-    const key = options.key || `${options.schema || "public"}:${options.table}:${options.filter || "all"}`;
+    const activeSchema = resolveTargetSchema(options.schema);
+    const key = options.key || `${activeSchema}:${options.table}:${options.filter || "all"}`;
     if (subscriptions.has(key)) {
       await this.unsubscribe(key);
     }
@@ -261,7 +293,7 @@ export const RealtimeManager = {
     const normalizedConfig = {
       key,
       table: options.table,
-      schema: options.schema || "public",
+      schema: activeSchema,
       event: options.event || "*",
       filter: options.filter || null,
       primaryKey: options.primaryKey || "id",

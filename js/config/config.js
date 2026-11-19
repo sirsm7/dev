@@ -25,7 +25,6 @@ function validateAndFreezeEnv(rawPayload) {
   const gasUploadUrl = normalizeString(payload.GAS_UPLOAD_URL);
   const gasEmailUrl = normalizeString(payload.GAS_EMAIL_URL);
   const gasLibatUrusUrl = normalizeString(payload.GAS_LIBAT_URUS_URL);
-  const denoApiUrl = normalizeString(payload.DENO_API_URL);
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Konfigurasi pelayan tidak lengkap: SUPABASE_URL atau SUPABASE_ANON_KEY tiada.");
@@ -53,10 +52,6 @@ function validateAndFreezeEnv(rawPayload) {
 
   if (gasLibatUrusUrl) {
     normalizedEnv.GAS_LIBAT_URUS_URL = gasLibatUrusUrl;
-  }
-
-  if (denoApiUrl) {
-    normalizedEnv.DENO_API_URL = denoApiUrl;
   }
 
   const frozenEnv = Object.freeze(normalizedEnv);

@@ -7,7 +7,7 @@ const DB_NAME =
 const DB_VERSION =
   APP_CONFIG && APP_CONFIG.IDB && APP_CONFIG.IDB.DB_VERSION
     ? APP_CONFIG.IDB.DB_VERSION
-    : 2;
+    : 3;
 const DEFAULT_STORE_NAME = "query_cache";
 const DEFAULT_TTL_MS =
   APP_CONFIG && APP_CONFIG.IDB && APP_CONFIG.IDB.CACHE_TTL_MS
@@ -168,10 +168,15 @@ export const IDBCache = {
 
         request.onupgradeneeded = (event) => {
           const db = event.target.result;
+          const tx = event.target.transaction;
           const targetStores = getAllStoreNames();
           targetStores.forEach((storeName) => {
             if (!db.objectStoreNames.contains(storeName)) {
               db.createObjectStore(storeName, { keyPath: "key" });
+            } else if (tx) {
+              try {
+                tx.objectStore(storeName).clear();
+              } catch {}
             }
           });
         };

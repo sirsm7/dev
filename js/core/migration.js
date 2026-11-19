@@ -1,12 +1,14 @@
 import { envReady, getEnv } from "../config/config.js";
 import { APP_CONFIG } from "../config/app.config.js";
-import { initDatabaseClient } from "./db.js";
+import { initDatabaseClient, getDatabaseSchema } from "./db.js";
 import { IDBCache } from "./idb.js";
 import { RealtimeManager } from "./realtime.js";
 
 const PAGE_SIZE = 1000;
 const UPSERT_BATCH_SIZE = 200;
+const UPSERT_BATCH_RPC = "nadim_upsert_batch";
 const SEQUENCE_RESET_RPC = "nadim_reset_sequences";
+const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 
 const CORE_TABLE_REGISTRY = {
   smpid_sekolah_data: {
@@ -14,16 +16,35 @@ const CORE_TABLE_REGISTRY = {
     primary_key: "kod_sekolah",
     unique_keys: ["kod_sekolah"],
     depends_on: [],
-    fallback_headers: ["kod_sekolah", "nama_sekolah"],
+    fallback_headers: ["kod_sekolah"],
     fallback_optional: [
+      "nama_sekolah",
       "jenis_sekolah",
-      "jenis",
       "daerah",
-      "parlimen",
+      "nama_gpict",
+      "no_telefon_gpict",
+      "emel_delima_gpict",
+      "nama_admin_delima",
+      "no_telefon_admin_delima",
+      "emel_delima_admin_delima",
+      "created_at",
       "telegram_id_gpict",
       "telegram_id_admin",
-      "created_at",
-      "updated_at"
+      "parlimen",
+      "nama_pgb",
+      "no_telefon_pgb",
+      "emel_delima_pgb",
+      "telegram_id_pgb",
+      "nama_gpk",
+      "no_telefon_gpk",
+      "emel_delima_gpk",
+      "telegram_id_gpk",
+      "no_telefon_sekolah",
+      "sb_ada",
+      "sb_kaedah",
+      "sb_bil_semua",
+      "sb_bil_fungsi",
+      "sb_lokasi"
     ]
   },
   smpid_pppdm_program: {
@@ -32,7 +53,7 @@ const CORE_TABLE_REGISTRY = {
     unique_keys: ["id", "kod_program"],
     depends_on: [],
     fallback_headers: ["kod_program", "nama_program"],
-    fallback_optional: ["id", "created_at", "updated_at"]
+    fallback_optional: ["id", "kategori", "status_aktif"]
   },
   smpid_admin_users: {
     table_name: "smpid_admin_users",
@@ -47,8 +68,8 @@ const CORE_TABLE_REGISTRY = {
     primary_key: "id",
     unique_keys: ["id", "email"],
     depends_on: [],
-    fallback_headers: ["email"],
-    fallback_optional: ["id", "password", "role", "kod_sekolah", "created_at", "updated_at"]
+    fallback_headers: ["email", "role"],
+    fallback_optional: ["id", "kod_sekolah", "password", "created_at"]
   },
   smpid_dcs_analisa: {
     table_name: "smpid_dcs_analisa",
@@ -193,13 +214,35 @@ const CORE_TABLE_REGISTRY = {
     primary_key: "id",
     unique_keys: ["id", "kod_sekolah,program_id,tahun"],
     depends_on: ["smpid_sekolah_data", "smpid_pppdm_program"],
-    fallback_headers: ["kod_sekolah", "program_id", "tahun"],
-    fallback_optional: ["id", "created_at", "updated_at"]
+    fallback_headers: ["kod_sekolah", "tahun"],
+    fallback_optional: ["id", "program_id", "penyertaan", "created_at"]
   }
 };
 
 let activeMigrationController = null;
 let operationInProgress = false;
+
+function resolveActiveSchema() {
+  const runtimeEnv =
+    getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
+  if (
+    runtimeEnv &&
+    typeof runtimeEnv.SUPABASE_SCHEMA === "string" &&
+    runtimeEnv.SUPABASE_SCHEMA.trim() &&
+    runtimeEnv.SUPABASE_SCHEMA.trim().toLowerCase() !== "public"
+  ) {
+    return runtimeEnv.SUPABASE_SCHEMA.trim();
+  }
+
+  if (typeof getDatabaseSchema === "function") {
+    const dbSchema = getDatabaseSchema();
+    if (dbSchema && dbSchema.toLowerCase() !== "public") {
+      return dbSchema;
+    }
+  }
+
+  return DEFAULT_SUPABASE_SCHEMA;
+}
 
 function sortTablesByDependency(tableNames) {
   const uniqueNames = Array.from(new Set(tableNames));
@@ -243,6 +286,7 @@ async function fetchOpenApiDefinitions(signal) {
     runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
       ? runtimeEnv.SUPABASE_ANON_KEY.trim()
       : "";
+  const activeSchema = resolveActiveSchema();
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
@@ -256,7 +300,8 @@ async function fetchOpenApiDefinitions(signal) {
       headers: {
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${supabaseAnonKey}`,
-        Accept: "application/openapi+json"
+        Accept: "application/openapi+json",
+        "Accept-Profile": activeSchema
       },
       signal
     });
@@ -505,6 +550,44 @@ function resolveConflictTarget(schema, sampleRow) {
   return pk;
 }
 
+function preserveActiveSuperAdminInUsersRows(rows, authUser) {
+  if (!authUser || !authUser.id || !authUser.email) {
+    return rows;
+  }
+
+  const normalizedAuthEmail = String(authUser.email).trim().toLowerCase();
+  const preserved = [];
+  let hasActiveSuperAdminRow = false;
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    const rowEmail = row && row.email ? String(row.email).trim().toLowerCase() : "";
+
+    if (row.id === authUser.id || (rowEmail && rowEmail === normalizedAuthEmail)) {
+      hasActiveSuperAdminRow = true;
+      preserved.push({
+        ...row,
+        id: authUser.id,
+        email: normalizedAuthEmail,
+        role: "SUPER_ADMIN"
+      });
+    } else {
+      preserved.push(row);
+    }
+  }
+
+  if (!hasActiveSuperAdminRow) {
+    preserved.push({
+      id: authUser.id,
+      kod_sekolah: null,
+      email: normalizedAuthEmail,
+      role: "SUPER_ADMIN"
+    });
+  }
+
+  return preserved;
+}
+
 function validateAndNormalizeBackupPayload(rawJson, liveSchemas) {
   if (!rawJson || typeof rawJson !== "object" || Array.isArray(rawJson)) {
     throw new Error("Struktur fail sandaran tidak sah: objek JSON utama diperlukan.");
@@ -634,6 +717,40 @@ function validateAndNormalizeBackupPayload(rawJson, liveSchemas) {
   };
 }
 
+async function upsertTableBatchWithFallback(client, tableName, batch, conflictTarget, signal) {
+  const { error: rpcError } = await client.rpc(UPSERT_BATCH_RPC, {
+    p_table: tableName,
+    p_rows: batch,
+    p_conflict_column: conflictTarget
+  });
+
+  if (!rpcError) {
+    return;
+  }
+
+  const isMissingRpc =
+    rpcError.code === "42883" ||
+    rpcError.code === "PGRST202" ||
+    String(rpcError.message || "").toLowerCase().includes("could not find the function");
+
+  if (!isMissingRpc) {
+    throw new Error(`Ralat pemulihan pada jadual ${tableName}: ${rpcError.message}`);
+  }
+
+  let query = client
+    .from(tableName)
+    .upsert(batch, { onConflict: conflictTarget, ignoreDuplicates: false });
+
+  if (signal && typeof query.abortSignal === "function") {
+    query = query.abortSignal(signal);
+  }
+
+  const { error: upsertError } = await query;
+  if (upsertError) {
+    throw new Error(`Ralat pemulihan pada jadual ${tableName}: ${upsertError.message}`);
+  }
+}
+
 export const MigrationManager = {
   isBusy() {
     return operationInProgress;
@@ -659,12 +776,13 @@ export const MigrationManager = {
     const onProgress = options.onProgress || null;
 
     try {
+      const activeSchema = resolveActiveSchema();
       reportProgress(
         onProgress,
         statusContainer,
         logBuffer,
         "info",
-        "Memulakan pengesanan skema pangkalan data Supabase..."
+        `Memulakan pengesanan skema (${activeSchema}) pangkalan data Supabase...`
       );
 
       const activeEnvPromise =
@@ -724,7 +842,8 @@ export const MigrationManager = {
       const backupDocument = {
         metadata: {
           app: "nadim",
-          schema_version: APP_CONFIG.APP_VERSION || "2.7.0",
+          schema_name: activeSchema,
+          schema_version: APP_CONFIG.APP_VERSION || "3.0.0",
           exported_at: new Date().toISOString(),
           table_order: activeOrder
         },
@@ -793,12 +912,13 @@ export const MigrationManager = {
     const onProgress = options.onProgress || null;
 
     try {
+      const activeSchema = resolveActiveSchema();
       reportProgress(
         onProgress,
         statusContainer,
         logBuffer,
         "info",
-        `Membaca dan mengesahkan fail ${file.name}...`
+        `Membaca dan mengesahkan fail ${file.name} untuk skema ${activeSchema}...`
       );
 
       const rawText = await file.text();
@@ -822,6 +942,12 @@ export const MigrationManager = {
         throw new Error("Sambungan pangkalan data Supabase tidak tersedia.");
       }
 
+      let activeAuthUser = null;
+      try {
+        const { data: authData } = await client.auth.getUser();
+        activeAuthUser = authData && authData.user ? authData.user : null;
+      } catch {}
+
       const { schemas } = await resolveProjectSchemas(controller.signal);
       const validated = validateAndNormalizeBackupPayload(parsedJson, schemas);
 
@@ -838,7 +964,11 @@ export const MigrationManager = {
 
         const tableName = validated.tableOrder[i];
         const tableBundle = validated.tables[tableName];
-        const rows = tableBundle.rows;
+        let rows = tableBundle.rows;
+
+        if (tableName === "smpid_users" && rows.length > 0) {
+          rows = preserveActiveSuperAdminInUsersRows(rows, activeAuthUser);
+        }
 
         if (rows.length === 0) {
           reportProgress(
@@ -869,18 +999,13 @@ export const MigrationManager = {
           }
 
           const batch = rows.slice(start, start + UPSERT_BATCH_SIZE);
-          let query = client
-            .from(tableName)
-            .upsert(batch, { onConflict: conflictTarget, ignoreDuplicates: false });
-
-          if (typeof query.abortSignal === "function") {
-            query = query.abortSignal(controller.signal);
-          }
-
-          const { error } = await query;
-          if (error) {
-            throw new Error(`Ralat pemulihan pada jadual ${tableName}: ${error.message}`);
-          }
+          await upsertTableBatchWithFallback(
+            client,
+            tableName,
+            batch,
+            conflictTarget,
+            controller.signal
+          );
         }
 
         totalRestoredRows += rows.length;
@@ -891,7 +1016,7 @@ export const MigrationManager = {
         statusContainer,
         logBuffer,
         "info",
-        "Menyelaraskan jujukan ID pangkalan data (setval)..."
+        `Menyelaraskan jujukan ID dalam skema ${activeSchema} (setval)...`
       );
 
       const { error: rpcError } = await client.rpc(SEQUENCE_RESET_RPC, {
@@ -924,7 +1049,7 @@ export const MigrationManager = {
         statusContainer,
         logBuffer,
         "success",
-        `Pemulihan 1-ke-1 berjaya: ${validated.tableOrder.length} jadual (${totalRestoredRows} rekod) dipulihkan dan jujukan diselaraskan.`,
+        `Pemulihan 1-ke-1 berjaya ke skema ${activeSchema}: ${validated.tableOrder.length} jadual (${totalRestoredRows} rekod) dipulihkan dan jujukan diselaraskan.`,
         { step: validated.tableOrder.length, total: validated.tableOrder.length }
       );
 

@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
 
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
     "Pragma": "no-cache"
   };
 

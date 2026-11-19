@@ -1,11 +1,27 @@
 import { envReady, getEnv } from "../config/config.js";
 import { IDBCache } from "./idb.js";
 
+const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
+
 let supabaseInstance = null;
 let initPromise = null;
 let idbInitialized = false;
 
 export let supabase = null;
+
+function resolveSupabaseSchema(runtimeEnv) {
+  const raw =
+    runtimeEnv && typeof runtimeEnv.SUPABASE_SCHEMA === "string"
+      ? runtimeEnv.SUPABASE_SCHEMA.trim()
+      : typeof window !== "undefined" && typeof window.SUPABASE_SCHEMA === "string"
+        ? window.SUPABASE_SCHEMA.trim()
+        : "";
+
+  if (!raw || raw.toLowerCase() === "public") {
+    return DEFAULT_SUPABASE_SCHEMA;
+  }
+  return raw;
+}
 
 function ensureStorageLayer() {
   if (idbInitialized) {
@@ -72,6 +88,7 @@ function createClientInstance() {
     runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
       ? runtimeEnv.SUPABASE_ANON_KEY.trim()
       : "";
+  const supabaseSchema = resolveSupabaseSchema(runtimeEnv);
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
@@ -79,6 +96,9 @@ function createClientInstance() {
 
   try {
     supabaseInstance = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+      db: {
+        schema: supabaseSchema
+      },
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -89,6 +109,7 @@ function createClientInstance() {
     supabase = supabaseInstance;
     window._supabase = supabaseInstance;
     window.supabaseClient = supabaseInstance;
+    window.SUPABASE_SCHEMA = supabaseSchema;
   } catch {
     supabaseInstance = null;
     supabase = null;
@@ -140,6 +161,12 @@ export function getDatabaseClient() {
   return createClientInstance();
 }
 
+export function getDatabaseSchema() {
+  const runtimeEnv =
+    getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
+  return resolveSupabaseSchema(runtimeEnv);
+}
+
 export function requireDb() {
   const db = getDatabaseClient();
   if (!db) {
@@ -180,6 +207,7 @@ export default {
   initDatabaseClient,
   getDatabaseClient,
   getDatabaseClientAsync,
+  getDatabaseSchema,
   requireDb,
   requireDbAsync,
   get supabase() {
